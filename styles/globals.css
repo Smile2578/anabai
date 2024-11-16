@@ -1,0 +1,163 @@
+/* styles/globals.css */
+@import url('https://fonts.googleapis.com/css2?family=Beau+Rivage&family=Lavishly+Yours&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 235 100% 61%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 330 100% 61%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 235 100% 61%;
+    --radius: 0.5rem;
+    
+    /* Chart colors */
+    --chart-1: 235 100% 61%;
+    --chart-2: 330 100% 61%;
+    --chart-3: 114 24% 61%;
+    --chart-4: 350 100% 86%;
+    --chart-5: 197 61% 45%;
+
+    /* Sidebar colors */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 10% 3.9%;
+    --sidebar-primary: 235 100% 61%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 240 5.9% 90%;
+    --sidebar-ring: 235 100% 61%;
+  }
+ 
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 235 100% 61%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 330 100% 61%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 235 100% 61%;
+
+    /* Sidebar colors - dark mode */
+    --sidebar-background: 240 10% 3.9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 235 100% 61%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 235 100% 61%;
+  }
+}
+
+/* Base styles */
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-family: theme('fontFamily.sans');
+  }
+}
+
+/* Component styles */
+@layer components {
+  .anaba-title {
+    font-family: theme('fontFamily.display');
+    @apply text-primary font-bold;
+  }
+
+  .anaba-title-white {
+    font-family: theme('fontFamily.display');
+    @apply text-white font-bold;
+  }
+
+  .title {
+    font-family: theme('fontFamily.sans');
+    @apply text-primary font-bold;
+  }
+
+  .title-white {
+    font-family: theme('fontFamily.sans');
+    @apply text-white font-bold mb-5;
+  }
+
+  .service-card {
+    @apply bg-white rounded-[20px] shadow-lg transition-all duration-300 ease-in-out;
+  }
+
+  .organiser-voyage-button {
+    @apply bg-primary hover:bg-primary/90 text-white transition-all duration-300 rounded-2xl;
+  }
+
+  .mobile-hero-image {
+    @apply object-cover object-[50%_left] w-full h-full;
+  }
+
+  .desktop-hero-image {
+    @apply object-cover object-[40%_left] w-full h-full;
+  }
+
+  .kanji-image {
+    @apply max-w-full h-auto object-contain;
+  }
+
+  .google-maps-card {
+    @apply w-[350px] h-[600px] rounded-[20px] relative overflow-hidden bg-white shadow-lg;
+  }
+
+  .card-media-image {
+    @apply object-cover min-h-[400px] max-h-[400px] w-full rounded-t-[20px];
+  }
+
+  .card-description {
+    @apply min-h-[60px];
+  }
+
+  .typing-text {
+    font-family: theme('fontFamily.sans');
+    @apply text-white text-[5.5rem];
+  }
+
+  .service-cards-container {
+    @apply flex justify-between items-center gap-12 rounded-[20px];
+  }
+
+  .service-highlight-card {
+    @apply bg-white transition-all duration-300 ease-in-out;
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
