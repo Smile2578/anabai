@@ -5,6 +5,10 @@ import AnabaLogo from '@/components/brand/AnabaLogo';
 import Hero from '@/components/sections/Hero';
 import Services from '@/components/sections/Services';
 import Footer from '@/components/navigation/Footer';
+import Features from '@/components/sections/Features';
+import Destinations from '@/components/sections/Destinations';
+import CallToAction from '@/components/sections/CallToAction';
+import Testimonials from '@/components/sections/Testimonials';
 import { cn } from '@/lib/utils';
 
 export default function LandingPage() {
@@ -35,6 +39,10 @@ export default function LandingPage() {
       <main>
         <Hero />
         <Services />
+        <Features />
+        <Destinations />
+        <CallToAction />
+        <Testimonials />
       </main>
 
       <Footer />

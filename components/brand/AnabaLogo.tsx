@@ -20,7 +20,7 @@ export default function AnabaLogo() {
     >
       <motion.div
         initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
+        animate={{ opacity: 1, y: -5 }}
         transition={{ duration: 1.5 }}
       >
         <div className="flex items-center justify-center relative">

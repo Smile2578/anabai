@@ -21,7 +21,7 @@ export default function Hero() {
       {/* Image de fond */}
       <div className="absolute inset-0 z-1">
         <Image
-          src="/images/sakura.jpg"
+          src="/images/pagode.jpg"
           alt="Japon"
           layout="fill"
           objectFit="cover"
