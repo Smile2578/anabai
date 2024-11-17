@@ -3,11 +3,11 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Place } from '@/types/place';
+import { PlaceBase } from '@/types/place';
 import Image from 'next/image';
 
 interface PlaceCardProps {
-  place: Place;
+  place: PlaceBase;
   onClick?: () => void;
 }
 
@@ -26,9 +26,9 @@ export const PlaceCard = ({ place, onClick }: PlaceCardProps) => {
         <div className="relative h-48 w-full">
           {place.images[0] && (
             <Image
-              src={place.images[0].url}
-              alt={place.name.fr || place.name.en}
-              fill
+            src={place.images[0]?.url || '/placeholder-image.jpg'}
+            alt={`Image de ${place.name.fr}`}
+            fill
               className="object-cover"
             />
           )}
@@ -41,7 +41,7 @@ export const PlaceCard = ({ place, onClick }: PlaceCardProps) => {
         <CardHeader>
           <div className="flex justify-between items-start">
             <CardTitle className="text-lg">
-              {place.name.fr || place.name.en}
+              {place.name.fr}
             </CardTitle>
             <span className="text-sm text-muted-foreground">
               {place.category}
@@ -51,7 +51,7 @@ export const PlaceCard = ({ place, onClick }: PlaceCardProps) => {
         <CardContent>
           <div className="space-y-2">
             <div className="flex items-center text-sm text-muted-foreground">
-              <span>{place.location.address.fr || place.location.address.en}</span>
+              <span>{place.location.address.fr}</span>
             </div>
             {place.subcategories.length > 0 && (
               <div className="flex flex-wrap gap-1">

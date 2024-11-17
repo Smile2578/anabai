@@ -1,27 +1,29 @@
-'use client';
+// app/admin/places/layout.tsx
+import { Metadata } from 'next';
+import { Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
 
-import React from 'react';
-import { motion } from 'framer-motion';
+export const metadata: Metadata = {
+  title: 'Gestion des Lieux | AnabAI Admin',
+  description: 'Interface d\'administration des lieux pour AnabAI',
+};
 
-interface LayoutProps {
+export default function PlacesLayout({
+  children,
+}: {
   children: React.ReactNode;
-}
-
-export default function PlacesLayout({ children }: LayoutProps) {
+}) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-      className="min-h-screen bg-background"
-    >
-      <div className="container mx-auto px-4">
-        <div className="py-8">
-          <h1 className="text-3xl font-bold mb-8">Gestion des lieux</h1>
-          {children}
-        </div>
-      </div>
-    </motion.div>
+    <div className="container mx-auto px-4 py-6">
+      <Suspense
+        fallback={
+          <div className="flex h-screen items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        }
+      >
+        {children}
+      </Suspense>
+    </div>
   );
 }

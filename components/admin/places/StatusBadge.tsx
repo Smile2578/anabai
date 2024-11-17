@@ -10,11 +10,12 @@ interface StatusBadgeProps {
 export const StatusBadge = ({ status, className }: StatusBadgeProps) => {
   return (
     <Badge 
+      variant="outline"
       className={cn(
         "capitalize",
-        status === 'publié' && "bg-semantic-success",
-        status === 'brouillon' && "bg-semantic-warning",
-        status === 'archivé' && "bg-semantic-error",
+        status === 'publié' && "border-semantic-success text-semantic-success hover:bg-semantic-success/10",
+        status === 'brouillon' && "border-semantic-warning text-semantic-warning hover:bg-semantic-warning/10", 
+        status === 'archivé' && "border-semantic-error text-semantic-error hover:bg-semantic-error/10",
         className
       )}
     >

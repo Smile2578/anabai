@@ -27,10 +27,10 @@ export default function NavBar() {
         variant="outline"
         size="lg"
         className={cn(
-          "gap-2 rounded-full",
-          "border-primary text-primary",
-          "hover:bg-primary hover:text-white",
-          "mt-6 md:mt-8"
+          "gap-2 rounded-full bg-red-500 text-white",
+          "border-red-400",
+          "mt-2 md:mt-2",
+          "hover:bg-red-400 hover:text-white"
         )}
       >
         <MenuIcon className="h-5 w-5" />

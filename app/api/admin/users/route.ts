@@ -1,25 +1,15 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-const db = new PrismaClient();
 import { hash } from "bcrypt";
+import connectDB from '@/lib/db/connection';
+import User from '@/models/User';
 
 // GET /api/admin/users - Récupérer tous les utilisateurs
 export async function GET() {
   try {
-    const users = await db.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        status: true,
-        createdAt: true,
-        lastLogin: true
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    await connectDB();
+    const users = await User.find({})
+      .select('id name email role status createdAt lastLogin')
+      .sort('-createdAt');
 
     return NextResponse.json(users);
   } catch {
@@ -33,13 +23,12 @@ export async function GET() {
 // POST /api/admin/users - Créer un nouvel utilisateur
 export async function POST(req: Request) {
   try {
+    await connectDB();
     const body = await req.json();
     const { email, name, role, status, password } = body;
 
     // Vérifier si l'email existe déjà
-    const existingUser = await db.user.findUnique({
-      where: { email }
-    });
+    const existingUser = await User.findOne({ email });
 
     if (existingUser) {
       return NextResponse.json(
@@ -57,27 +46,23 @@ export async function POST(req: Request) {
 
     const hashedPassword = await hash(password, 10);
 
-    const user = await db.user.create({
-      data: {
-        email,
-        name,
-        role,
-        status,
-        password: hashedPassword,
-        provider: "credentials"
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        status: true,
-        createdAt: true,
-        lastLogin: true
-      }
+    const user = await User.create({
+      email,
+      name,
+      role,
+      status,
+      password: hashedPassword,
+      provider: "credentials"
     });
 
-    return NextResponse.json(user);
+    const userData = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
+
+    return NextResponse.json(userData);
   } catch {
     return NextResponse.json(
       { error: "Erreur lors de la création de l'utilisateur" },
@@ -92,18 +77,15 @@ export async function PUT(
   { params }: { params: { userId: string } }
 ) {
   try {
+    await connectDB();
     const { userId } = params;
     const body = await req.json();
     const { email, name, role, status } = body;
 
     // Vérifier si l'email existe déjà pour un autre utilisateur
-    const existingUser = await db.user.findFirst({
-      where: {
-        email,
-        NOT: {
-          id: userId
-        }
-      }
+    const existingUser = await User.findOne({
+      email,
+      _id: { $ne: userId }
     });
 
     if (existingUser) {
@@ -113,24 +95,16 @@ export async function PUT(
       );
     }
 
-    const user = await db.user.update({
-      where: { id: userId },
-      data: {
+    const user = await User.findByIdAndUpdate(
+      userId,
+      {
         email,
         name,
         role,
         status
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        status: true,
-        createdAt: true,
-        lastLogin: true
-      }
-    });
+      { new: true }
+    ).select('id name email role status createdAt lastLogin');
 
     return NextResponse.json(user);
   } catch {
@@ -147,11 +121,10 @@ export async function DELETE(
   { params }: { params: { userId: string } }
 ) {
   try {
+    await connectDB();
     const { userId } = params;
 
-    await db.user.delete({
-      where: { id: userId }
-    });
+    await User.findByIdAndDelete(userId);
 
     return NextResponse.json({ success: true });
   } catch {

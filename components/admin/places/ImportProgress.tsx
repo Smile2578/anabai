@@ -1,3 +1,4 @@
+// components/admin/places/ImportProgress.tsx
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Progress } from "@/components/ui/progress";

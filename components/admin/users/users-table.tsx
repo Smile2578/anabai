@@ -80,9 +80,7 @@ export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
               <TableHead>Nom</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Rôle</TableHead>
-              <TableHead>Statut</TableHead>
               <TableHead>Inscription</TableHead>
-              <TableHead>Dernière connexion</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -92,14 +90,8 @@ export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
                 <TableCell>{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>{getRoleBadge(user.role)}</TableCell>
-                <TableCell>{getStatusBadge(user.status)}</TableCell>
                 <TableCell>
                   {format(new Date(user.createdAt), 'dd MMM yyyy', { locale: fr })}
-                </TableCell>
-                <TableCell>
-                  {user.lastLogin
-                    ? format(new Date(user.lastLogin), 'dd MMM yyyy', { locale: fr })
-                    : 'Jamais'}
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
@@ -111,16 +103,16 @@ export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onEdit(user)}>
+                      <DropdownMenuItem key={`edit-${user.id}`} onClick={() => onEdit(user)}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Modifier
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.location.href = `mailto:${user.email}`}>
+                      <DropdownMenuItem key={`contact-${user.id}`} onClick={() => window.location.href = `mailto:${user.email}`}>
                         <Mail className="mr-2 h-4 w-4" />
                         Contacter
                       </DropdownMenuItem>
                       {user.role !== 'admin' && (
-                        <DropdownMenuItem onClick={() => setDeletingUserId(user.id)}>
+                        <DropdownMenuItem key={`delete-${user.id}`} onClick={() => setDeletingUserId(user.id)}>
                           <Trash2 className="mr-2 h-4 w-4" />
                           Supprimer
                         </DropdownMenuItem>

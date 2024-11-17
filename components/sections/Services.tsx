@@ -1,39 +1,51 @@
-// components/sections/Services.tsx
-'use client';
+'use client'
 
-import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FaRobot, FaMapMarkedAlt, FaHeart } from 'react-icons/fa';
+import { cn } from '@/lib/utils'
+import { motion } from 'framer-motion'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Bot, Map, Heart } from 'lucide-react'
 
 const services = [
   {
-    icon: <FaRobot className="h-12 w-12 text-primary" />,
+    icon: Bot,
     title: 'Assistant Intelligent',
     description: 'Personnalisez votre voyage grâce à notre IA avancée qui comprend vos préférences.',
+    color: 'text-primary'
   },
   {
-    icon: <FaMapMarkedAlt className="h-12 w-12 text-secondary" />,
+    icon: Map,
     title: 'Cartes Interactives',
     description: 'Explorez des lieux authentiques avec nos cartes détaillées et intuitives.',
+    color: 'text-secondary'
   },
   {
-    icon: <FaHeart className="h-12 w-12 text-accent" />,
+    icon: Heart,
     title: 'Expériences Uniques',
     description: 'Découvrez des trésors cachés et vivez des moments inoubliables.',
+    color: 'text-accent'
   },
-];
+]
 
 export default function Services() {
   return (
-    <section className="py-16 bg-background">
-      <div className="container mx-auto px-4 text-center">
-        <h2 className={cn('text-4xl font-bold', 'title')}>Nos Services</h2>
-        <p className="mt-4 text-lg text-muted-foreground">
-          AnabAI vous offre une gamme de services pour rendre votre voyage au Japon exceptionnel.
-        </p>
+    <section className="py-24 bg-gradient-to-b from-background to-muted">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
+            Nos Services
+          </h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            AnabAI vous offre une gamme de services pour rendre votre voyage au Japon exceptionnel.
+          </p>
+        </motion.div>
 
-        <div className="mt-12 grid gap-8 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
           {services.map((service, index) => (
             <motion.div
               key={index}
@@ -42,13 +54,13 @@ export default function Services() {
               transition={{ duration: 0.5, delay: index * 0.2 }}
               viewport={{ once: true }}
             >
-              <Card className="service-card hover:shadow-xl">
+              <Card className="service-card hover:shadow-xl transition-all duration-300 transform hover:scale-105">
                 <CardHeader className="flex flex-col items-center">
-                  {service.icon}
+                  <service.icon className={cn("h-12 w-12", service.color)} />
                   <CardTitle className="mt-4 text-2xl font-semibold">{service.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription>{service.description}</CardDescription>
+                  <p className="text-center text-muted-foreground">{service.description}</p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -56,5 +68,5 @@ export default function Services() {
         </div>
       </div>
     </section>
-  );
+  )
 }

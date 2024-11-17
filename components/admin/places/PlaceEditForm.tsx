@@ -2,7 +2,7 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Place } from '@/types/place';
+import { PlaceBase } from '@/types/place';
 import {  PlaceFormValues, placeFormSchema } from '@/types/form';
 import {
  Form,
@@ -24,7 +24,7 @@ import { UseFormReturn } from 'react-hook-form';
 import { FormComponentProps } from '@/types/form';
 
 interface PlaceEditFormProps {
- place?: Partial<Place>;
+ place?: Partial<PlaceBase>;
  onSubmit: (data: PlaceFormValues) => Promise<void>;
  isLoading?: boolean;
  error?: string;
@@ -47,14 +47,12 @@ export function PlaceEditForm({ place, onSubmit, isLoading, error }: PlaceEditFo
    defaultValues: {
      name: { 
        ja: place?.name?.ja || '', 
-       en: place?.name?.en || '', 
        fr: place?.name?.fr || '' 
      },
      location: {
        coordinates: place?.location?.coordinates || [35.6762, 139.6503],
        address: {
          ja: place?.location?.address?.ja || '',
-         en: place?.location?.address?.en || '',
          fr: place?.location?.address?.fr || '',
        },
        accessInfo: place?.location?.accessInfo || {
@@ -66,7 +64,6 @@ export function PlaceEditForm({ place, onSubmit, isLoading, error }: PlaceEditFo
      subcategories: place?.subcategories || [],
      description: {
        ja: place?.description?.ja || '',
-       en: place?.description?.en || '',
        fr: place?.description?.fr || '',
      },
      images: place?.images || [],
@@ -74,16 +71,14 @@ export function PlaceEditForm({ place, onSubmit, isLoading, error }: PlaceEditFo
        periods: [],
        weekdayText: {
          ja: [],
-         en: [],
          fr: [],
        },
      },
      pricing: place?.pricing || {
        priceRange: 1,
-       currency: 'JPY',
+       currency: 'EUR',
        details: {
          ja: '',
-         en: '',
          fr: '',
        },
      },

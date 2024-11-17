@@ -1,7 +1,6 @@
 // types/place.ts
 import { Types } from 'mongoose';
 
-// Type de base pour un lieu sans _id
 export interface PlaceBase {
   originalData?: {
     title?: string;
@@ -11,18 +10,16 @@ export interface PlaceBase {
   };
   
   name: {
-    ja: string;
-    en: string;
-    fr?: string;
+    ja?: string;
+    fr: string;
   };
   
   location: {
     type: 'Point';
     coordinates: [number, number];
     address: {
-      ja: string;
-      en: string;
-      fr?: string;
+      ja?: string;
+      fr: string;
       prefecture?: string;
       city?: string;
       postalCode?: string;
@@ -39,8 +36,7 @@ export interface PlaceBase {
   
   description: {
     ja?: string;
-    en: string;
-    fr?: string;
+    fr: string;
   };
   
   images: Array<{
@@ -49,7 +45,6 @@ export interface PlaceBase {
     isCover?: boolean;
     caption?: {
       ja?: string;
-      en?: string;
       fr?: string;
     };
   }>;
@@ -61,8 +56,7 @@ export interface PlaceBase {
       close: string;
     }>;
     weekdayText: {
-      ja: string[];
-      en: string[];
+      ja?: string[];
       fr: string[];
     };
     holidayDates?: Date[];
@@ -73,7 +67,6 @@ export interface PlaceBase {
     currency: string;
     details?: {
       ja?: string;
-      en?: string;
       fr?: string;
     };
     budget?: {
@@ -163,15 +156,24 @@ export interface CSVPlace {
   Comment?: string;
 }
 
+export interface EnrichmentError {
+  message: string;
+  code?: string;
+  details?: string;
+}
+
 export interface EnrichmentResult {
   success: boolean;
   place?: Partial<Place>;
   error?: string;
   placeId?: string;
+  validationErrors?: string[];
+  existingPlace?: Place;
 }
 
 export interface ImportPreview {
   original: CSVPlace;
   enriched?: EnrichmentResult;
   status: 'pending' | 'success' | 'error';
+  validationErrors?: string[];
 }

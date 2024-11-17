@@ -42,7 +42,7 @@ export function DataPreviewTable({ data, selectedRows, onRowSelect }: DataPrevie
               className={`
                 cursor-pointer
                 hover:bg-muted/50
-                ${selectedRows?.includes(index.toString()) ? 'bg-primary/5' : ''}
+                ${selectedRows?.includes(index.toString()) ? 'bg-blue-500' : ''}
               `}
               onClick={() => onRowSelect?.(index)}
             >
@@ -51,14 +51,13 @@ export function DataPreviewTable({ data, selectedRows, onRowSelect }: DataPrevie
               </TableCell>
               <TableCell>{row.original.Title}</TableCell>
               <TableCell>
-                {row.enriched?.place?.name?.fr || row.enriched?.place?.name?.en || '-'}
+                {row.enriched?.place?.name?.fr || '-'}
               </TableCell>
               <TableCell>
                 {row.enriched?.place?.category || '-'}
               </TableCell>
               <TableCell>
-                {row.enriched?.place?.location?.address?.fr || 
-                 row.enriched?.place?.location?.address?.en || '-'}
+                {row.enriched?.place?.location?.address?.fr || '-'}
               </TableCell>
               <TableCell className="max-w-[200px] truncate">
                 {row.original.Note || '-'}

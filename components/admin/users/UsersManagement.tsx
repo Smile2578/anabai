@@ -29,7 +29,6 @@ export default function UsersManagement() {
   // Charger les utilisateurs au montage du composant
   useEffect(() => {
     fetchUsers();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchUsers = async () => {
