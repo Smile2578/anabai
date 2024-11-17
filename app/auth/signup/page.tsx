@@ -14,7 +14,7 @@ import { useForm } from 'react-hook-form';
 
 // Définir le schéma de validation avec Zod
 const signupSchema = z.object({
-  name: z.string().nonempty('Le nom est requis'),
+  name: z.string().min(1, 'Le nom est requis'),
   email: z.string().email('Email invalide'),
   password: z
     .string()

@@ -1,7 +1,7 @@
 // components/admin/users/UsersManagement.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UsersTable } from "./users-table";
 import { UserFilters } from "./users-filters";
 import { Button } from "@/components/ui/button";
@@ -22,30 +22,33 @@ export type User = {
 export default function UsersManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Données simulées - À remplacer par un appel API
-  const users: User[] = [
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john@example.com",
-      role: "user",
-      status: "active",
-      createdAt: "2024-01-15",
-      lastLogin: "2024-03-10",
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      email: "jane@example.com",
-      role: "admin",
-      status: "active",
-      createdAt: "2024-02-01",
-      lastLogin: "2024-03-15",
-    },
-    // Ajoutez plus d'utilisateurs ici
-  ];
+  // Charger les utilisateurs au montage du composant
+  useEffect(() => {
+    fetchUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/admin/users');
+      if (!response.ok) throw new Error('Erreur lors du chargement des utilisateurs');
+      const data = await response.json();
+      setUsers(data);
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de charger la liste des utilisateurs",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleCreateUser = () => {
     setEditingUser(null);
@@ -59,12 +62,15 @@ export default function UsersManagement() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      // Simulation d'une requête API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const userToDelete = users.find(user => user.id === userId);
-      if (!userToDelete) {
-        throw new Error("Utilisateur non trouvé");
-      }
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Erreur lors de la suppression');
+
+      // Mettre à jour la liste des utilisateurs
+      setUsers(users.filter(user => user.id !== userId));
+      
       toast({
         title: "Utilisateur supprimé",
         description: "L'utilisateur a été supprimé avec succès",
@@ -80,24 +86,47 @@ export default function UsersManagement() {
 
   const handleSaveUser = async (userData: Partial<User>) => {
     try {
-      // Simulation d'une requête API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const isEditing = !!editingUser;
+      const url = isEditing ? `/api/admin/users/${editingUser.id}` : '/api/admin/users';
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erreur lors de la sauvegarde');
+      }
+
+      const savedUser = await response.json();
+
+      // Mettre à jour la liste des utilisateurs
+      if (isEditing) {
+        setUsers(users.map(user => 
+          user.id === savedUser.id ? savedUser : user
+        ));
+      } else {
+        setUsers([savedUser, ...users]);
+      }
       
-      // Utilisation de userData pour simuler la sauvegarde
-      console.log('Sauvegarde des données:', userData);
       toast({
-        title: editingUser ? "Utilisateur modifié" : "Utilisateur créé",
-        description: editingUser 
+        title: isEditing ? "Utilisateur modifié" : "Utilisateur créé",
+        description: isEditing 
           ? "Les modifications ont été enregistrées"
           : "Le nouvel utilisateur a été créé avec succès",
       });
       
       setIsDialogOpen(false);
-    } catch {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Une erreur est survenue lors de l'enregistrement",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'enregistrement",
       });
     }
   };
