@@ -4,15 +4,13 @@ import connectDB from '@/lib/db/connection';
 import { PlaceRepository } from '@/lib/repositories/place-repository';
 
 interface RouteParams {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }>;
 }
 
 // GET - Récupération d'un lieu spécifique
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     const mongoose = await connectDB();
     const db = mongoose.connection.db;
@@ -44,7 +42,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 // PATCH - Mise à jour d'un lieu spécifique
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const updates = await req.json();
     
     const mongoose = await connectDB();
@@ -83,7 +81,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 // DELETE - Suppression d'un lieu
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     const mongoose = await connectDB();
     const db = mongoose.connection.db;

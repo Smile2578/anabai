@@ -1,4 +1,27 @@
-// lib/services/googleMaps.ts
+import { imageService } from './image-service';
+
+interface AddressComponent {
+  long_name: string;
+  short_name: string;
+  types: string[];
+}
+
+interface OpeningHoursPeriod {
+  open: {
+    day: number;
+    time: string;
+  };
+  close?: {
+    day: number;
+    time: string;
+  };
+}
+
+interface CurrentOpeningHours {
+  periods: OpeningHoursPeriod[];
+  weekdayText: string[];
+}
+
 
 export class GoogleMapsService {
     private apiKey: string;
@@ -19,7 +42,7 @@ export class GoogleMapsService {
       try {
         console.log('Searching for place in Japan:', placeName);
   
-        // D'abord, essayons de trouver le lieu par une recherche textuelle
+        // Recherche textuelle initiale
         const searchResponse = await fetch(
             'https://places.googleapis.com/v1/places:searchText',
             {
@@ -30,7 +53,7 @@ export class GoogleMapsService {
                 'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location'
               },
               body: JSON.stringify({
-                textQuery: `${placeName} Japan`, // Ajout explicite de "Japan"
+                textQuery: `${placeName} Japan`,
                 locationBias: {
                   rectangle: {
                     low: {
@@ -43,7 +66,7 @@ export class GoogleMapsService {
                     }
                   }
                 },
-                languageCode: 'ja' // Utilisation du japonais pour la recherche initiale
+                languageCode: 'ja'
               })
             }
           );
@@ -59,7 +82,7 @@ export class GoogleMapsService {
         const place = searchData.places[0];
         const newPlaceId = place.id;
   
-        // Maintenant obtenir les détails avec le nouvel ID
+        // Obtenir les détails avec le nouvel ID
         const detailsResponse = await fetch(
           `https://places.googleapis.com/v1/places/${newPlaceId}`,
           {
@@ -80,7 +103,8 @@ export class GoogleMapsService {
                 'userRatingCount',
                 'internationalPhoneNumber',
                 'websiteUri',
-                'addressComponents'
+                'addressComponents',
+                'currentOpeningHours'
               ].join(',')
             }
           }
@@ -94,13 +118,23 @@ export class GoogleMapsService {
           {
             headers: {
               'X-Goog-Api-Key': this.apiKey,
-              'X-Goog-FieldMask': 'displayName,formattedAddress',
+              'X-Goog-FieldMask': 'displayName,formattedAddress,currentOpeningHours',
               'Accept-Language': 'ja'
             }
           }
         );
   
         const jaData = await jaResponse.json();
+        // Traitement des images
+        const photoUrls = (detailsData.photos || []).map((photo: { name: string }) => 
+          `https://places.googleapis.com/v1/${photo.name}/media?key=${this.apiKey}&maxHeightPx=800`
+        );
+
+        // Mise en cache des images
+        const cachedImageUrls = await imageService.getPlaceImages(photoUrls);
+        
+        // Formatage des horaires d'ouverture
+        const openingHours = this.formatOpeningHours(detailsData.currentOpeningHours);
   
         // Construction de l'objet de retour
         return {
@@ -111,9 +145,9 @@ export class GoogleMapsService {
           location: {
             type: 'Point' as const,
             coordinates: [
-                detailsData.location?.longitude || 0, // Longitude en premier
-                detailsData.location?.latitude || 0   // Latitude en second
-              ],
+                detailsData.location?.longitude || 0,
+                detailsData.location?.latitude || 0
+            ],
             address: {
               fr: detailsData.formattedAddress || '',
               ja: jaData.formattedAddress || '',
@@ -128,23 +162,36 @@ export class GoogleMapsService {
             fr: detailsData.editorialSummary?.text || '',
             ja: ''
           },
-          images: (detailsData.photos || []).map((photo: { name: any; }) => ({
-            url: `https://places.googleapis.com/v1/${photo.name}/media?key=${this.apiKey}&maxHeightPx=1600`,
+          images: cachedImageUrls.map((url, index) => ({
+            url,
             source: 'Google Maps',
-            isCover: false
+            isCover: index === 0 // Premier image comme couverture
           })),
-          metadata: {
-            source: 'Google Maps',
-            placeId: newPlaceId,
-            status: 'brouillon',
-            lastEnriched: new Date(),
-            rating: detailsData.rating,
-            userRatingsTotal: detailsData.userRatingCount,
-            priceLevel: detailsData.priceLevel,
+          openingHours: {
+            periods: openingHours,
+            weekdayText: {
+              ja: jaData.currentOpeningHours?.weekdayText || [],
+              fr: detailsData.currentOpeningHours?.weekdayText || []
+            }
+          },
+          pricing: {
+            priceRange: detailsData.priceLevel || 1,
+            currency: 'JPY',
+            budget: this.formatPriceLevel(detailsData.priceLevel)
           },
           contact: {
             phone: detailsData.internationalPhoneNumber || '',
             website: detailsData.websiteUri || '',
+          },
+          ratings: {
+            googleRating: detailsData.rating,
+            googleReviewsCount: detailsData.userRatingCount
+          },
+          metadata: {
+            source: 'Google Maps',
+            placeId: newPlaceId,
+            status: 'publié',
+            lastEnriched: new Date(),
           },
           isActive: true
         };
@@ -155,41 +202,53 @@ export class GoogleMapsService {
       }
     }
 
-  private extractFromComponents(components: any[] = [], type: string): string {
-    const component = components?.find(c => c.types.includes(type));
-    return component?.long_name || '';
-  }
-
-  private formatOpeningHours(periods: any[] = []) {
-    if (!periods) return [];
-    return periods.map(period => ({
-      day: period.open?.day || 0,
-      open: period.open?.time || '0000',
-      close: period.close?.time || '2359'
-    }));
-  }
-
-  private determineCategory(types: string[]): 'Restaurant' | 'Hôtel' | 'Visite' | 'Shopping' | 'Café & Bar' {
-    const typeMapping = {
-      restaurant: ['restaurant', 'food'],
-      hotel: ['lodging', 'hotel'],
-      shopping: ['shopping_mall', 'store', 'clothing_store', 'department_store'],
-      cafe_bar: ['bar', 'cafe', 'night_club'],
-      visite: ['tourist_attraction', 'point_of_interest', 'museum', 'park']
-    };
-
-    for (const [category, mappedTypes] of Object.entries(typeMapping)) {
-      if (types.some(type => mappedTypes.includes(type.toLowerCase()))) {
-        switch (category) {
-          case 'restaurant': return 'Restaurant';
-          case 'hotel': return 'Hôtel';
-          case 'shopping': return 'Shopping';
-          case 'cafe_bar': return 'Café & Bar';
-          case 'visite': return 'Visite';
-        }
-      }
+    private extractFromComponents(components: AddressComponent[] = [], type: string): string {
+      const component = components?.find(c => c.types.includes(type));
+      return component?.long_name || '';
+    }
+    
+    private formatOpeningHours(currentOpeningHours: CurrentOpeningHours | undefined) {
+      if (!currentOpeningHours?.periods) return [];
+      
+      return currentOpeningHours.periods.map((period) => ({
+        day: period.open?.day || 0,
+        open: period.open?.time || '0000',
+        close: period.close?.time || '2359'
+      }));
     }
 
-    return 'Visite';
-  }
+    private formatPriceLevel(priceLevel: number) {
+      const priceLevels = {
+        1: { min: 1000, max: 2000 },
+        2: { min: 2000, max: 4000 },
+        3: { min: 4000, max: 8000 },
+        4: { min: 8000, max: 20000 }
+      };
+      
+      return priceLevels[priceLevel as keyof typeof priceLevels] || { min: 1000, max: 2000 };
+    }
+
+    private determineCategory(types: string[]): 'Restaurant' | 'Hôtel' | 'Visite' | 'Shopping' | 'Café & Bar' {
+      const typeMapping = {
+        restaurant: ['restaurant', 'food'],
+        hotel: ['lodging', 'hotel'],
+        shopping: ['shopping_mall', 'store', 'clothing_store', 'department_store'],
+        cafe_bar: ['bar', 'cafe', 'night_club'],
+        visite: ['tourist_attraction', 'point_of_interest', 'museum', 'park']
+      };
+
+      for (const [category, mappedTypes] of Object.entries(typeMapping)) {
+        if (types.some(type => mappedTypes.includes(type.toLowerCase()))) {
+          switch (category) {
+            case 'restaurant': return 'Restaurant';
+            case 'hotel': return 'Hôtel';
+            case 'shopping': return 'Shopping';
+            case 'cafe_bar': return 'Café & Bar';
+            case 'visite': return 'Visite';
+          }
+        }
+      }
+
+      return 'Visite';
+    }
 }

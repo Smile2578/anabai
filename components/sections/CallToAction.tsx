@@ -1,13 +1,9 @@
-// components/sections/CallToAction.tsx
 'use client';
 
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { ArrowRight, Users, MapPin, Star } from 'lucide-react';
 import { TypeAnimation } from 'react-type-animation';
-import Particles from 'react-particles';
-import { loadFull } from "tsparticles";
-import { useCallback } from 'react';
 
 const stats = [
   { label: "Voyageurs", value: "10K+", icon: Users },
@@ -20,61 +16,11 @@ export default function CallToAction() {
     triggerOnce: true,
     threshold: 0.1
   });
-  const particlesInit = useCallback(async (engine: import('@tsparticles/engine').Engine) => {
-    return await loadFull(engine);
-  }, []);
 
   return (
     <section ref={ref} className="relative py-24 overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-secondary">
-      {/* Particules d'animation */}
-      <Particles
-        id="tsparticles"
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        init={particlesInit as any} // Type assertion to fix type error
-        options={{
-          particles: {
-            number: { value: 30, density: { enable: true, value_area: 800 } },
-            color: { value: "#ffffff" },
-            shape: {
-              type: "circle",
-              stroke: { width: 0, color: "#000000" },
-            },
-            opacity: {
-              value: 0.3,
-              random: true,
-              animation: { enable: true, speed: 1, minimumValue: 0.1, sync: false }
-            },
-            size: {
-              value: 3,
-              random: true,
-              animation: { enable: true, speed: 2, minimumValue: 0.1, sync: false }
-            },
-            move: {
-              enable: true,
-              speed: 1,
-              direction: "none",
-              random: false,
-              straight: false,
-              outModes: { default: "out" },
-              attract: { enable: false, rotateX: 600, rotateY: 1200 }
-            }
-          },
-          interactivity: {
-            detectsOn: "canvas",
-            events: {
-              onHover: { enable: true, mode: "repulse" },
-              resize: true
-            },
-            modes: {
-              repulse: { distance: 100, duration: 0.4 }
-            }
-          },
-          background: {
-            color: { value: "transparent" }
-          }
-        }}
-        className="absolute inset-0"
-      />
+      {/* Background avec effet de brillance */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.1),transparent)] pointer-events-none"></div>
 
       <div className="container mx-auto px-4 relative">
         <div className="max-w-4xl mx-auto text-center text-white">

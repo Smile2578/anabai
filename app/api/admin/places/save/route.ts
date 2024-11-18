@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connection';
 import { PlaceRepository } from '@/lib/repositories/place-repository';
-import { ImportPreview } from '@/types/place';
 
 export async function POST(req: NextRequest) {
   try {

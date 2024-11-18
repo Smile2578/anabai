@@ -40,6 +40,7 @@ export default function AnabaLogo() {
               src={kanjiAnaba}
               alt="Kanji Anaba"
               fill
+              priority
               style={{ objectFit: 'contain' }}
               sizes="(max-width: 768px) 60px, (max-width: 1024px) 70px, 80px"
               className='kanji-image'

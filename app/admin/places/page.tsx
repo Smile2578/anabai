@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlaceStats } from '@/components/admin/places/PlaceStats';
 import { FilterBar } from '@/components/admin/places/FilterBar';
 import { ImportModal } from '@/components/admin/places/ImportModal';
@@ -18,7 +17,6 @@ type Status = 'brouillon' | 'publié' | 'archivé';
 
 export default function PlacesPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('liste');
   const [searchValue, setSearchValue] = useState('');
   const [selectedFilters, setSelectedFilters] = useState({
     categories: [] as string[],

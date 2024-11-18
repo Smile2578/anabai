@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import router from 'next/navigation';
 
 
 export default function Hero() {
@@ -22,11 +23,11 @@ export default function Hero() {
       <div className="absolute inset-0 z-1">
         <Image
           src="/images/pagode.jpg"
-          alt="Japon"
-          layout="fill"
-          objectFit="cover"
-          objectPosition="center"
+          alt="Vue sur une pagode traditionnelle japonaise"
+          fill
+          className="object-cover"
           priority
+          quality={100}
         />
       </div>
 
@@ -62,7 +63,7 @@ export default function Hero() {
             size="lg"
             className="organiser-voyage-button px-8 py-4 text-lg"
             onClick={() => {
-              // Action du bouton
+              window.location.href = '/trip'
             }}
           >
             Commencer votre voyage

@@ -2,9 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connection';   
 import { PlaceRepository } from '@/lib/repositories/place-repository';
-import { GoogleMapsService } from '@/lib/services/googleMaps';
-import { validateJapanCoordinates } from '@/lib/utils/validation';
-import { PlaceDocument } from '@/types/place';
+
 
 export async function POST(req: NextRequest) {
     try {

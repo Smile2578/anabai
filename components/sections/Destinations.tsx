@@ -14,7 +14,7 @@ const destinations = [
     id: 1,
     name: "Tokyo",
     description: "Mélange unique de tradition et modernité",
-    image: "/images/destinations/shopping.jpg",
+    image: "/images/shopping.jpg",
     category: "Métropole",
     popularity: 98,
     highlights: ["Shibuya", "Temples d'Asakusa", "Shopping à Harajuku"]
@@ -41,7 +41,7 @@ const destinations = [
     id: 4,
     name: "Hakone",
     description: "Escapade naturelle avec vue sur le Mont Fuji",
-    image: "/images/destinations/fuji pagode",
+    image: "/images/fuji pagode.jpg",
     category: "Nature",
     popularity: 89,
     highlights: ["Sources chaudes", "Mont Fuji", "Lac Ashi"]
@@ -111,6 +111,7 @@ export default function Destinations() {
                         src={destination.image}
                         alt={destination.name}
                         fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover transition-transform duration-300 group-hover:scale-110"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />

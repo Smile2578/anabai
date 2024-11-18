@@ -12,7 +12,7 @@ export function extractPlaceIdFromUrl(url: string = ''): string | null {
       // Format: 0x.....:0x.....
       const hexMatch = url.match(/0x([0-9a-fA-F]+):0x([0-9a-fA-F]+)/);
       if (hexMatch) {
-        const [_, firstPart, secondPart] = hexMatch;
+        const [firstPart, secondPart] = hexMatch;
         console.log('Hex format detected:', {
           firstPart,
           secondPart

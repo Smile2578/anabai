@@ -3,7 +3,6 @@
 
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import Image from 'next/image';
 import { useInView } from 'react-intersection-observer';
 import useEmblaCarousel from 'embla-carousel-react';
 import { Star, Quote } from 'lucide-react';
@@ -101,14 +100,6 @@ export default function Testimonials() {
                     
                     {/* En-tête du témoignage */}
                     <div className="flex items-center mb-6">
-                      <div className="relative w-16 h-16 rounded-full overflow-hidden mr-4">
-                        <Image
-                          src={testimonial.avatar}
-                          alt={testimonial.name}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
                       <div>
                         <h3 className="font-semibold text-lg">{testimonial.name}</h3>
                         <p className="text-gray-500 text-sm">{testimonial.location}</p>

@@ -28,7 +28,8 @@ export const PlaceCard = ({ place, onClick }: PlaceCardProps) => {
             <Image
             src={place.images[0]?.url || '/placeholder-image.jpg'}
             alt={`Image de ${place.name.fr}`}
-            fill
+              fill
+              sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
               className="object-cover"
             />
           )}
@@ -53,15 +54,6 @@ export const PlaceCard = ({ place, onClick }: PlaceCardProps) => {
             <div className="flex items-center text-sm text-muted-foreground">
               <span>{place.location.address.fr}</span>
             </div>
-            {place.subcategories.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {place.subcategories.map((sub) => (
-                  <Badge key={sub} variant="outline" className="text-xs">
-                    {sub}
-                  </Badge>
-                ))}
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>

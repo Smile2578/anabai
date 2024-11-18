@@ -132,6 +132,8 @@ export interface PlaceDocument extends Omit<PlaceBase, 'metadata' | 'createdAt' 
 export interface Place extends Omit<PlaceBase, 'metadata' | 'createdAt' | 'updatedAt'> {
   _id: string;
   metadata: {
+    userRatingsTotal?: number;
+    rating?: number;
     source: string;
     placeId?: string;
     lastEnriched?: string;
