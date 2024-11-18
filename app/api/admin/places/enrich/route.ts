@@ -1,78 +1,127 @@
 // app/api/admin/places/enrich/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db/connection';   
-import { PlaceRepository } from '@/lib/repositories/place-repository';
 
+import { NextRequest, NextResponse } from 'next/server';
+import { GoogleMapsService } from '@/lib/services/googleMaps';
+import { ImportPreview } from '@/types/place';
+
+// Utilitaire pour ajouter un délai
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function POST(req: NextRequest) {
-    try {
-      const { previews } = await req.json();
-      
-      if (!Array.isArray(previews)) {
-        return NextResponse.json(
-          { error: 'Format de données invalide' },
-          { status: 400 }
-        );
-      }
-  
-      const mongoose = await connectDB();
-      const db = mongoose.connection.db;
-      if (!db) {
-        throw new Error('Database connection failed');
-      }
-      const placeRepository = new PlaceRepository(db);
-  
-      const validPreviews = previews.filter(
-        preview => preview.status === 'success' && 
-                  preview.enriched?.success && 
-                  preview.enriched.place
-      );
-  
-      if (validPreviews.length === 0) {
-        return NextResponse.json({
-          success: true,
-          savedCount: 0,
-          message: 'Aucun lieu à sauvegarder'
-        });
-      }
-  
-      const results = await Promise.all(
-        validPreviews.map(async preview => {
-          try {
-            if (!preview.enriched?.place) return null;
-  
-            const placeData = {
-              ...preview.enriched.place,
-              metadata: {
-                ...preview.enriched.place.metadata,
-                placeId: preview.enriched.placeId,
-                lastEnriched: new Date(),
-                status: 'brouillon'
-              },
-              isActive: true
-            };
-  
-            return await placeRepository.create(placeData);
-          } catch (error) {
-            console.error('Erreur de sauvegarde:', error);
-            return null;
-          }
-        })
-      );
-  
-      const savedCount = results.filter(Boolean).length;
-  
-      return NextResponse.json({
-        success: true,
-        savedCount,
-        message: `${savedCount} lieu(x) importé(s)`
-      });
-  
-    } catch (error) {
-      console.error('Erreur de sauvegarde:', error);
+  try {
+    const { previews } = await req.json();
+    
+    if (!Array.isArray(previews)) {
       return NextResponse.json(
-        { error: 'Erreur de sauvegarde' },
-        { status: 500 }
+        { error: 'Format de données invalide' },
+        { status: 400 }
       );
     }
+
+    const googleMapsService = new GoogleMapsService();
+    const enrichedPreviews: ImportPreview[] = [];
+    let successCount = 0;
+    
+    // Traitement de chaque preview avec un délai entre les requêtes
+    for (const preview of previews) {
+      try {
+        // Vérification de l'ID de lieu
+        if (!preview.enriched?.placeId) {
+          console.warn('Missing place ID for preview:', preview);
+          enrichedPreviews.push({
+            ...preview,
+            status: 'error',
+            enriched: {
+              success: false,
+              error: 'ID de lieu manquant'
+            }
+          });
+          continue;
+        }
+
+        // Log pour le debugging
+        console.log('Processing place:', {
+          title: preview.original.Title,
+          placeId: preview.enriched.placeId
+        });
+
+        // Ajout d'un délai entre les requêtes pour éviter les limitations
+        await delay(500);
+
+        // Enrichissement avec l'API Google Places
+        const enrichedPlace = await googleMapsService.getPlaceDetails(preview.enriched.placeId);
+
+        // Vérification des données enrichies
+        if (!enrichedPlace || !enrichedPlace.name) {
+          throw new Error('Données enrichies invalides');
+        }
+
+        // Ajouter les données originales aux données enrichies
+        enrichedPreviews.push({
+          ...preview,
+          status: 'success',
+          enriched: {
+            success: true,
+            place: {
+              ...enrichedPlace,
+              originalData: {
+                title: preview.original.Title,
+                note: preview.original.Note,
+                url: preview.original.URL,
+                comment: preview.original.Comment
+              }
+            },
+            placeId: preview.enriched.placeId
+          }
+        });
+        
+        successCount++;
+        console.log(`Successfully enriched place: ${preview.original.Title}`);
+
+      } catch (error) {
+        console.error('Error enriching place:', {
+          title: preview.original.Title,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+
+        enrichedPreviews.push({
+          ...preview,
+          status: 'error',
+          enriched: {
+            success: false,
+            error: error instanceof Error 
+              ? error.message 
+              : 'Erreur d\'enrichissement inconnue',
+            placeId: preview.enriched?.placeId
+          }
+        });
+      }
+    }
+
+    // Statistiques d'enrichissement
+    const stats = {
+      total: previews.length,
+      success: successCount,
+      errors: previews.length - successCount
+    };
+
+    console.log('Enrichment completed with stats:', stats);
+
+    return NextResponse.json({
+      success: true,
+      previews: enrichedPreviews,
+      stats,
+      message: `Enrichissement terminé : ${stats.success} succès, ${stats.errors} erreurs sur ${stats.total} lieux`
+    });
+
+  } catch (error) {
+    console.error('Fatal error during enrichment:', error);
+    return NextResponse.json(
+      { 
+        error: 'Erreur lors de l\'enrichissement',
+        details: error instanceof Error ? error.message : 'Erreur inconnue'
+      },
+      { status: 500 }
+    );
   }
+}

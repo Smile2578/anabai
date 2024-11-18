@@ -109,7 +109,7 @@ const placeSchema = new Schema<PlaceDocument>(
       },
     },
     
-    ratings: {
+    rating: {
       googleRating: Number,
       googleReviewsCount: Number,
       internalRating: Number,

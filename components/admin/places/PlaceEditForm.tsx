@@ -76,7 +76,7 @@ export function PlaceEditForm({ place, onSubmit, isLoading, error }: PlaceEditFo
         website: '',
         bookingUrl: '',
       },
-      ratings: place?.ratings || {
+      ratings: place?.rating || {
         googleRating: 0,
         googleReviewsCount: 0,
       },

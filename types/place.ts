@@ -1,4 +1,5 @@
 // types/place.ts
+
 import { Types } from 'mongoose';
 
 export interface PlaceBase {
@@ -17,17 +18,16 @@ export interface PlaceBase {
   location: {
     type: 'Point';
     coordinates: [number, number];
+    accessInfo?: {
+      nearestStation?: string;
+      walkingTime?: number;
+    };
     address: {
       ja?: string;
       fr: string;
       prefecture?: string;
       city?: string;
       postalCode?: string;
-    };
-    accessInfo?: {
-      nearestStation: string;
-      walkingTime: number;
-      transportOptions?: string[];
     };
   };
   
@@ -49,7 +49,7 @@ export interface PlaceBase {
     };
   }>;
   
-  openingHours: {
+  openingHours?: {
     periods: Array<{
       day: number;
       open: string;
@@ -59,123 +59,69 @@ export interface PlaceBase {
       ja?: string[];
       fr: string[];
     };
-    holidayDates?: Date[];
   };
   
   pricing?: {
-    priceRange?: 1 | 2 | 3 | 4;
+    priceRange?: 1 | 2 | 3 | 4 | 5;
     currency: string;
-    details?: {
-      ja?: string;
-      fr?: string;
-    };
-    budget?: {
-      min: number;
-      max: number;
-    };
   };
   
   contact?: {
     phone?: string;
     website?: string;
-    bookingUrl?: string;
-    socialMedia?: Map<string, string>;
+    googleMaps?: string;
   };
   
-  ratings?: {
+  metadata: {
+    source: string;
+    placeId?: string;
+    status: 'brouillon' | 'publié' | 'archivé';
+    rating?: number;
+    userRatingsTotal?: number;
+    businessStatus?: string;
+  };
+
+  rating: {
     googleRating?: number;
     googleReviewsCount?: number;
     internalRating?: number;
     internalReviewsCount?: number;
-  };
-
-  metadata: {
-    source: string;
-    placeId?: string;
-    lastEnriched?: Date | string;
-    lastVerified?: Date | string;
-    verifiedBy?: string;
-    status: 'brouillon' | 'publié' | 'archivé';
-    tags?: string[];
-    relatedPlaces?: Array<{
-      placeId: Types.ObjectId | string;
-      relationType: 'parent' | 'enfant' | 'proche';
-    }>;
-  };
+  }
   
   isActive: boolean;
-  createdAt: Date | string;
-  updatedAt: Date | string;
-}
-
-// Type pour le document Mongoose
-export interface PlaceDocument extends Omit<PlaceBase, 'metadata' | 'createdAt' | 'updatedAt'> {
-  _id: Types.ObjectId;
-  metadata: {
-    source: string;
-    placeId?: string;
-    lastEnriched?: Date;
-    lastVerified?: Date;
-    verifiedBy?: string;
-    status: 'brouillon' | 'publié' | 'archivé';
-    tags?: string[];
-    relatedPlaces?: Array<{
-      placeId: Types.ObjectId;
-      relationType: 'parent' | 'enfant' | 'proche';
-    }>;
-  };
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// Type pour l'utilisation dans les composants
-export interface Place extends Omit<PlaceBase, 'metadata' | 'createdAt' | 'updatedAt'> {
-  _id: string;
-  metadata: {
-    userRatingsTotal?: number;
-    rating?: number;
-    source: string;
-    placeId?: string;
-    lastEnriched?: string;
-    lastVerified?: string;
-    verifiedBy?: string;
-    status: 'brouillon' | 'publié' | 'archivé';
-    tags?: string[];
-    relatedPlaces?: Array<{
-      placeId: string;
-      relationType: 'parent' | 'enfant' | 'proche';
-    }>;
-  };
   createdAt: string;
   updatedAt: string;
 }
 
-// Types utilitaires pour l'import CSV
+export interface Place extends PlaceBase {
+  _id: string;
+}
+
+export interface PlaceDocument extends Omit<PlaceBase, 'createdAt' | 'updatedAt'> {
+  _id: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ImportPreview {
+  original: {
+    Title: string;
+    Note?: string;
+    URL?: string;
+    Comment?: string;
+  };
+  enriched?: {
+    success: boolean;
+    place?: Place;
+    error?: string;
+    placeId?: string;
+  };
+  status: 'pending' | 'success' | 'error';
+}
+
 export interface CSVPlace {
   Title: string;
   Note?: string;
   URL?: string;
   Comment?: string;
-}
-
-export interface EnrichmentError {
-  message: string;
-  code?: string;
-  details?: string;
-}
-
-export interface EnrichmentResult {
-  success: boolean;
-  place?: Partial<Place>;
-  error?: string;
-  placeId?: string;
-  validationErrors?: string[];
-  existingPlace?: Place;
-}
-
-export interface ImportPreview {
-  original: CSVPlace;
-  enriched?: EnrichmentResult;
-  status: 'pending' | 'success' | 'error';
-  validationErrors?: string[];
 }

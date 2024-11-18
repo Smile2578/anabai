@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connection';
 import { PlaceRepository } from '@/lib/repositories/place-repository';
+import { ObjectId } from 'mongodb';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     }
     const placeRepository = new PlaceRepository(db);
 
-    const place = await placeRepository.findById(id);
+    const place = await placeRepository.collection.findOne({ _id: new ObjectId(id) });
     
     if (!place) {
       return NextResponse.json(
@@ -52,22 +53,28 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
     const placeRepository = new PlaceRepository(db);
 
-    const place = await placeRepository.update(id, {
-      ...updates,
-      metadata: {
-        ...updates.metadata,
-        lastEnriched: new Date()
-      }
-    });
+    const updatedPlace = await placeRepository.collection.findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { 
+        $set: {
+          ...updates,
+          metadata: {
+            ...updates.metadata,
+            lastEnriched: new Date()
+          }
+        }
+      },
+      { returnDocument: 'after' }
+    );
 
-    if (!place) {
+    if (!updatedPlace) {
       return NextResponse.json(
         { error: 'Lieu non trouvé' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(place);
+    return NextResponse.json(updatedPlace);
 
   } catch (error) {
     console.error('Erreur lors de la mise à jour du lieu:', error);
@@ -87,7 +94,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     const db = mongoose.connection.db;
     if (!db) {
         throw new Error('Database connection failed');
-      }
+    }
     const placeRepository = new PlaceRepository(db);
 
     // Vérification si c'est une suppression douce (soft delete)
@@ -95,18 +102,23 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     const isSoftDelete = searchParams.get('soft') === 'true';
 
     if (isSoftDelete) {
-      const place = await placeRepository.softDelete(id);
-      if (!place) {
+      const updatedPlace = await placeRepository.collection.findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        { $set: { isActive: false } },
+        { returnDocument: 'after' }
+      );
+      
+      if (!updatedPlace) {
         return NextResponse.json(
           { error: 'Lieu non trouvé' },
           { status: 404 }
         );
       }
-      return NextResponse.json({ success: true, place });
+      return NextResponse.json({ success: true, place: updatedPlace });
     }
 
-    const success = await placeRepository.delete(id);
-    if (!success) {
+    const result = await placeRepository.collection.deleteOne({ _id: new ObjectId(id) });
+    if (result.deletedCount === 0) {
       return NextResponse.json(
         { error: 'Lieu non trouvé' },
         { status: 404 }

@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connection';
 import { PlaceRepository } from '@/lib/repositories/place-repository';
 
-
 // GET - Liste des lieux avec filtres et pagination
 export async function GET(req: NextRequest) {
   try {
@@ -19,7 +18,16 @@ export async function GET(req: NextRequest) {
     if (!db) {
       throw new Error('Database connection failed');
     }
+
+    // S'assurer que la connexion est établie avant de créer le repository
+    await mongoose.connection.asPromise();
+    
     const placeRepository = new PlaceRepository(db);
+
+    // Vérifier que la collection est définie avant d'appeler findAll
+    if (!placeRepository.collection) {
+      throw new Error('Collection not initialized');
+    }
 
     const { places, total } = await placeRepository.findAll({
       search,
@@ -58,6 +66,10 @@ export async function POST(req: NextRequest) {
     if (!db) {
       throw new Error('Database connection failed');
     }
+
+    // S'assurer que la connexion est établie avant de créer le repository
+    await mongoose.connection.asPromise();
+    
     const placeRepository = new PlaceRepository(db);
 
     // Vérification si le lieu existe déjà 
@@ -109,6 +121,10 @@ export async function PUT(req: NextRequest) {
     if (!db) {
       throw new Error('Database connection failed');
     }
+
+    // S'assurer que la connexion est établie avant de créer le repository
+    await mongoose.connection.asPromise();
+    
     const placeRepository = new PlaceRepository(db);
 
     const results = await placeRepository.bulkUpdate(places);

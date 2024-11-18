@@ -14,7 +14,7 @@ import { FileUploadZone } from './FileUploadZone';
 import { ImportProgress } from './ImportProgress';
 import { DataPreviewTable } from './DataPreviewTable';
 import { ImportPreview } from '@/types/place';
-import { ImportProgressState } from '@/types/import';
+import { ImportStatus } from '@/types/import';
 
 interface ImportModalProps {
   open: boolean;
@@ -22,191 +22,228 @@ interface ImportModalProps {
   onRefresh: () => void;
 }
 
-const initialImportProgress: ImportProgressState = {
+interface CurrentPlace {
+  name: string;
+  stage: 'reading' | 'enriching' | 'validating' | 'completed' | 'error';
+  error?: string;
+}
+
+interface ImportState {
+  isImporting: boolean;
+  isSaving: boolean;
+  currentStep: number;
+  progress: {
+    current: number;
+    total: number;
+  };
+  status: ImportStatus;
+  currentPlace?: CurrentPlace;
+  error: string | null;
+  success: string | null;
+  previews: ImportPreview[];
+  selectedRows: string[];
+}
+
+const initialState: ImportState = {
+  isImporting: false,
+  isSaving: false,
   currentStep: 0,
-  totalSteps: 4,
-  label: '',
-  subLabel: '',
   progress: {
     current: 0,
     total: 0,
   },
-  status: 'processing'
+  status: 'processing',
+  error: null,
+  success: null,
+  previews: [],
+  selectedRows: [],
+};
+
+const IMPORT_STEPS = {
+  IDLE: 0,
+  READING: 1,
+  ENRICHING: 2,
+  VALIDATING: 3,
+  FINALIZING: 4,
 };
 
 export function ImportModal({ open, onClose, onRefresh }: ImportModalProps) {
-  const [isImporting, setIsImporting] = React.useState(false);
-  const [isSaving, setIsSaving] = React.useState(false);
-  const [importProgress, setImportProgress] = React.useState<ImportProgressState>(initialImportProgress);
-  const [importPreviews, setImportPreviews] = React.useState<ImportPreview[]>([]);
-  const [selectedRows, setSelectedRows] = React.useState<string[]>([]);
-  const [error, setError] = React.useState<string | null>(null);
-  const [success, setSuccess] = React.useState<string | null>(null);
+  const [state, setState] = React.useState<ImportState>(initialState);
 
   const isAllSelected = React.useMemo(() => {
-    if (!importPreviews?.length) return false;
-    return selectedRows.length === importPreviews.length;
-  }, [importPreviews?.length, selectedRows.length]);
+    if (!state.previews?.length) return false;
+    return state.selectedRows.length === state.previews.length;
+  }, [state.previews?.length, state.selectedRows.length]);
+
+  const resetState = () => setState(initialState);
+
+  const updateState = (updates: Partial<ImportState>) => {
+    setState(current => ({ ...current, ...updates }));
+  };
 
   const handleToggleAll = () => {
     if (isAllSelected) {
-      setSelectedRows([]);
+      updateState({ selectedRows: [] });
     } else {
-      setSelectedRows(importPreviews?.map((_, index) => index.toString()) ?? []);
+      updateState({
+        selectedRows: state.previews?.map((_, index) => index.toString()) ?? []
+      });
     }
   };
 
-  const resetState = () => {
-    setImportPreviews([]);
-    setSelectedRows([]);
-    setError(null);
-    setSuccess(null);
-    setImportProgress(initialImportProgress);
+  const getStepLabel = (step: number, stats?: { valid: number; invalid: number; duplicates: number }) => {
+    switch (step) {
+      case IMPORT_STEPS.READING:
+        return {
+          label: 'Lecture du fichier CSV',
+          subLabel: 'Analyse du contenu'
+        };
+      case IMPORT_STEPS.ENRICHING:
+        return {
+          label: 'Enrichissement des données',
+          subLabel: `Enrichissement de ${state.progress.total} lieux`
+        };
+      case IMPORT_STEPS.VALIDATING:
+        return {
+          label: 'Validation des données',
+          subLabel: `Vérification de ${state.progress.total} lieux`
+        };
+      case IMPORT_STEPS.FINALIZING:
+        return stats ? {
+          label: 'Import terminé',
+          subLabel: `${stats.valid} lieux valides, ${stats.invalid} invalides, ${stats.duplicates} doublons`
+        } : {
+          label: 'Finalisation',
+          subLabel: 'Préparation des données'
+        };
+      default:
+        return {
+          label: '',
+          subLabel: ''
+        };
+    }
   };
 
   const handleFileUpload = async (file: File) => {
     try {
       resetState();
-      setIsImporting(true);
+      updateState({ 
+        isImporting: true,
+        currentStep: IMPORT_STEPS.READING,
+        currentPlace: {
+          name: file.name,
+          stage: 'reading'
+        }
+      });
       
       // Étape 1: Lecture du fichier CSV
-      setImportProgress({
-        currentStep: 1,
-        totalSteps: 4,
-        label: 'Lecture du fichier CSV',
-        subLabel: 'Analyse du contenu',
-        progress: { current: 0, total: 1 },
-        status: 'processing'
-      });
-  
       const formData = new FormData();
       formData.append('file', file);
-  
-      // Import initial
+      
       const importResponse = await fetch('/api/admin/places/import', {
         method: 'POST',
         body: formData
       });
-  
+
       if (!importResponse.ok) {
-        const errorData = await importResponse.json();
-        throw new Error(errorData.message || 'Erreur lors de l\'import du fichier');
+        throw new Error((await importResponse.json()).message || 'Erreur lors de l\'import du fichier');
       }
-  
+
       const importData = await importResponse.json();
       const totalPlaces = Array.isArray(importData?.previews) ? importData.previews.length : 0;
       
       if (totalPlaces === 0) {
         throw new Error('Aucun lieu trouvé dans le fichier');
       }
-  
-      setImportPreviews(importData.previews);
-  
-      // Étape 2: Enrichissement des données
-      setImportProgress({
-        currentStep: 2,
-        totalSteps: 4,
-        label: 'Enrichissement des données',
-        subLabel: `Enrichissement de ${totalPlaces} lieux`,
-        progress: {
-          current: 0,
-          total: totalPlaces
-        },
-        status: 'processing'
+
+      updateState({
+        previews: importData.previews,
+        currentStep: IMPORT_STEPS.ENRICHING,
+        progress: { current: 0, total: totalPlaces },
+        currentPlace: {
+          name: importData.previews[0]?.name || 'Inconnu',
+          stage: 'enriching'
+        }
       });
-  
+
+      // Étape 2: Enrichissement des données
       const enrichResponse = await fetch('/api/admin/places/enrich', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ previews: importData.previews })
       });
-  
+
       if (!enrichResponse.ok) {
-        const errorData = await enrichResponse.json();
-        throw new Error(errorData.message || 'Erreur lors de l\'enrichissement');
+        throw new Error((await enrichResponse.json()).message || 'Erreur lors de l\'enrichissement');
       }
-  
+
       const enrichedData = await enrichResponse.json();
-      let currentPreviews = enrichedData.previews ?? importData.previews;
-      setImportPreviews(currentPreviews);
-  
-      // Étape 3: Validation des données
-      setImportProgress({
-        currentStep: 3,
-        totalSteps: 4,
-        label: 'Validation des données',
-        subLabel: `Vérification de ${totalPlaces} lieux`,
-        progress: {
-          current: 0,
-          total: totalPlaces
-        },
-        status: 'processing'
+      updateState({
+        previews: enrichedData.previews || importData.previews,
+        currentStep: IMPORT_STEPS.VALIDATING,
+        currentPlace: {
+          name: enrichedData.previews[0]?.name || 'Inconnu',
+          stage: 'validating'
+        }
       });
-  
+
+      // Étape 3: Validation des données
       const validateResponse = await fetch('/api/admin/places/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ previews: currentPreviews })
+        body: JSON.stringify({ previews: enrichedData.previews })
       });
-  
+
       if (!validateResponse.ok) {
-        const errorData = await validateResponse.json();
-        throw new Error(errorData.message || 'Erreur lors de la validation');
+        throw new Error((await validateResponse.json()).message || 'Erreur lors de la validation');
       }
-  
+
       const validationData = await validateResponse.json();
-      currentPreviews = validationData.results ?? currentPreviews;
+      const currentPreviews = validationData.results || enrichedData.previews;
+      
       const stats = {
-        valid: currentPreviews.filter((preview: { validationErrors?: unknown[] }) => 
-          !preview.validationErrors?.length
-        ).length,
-        invalid: currentPreviews.filter((preview: { validationErrors?: unknown[] }) => 
-          (preview.validationErrors?.length ?? 0) > 0
-        ).length,
-        duplicates: currentPreviews.filter((preview: { existingPlace?: unknown[] }) => 
-          'existingPlace' in preview
-        ).length
+        valid: currentPreviews.filter((p: ImportPreview) => !p.validationErrors?.length).length,
+        invalid: currentPreviews.filter((p: ImportPreview) => (p.validationErrors?.length ?? 0) > 0).length,
+        duplicates: currentPreviews.filter((p: ImportPreview) => 'existingPlace' in p).length
       };
-      // Étape 4: Résumé final
-      setImportProgress({
-        currentStep: 4,
-        totalSteps: 4,
-        label: 'Import terminé',
-        subLabel: `${stats.valid} lieux valides, ${stats.invalid} invalides, ${stats.duplicates} doublons`,
-        progress: {
-          current: totalPlaces,
-          total: totalPlaces
-        },
-        status: stats.invalid === 0 && stats.duplicates === 0 ? 'success' : 'error'
+
+      updateState({
+        previews: currentPreviews,
+        currentStep: IMPORT_STEPS.FINALIZING,
+        progress: { current: totalPlaces, total: totalPlaces },
+        status: stats.invalid === 0 && stats.duplicates === 0 ? 'success' : 'error',
+        currentPlace: {
+          name: 'Import terminé',
+          stage: 'completed'
+        }
       });
-  
-      setImportPreviews(currentPreviews);
+
     } catch (error) {
       console.error('Erreur lors de l\'import:', error);
-      setError(error instanceof Error ? error.message : 'L\'import a échoué');
-      setImportProgress({
-        ...initialImportProgress,
+      updateState({
         status: 'error',
-        label: 'Erreur lors de l\'import',
-        subLabel: error instanceof Error ? error.message : 'Une erreur est survenue',
+        error: error instanceof Error ? error.message : 'L\'import a échoué',
+        currentPlace: {
+          name: 'Erreur',
+          stage: 'error',
+          error: error instanceof Error ? error.message : 'Une erreur est survenue'
+        }
       });
     } finally {
-      setIsImporting(false);
+      updateState({ isImporting: false });
     }
   };
 
   const handleSave = async () => {
     try {
-      setError(null);
-      setIsSaving(true);
+      updateState({ error: null, isSaving: true });
 
-      const selectedPreviews = importPreviews?.filter((_, index) => 
-        selectedRows.includes(index.toString())
+      const selectedPreviews = state.previews?.filter((_, index) => 
+        state.selectedRows.includes(index.toString())
       );
 
       if (!selectedPreviews?.length) {
-        setError('Veuillez sélectionner au moins un lieu à importer');
-        return;
+        throw new Error('Veuillez sélectionner au moins un lieu à importer');
       }
 
       const saveResponse = await fetch('/api/admin/places/save', {
@@ -216,12 +253,17 @@ export function ImportModal({ open, onClose, onRefresh }: ImportModalProps) {
       });
 
       if (!saveResponse.ok) {
-        const error = await saveResponse.json();
-        throw new Error(error.message || 'Erreur lors de la sauvegarde');
+        throw new Error((await saveResponse.json()).message || 'Erreur lors de la sauvegarde');
       }
 
       const saveData = await saveResponse.json();
-      setSuccess(`${saveData.savedCount} lieu(x) importé(s) avec succès`);
+      updateState({
+        success: `${saveData.savedCount} lieu(x) importé(s) avec succès`,
+        currentPlace: {
+          name: 'Sauvegarde terminée',
+          stage: 'completed'
+        }
+      });
       
       onRefresh();
       
@@ -232,11 +274,20 @@ export function ImportModal({ open, onClose, onRefresh }: ImportModalProps) {
 
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
-      setError(error instanceof Error ? error.message : 'La sauvegarde a échoué');
+      updateState({
+        error: error instanceof Error ? error.message : 'La sauvegarde a échoué',
+        currentPlace: {
+          name: 'Erreur de sauvegarde',
+          stage: 'error',
+          error: error instanceof Error ? error.message : 'Une erreur est survenue'
+        }
+      });
     } finally {
-      setIsSaving(false);
+      updateState({ isSaving: false });
     }
   };
+
+  const stepLabels = getStepLabel(state.currentStep);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -254,37 +305,38 @@ export function ImportModal({ open, onClose, onRefresh }: ImportModalProps) {
         <div className="flex-1 overflow-auto py-4">
           <FileUploadZone
             onFileAccepted={handleFileUpload}
-            isLoading={isImporting}
+            isLoading={state.isImporting}
           />
 
-          {isImporting && importProgress.currentStep > 0 && (
+          {state.isImporting && state.currentStep > 0 && (
             <div className="mt-4">
               <ImportProgress
-                currentStep={importProgress.currentStep}
-                totalSteps={importProgress.totalSteps}
-                label={importProgress.label}
-                subLabel={importProgress.subLabel}
-                progress={importProgress.progress}
-                status={importProgress.status}
+                currentStep={state.currentStep}
+                totalSteps={4}
+                label={stepLabels.label}
+                subLabel={stepLabels.subLabel}
+                progress={state.progress}
+                status={state.status}
+                currentPlace={state.currentPlace}
               />
             </div>
           )}
 
-          {error && (
+          {state.error && (
             <Alert variant="destructive" className="mt-4">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{state.error}</AlertDescription>
             </Alert>
           )}
 
-          {success && (
+          {state.success && (
             <Alert variant="default" className="mt-4 border-semantic-success text-semantic-success">
               <CheckCircle className="h-4 w-4" />
-              <AlertDescription>{success}</AlertDescription>
+              <AlertDescription>{state.success}</AlertDescription>
             </Alert>
           )}
 
-          {importPreviews?.length > 0 && (
+          {state.previews?.length > 0 && (
             <div className="mt-4 space-y-4">
               <div className="flex justify-between items-center">
                 <Button
@@ -306,20 +358,18 @@ export function ImportModal({ open, onClose, onRefresh }: ImportModalProps) {
                   )}
                 </Button>
                 <p className="text-sm text-muted-foreground">
-                  {selectedRows.length} sur {importPreviews.length} sélectionné(s)
+                  {state.selectedRows.length} sur {state.previews.length} sélectionné(s)
                 </p>
               </div>
 
               <DataPreviewTable
-                data={importPreviews}
-                selectedRows={selectedRows}
+                data={state.previews}
+                selectedRows={state.selectedRows}
                 onRowSelect={(index) => {
-                  setSelectedRows(prev => {
-                    const indexStr = index.toString();
-                    if (prev.includes(indexStr)) {
-                      return prev.filter(i => i !== indexStr);
-                    }
-                    return [...prev, indexStr];
+                  updateState({
+                    selectedRows: state.selectedRows.includes(index.toString())
+                      ? state.selectedRows.filter(i => i !== index.toString())
+                      : [...state.selectedRows, index.toString()]
                   });
                 }}
               />
@@ -327,21 +377,21 @@ export function ImportModal({ open, onClose, onRefresh }: ImportModalProps) {
           )}
         </div>
 
-        {importPreviews?.length > 0 && (
+        {state.previews?.length > 0 && (
           <div className="flex justify-between items-center pt-4 border-t">
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 onClick={onClose}
-                disabled={isSaving}
+                disabled={state.isSaving}
               >
                 Annuler
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={!selectedRows.length || isSaving}
+                disabled={!state.selectedRows.length || state.isSaving}
               >
-                {isSaving ? (
+                {state.isSaving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Import en cours...
