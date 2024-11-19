@@ -1,4 +1,4 @@
-// components/admin/places/FilterBar.tsx
+// components/admin/places/PlaceFilters.tsx
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
@@ -12,39 +12,38 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { StatusBadge } from './StatusBadge';
+import { Badge } from "@/components/ui/badge";
+import { Category } from '@/types/common';
+import { Status } from '@/types/places/main';
+import { PLACE_CATEGORIES } from '@/lib/config/categories';
 
-interface FilterBarProps {
+interface PlaceFiltersProps {
   searchValue: string;
   onSearchChange: (value: string) => void;
-  filters: {
-    categories: string[];
-    status: ('brouillon' | 'publié' | 'archivé')[];
-  };
   selectedFilters: {
-    categories: string[];
-    status: ('brouillon' | 'publié' | 'archivé')[];
+    categories: Category[];
+    status: Status[];
+    priceRange?: number[];
   };
-  onFilterChange: (type: 'categories' | 'status', value: string) => void;
+  onFilterChange: (type: string, value: number[] | Category[] | Status[]) => void;
   onClearFilters: () => void;
 }
 
-export function FilterBar({
+export function PlaceFilters({
   searchValue,
   onSearchChange,
-  filters,
   selectedFilters,
   onFilterChange,
-  onClearFilters,
-}: FilterBarProps) {
-  const hasActiveFilters = selectedFilters.categories.length > 0 || selectedFilters.status.length > 0;
+  onClearFilters
+}: PlaceFiltersProps) {
+  const hasActiveFilters = 
+    selectedFilters.categories.length > 0 || 
+    selectedFilters.status.length > 0 ||
+    (selectedFilters.priceRange?.length ?? 0) > 0;
 
   return (
-    <motion.div 
-      className="flex flex-col sm:flex-row gap-4 items-start sm:items-center"
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
+    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+      {/* Barre de recherche */}
       <div className="relative flex-1 w-full">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
@@ -65,6 +64,7 @@ export function FilterBar({
         )}
       </div>
 
+      {/* Menu des filtres */}
       <div className="flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -72,37 +72,67 @@ export function FilterBar({
               <SlidersHorizontal className="h-4 w-4" />
               Filtres
               {hasActiveFilters && (
-                <span className="ml-1 bg-primary text-primary-foreground rounded-full w-5 h-5 text-xs flex items-center justify-center">
-                  {selectedFilters.categories.length + selectedFilters.status.length}
-                </span>
+                <Badge variant="secondary" className="ml-1">
+                  {selectedFilters.categories.length + 
+                   selectedFilters.status.length +
+                   (selectedFilters.priceRange?.length ?? 0)}
+                </Badge>
               )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
+            {/* Catégories */}
             <DropdownMenuLabel>Catégories</DropdownMenuLabel>
-            {filters.categories.map((category) => (
+            {Object.keys(PLACE_CATEGORIES).map((category) => (
               <DropdownMenuCheckboxItem
                 key={category}
-                checked={selectedFilters.categories.includes(category)}
-                onCheckedChange={() => onFilterChange('categories', category)}
+                checked={selectedFilters.categories.includes(category as Category)}
+                onCheckedChange={() => onFilterChange('categories', [category as Category])}
               >
-                {category}
+                {PLACE_CATEGORIES[category as keyof typeof PLACE_CATEGORIES].label}
               </DropdownMenuCheckboxItem>
             ))}
+
             <DropdownMenuSeparator />
+
+            {/* Statuts */}
             <DropdownMenuLabel>Statut</DropdownMenuLabel>
-            {filters.status.map((status) => (
+            {['brouillon', 'publié', 'archivé'].map((status) => (
               <DropdownMenuCheckboxItem
                 key={status}
-                checked={selectedFilters.status.includes(status)}
-                onCheckedChange={() => onFilterChange('status', status)}
+                checked={selectedFilters.status.includes(status as Status)}
+                onCheckedChange={() => onFilterChange('status', [status as Status])}
               >
-                <StatusBadge status={status} className="mr-2" />
+                <Badge 
+                  variant={
+                    status === 'publié' ? 'default' :
+                    status === 'archivé' ? 'destructive' :
+                    'secondary'
+                  }
+                  className="mr-2"
+                >
+                  {status}
+                </Badge>
+              </DropdownMenuCheckboxItem>
+            ))}
+
+            <DropdownMenuSeparator />
+
+            {/* Niveau de prix */}
+            <DropdownMenuLabel>Prix</DropdownMenuLabel>
+            {[1, 2, 3, 4].map((level) => (
+              <DropdownMenuCheckboxItem
+                key={level}
+                checked={selectedFilters.priceRange?.includes(level)}
+                onCheckedChange={() => onFilterChange('priceRange', [level])}
+              >
+                {'¥'.repeat(level)}
               </DropdownMenuCheckboxItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
 
+        {/* Bouton de réinitialisation */}
         <AnimatePresence>
           {hasActiveFilters && (
             <motion.div
@@ -122,6 +152,6 @@ export function FilterBar({
           )}
         </AnimatePresence>
       </div>
-    </motion.div>
+    </div>
   );
 }

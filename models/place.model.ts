@@ -1,9 +1,27 @@
 // models/place.model.ts
-import mongoose, { Schema } from 'mongoose';
-import { PlaceDocument } from '@/types/place';
+import mongoose, { Schema, Document } from 'mongoose';
+import type { Place } from '@/types/places/main';
+
+export interface PlaceDocument extends Omit<Place, '_id'>, Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const LocalizedStringSchema = {
+  fr: { type: String, required: true },
+  ja: String,
+  en: String,
+};
+
+const LocalizedStringRequiredSchema = {
+  fr: { type: String, required: true },
+  ja: String,
+  en: String,
+};
 
 const placeSchema = new Schema<PlaceDocument>(
   {
+    // Données d'origine
     originalData: {
       title: String,
       note: String,
@@ -11,114 +29,123 @@ const placeSchema = new Schema<PlaceDocument>(
       comment: String,
     },
     
+    // Informations principales
     name: {
-      ja: String,
-      fr: { type: String, required: true },
+      type: LocalizedStringRequiredSchema,
+      required: true,
+    },
+
+    _id: {
+      type: String,
+      required: true,
     },
     
     location: {
-      type: {
-        type: String,
-        enum: ['Point'],
-        required: true,
-      },
-      coordinates: {
-        type: [Number],
-        required: true,
+      point: {
+        type: {
+          type: String,
+          enum: ['Point'],
+          required: true,
+        },
+        coordinates: {
+          type: [Number],
+          required: true,
+        },
       },
       address: {
-        ja: String,
-        fr: { type: String, required: true },
+        full: LocalizedStringRequiredSchema,
         prefecture: String,
         city: String,
         postalCode: String,
+        formatted: LocalizedStringRequiredSchema,
       },
-      accessInfo: {
+      access: {
         nearestStation: String,
         walkingTime: Number,
         transportOptions: [String],
       },
     },
     
+    // Catégorisation
     category: {
       type: String,
       required: true,
       enum: ['Restaurant', 'Hôtel', 'Visite', 'Shopping', 'Café & Bar'],
       index: true,
     },
-    
     subcategories: [{
       type: String,
       index: true,
     }],
     
-    description: {
-      ja: String,
-      fr: { type: String, required: true },
-    },
-    
+    // Description et médias
+    description: LocalizedStringSchema,
     images: [{
       url: String,
       source: String,
       isCover: Boolean,
-      caption: {
-        ja: String,
-        fr: String,
+      caption: LocalizedStringSchema,
+      name: {
+        type: String,
+        maxlength: 10,
       },
     }],
     
+    // Informations pratiques
     openingHours: {
       periods: [{
         day: Number,
         open: String,
         close: String,
       }],
-      weekdayText: {
-        ja: [String],
-        fr: { type: [String], required: true },
-      },
+      weekdayTexts: LocalizedStringRequiredSchema,
       holidayDates: [Date],
     },
     
     pricing: {
-      priceRange: {
+      level: {
         type: Number,
         enum: [1, 2, 3, 4],
       },
       currency: {
         type: String,
-        default: 'EUR',
+        default: 'JPY',
       },
-      details: {
-        ja: String,
-        fr: String,
-      },
-      budget: {
+      range: {
         min: Number,
         max: Number,
       },
+      details: LocalizedStringSchema,
     },
     
+    // Contact
     contact: {
       phone: String,
       website: String,
       bookingUrl: String,
+      googleMapsUrl: String,
       socialMedia: {
         type: Map,
         of: String,
       },
     },
     
+    // Notes et avis
     rating: {
-      googleRating: Number,
-      googleReviewsCount: Number,
-      internalRating: Number,
-      internalReviewsCount: Number,
+      google: {
+        rating: Number,
+        reviewCount: Number,
+      },
+      internal: {
+        rating: Number,
+        reviewCount: Number,
+      },
     },
     
+    // Métadonnées
     metadata: {
       source: { type: String, required: true },
-      placeId: { type: String, sparse: true }, // sparse index permet les doublons null/undefined
+      placeId: { type: String, sparse: true },
       lastEnriched: Date,
       lastVerified: Date,
       verifiedBy: String,
@@ -128,13 +155,7 @@ const placeSchema = new Schema<PlaceDocument>(
         default: 'brouillon',
       },
       tags: [String],
-      relatedPlaces: [{
-        placeId: { type: Schema.Types.ObjectId, ref: 'Place' },
-        relationType: {
-          type: String,
-          enum: ['parent', 'enfant', 'proche']
-        },
-      }],
+      businessStatus: String,
     },
     
     isActive: {
@@ -149,18 +170,26 @@ const placeSchema = new Schema<PlaceDocument>(
 );
 
 // Indexes
-placeSchema.index({ 'location.coordinates': '2dsphere' });
+placeSchema.index({ 'location.point': '2dsphere' });
 placeSchema.index({ 
-  'name.ja': 'text',
   'name.fr': 'text',
-  'description.ja': 'text',
-  'description.fr': 'text'
+  'name.ja': 'text', 
+  'description.fr': 'text',
+  'description.ja': 'text'
+}, {
+  weights: {
+    'name.fr': 10,
+    'name.ja': 10,
+    'description.fr': 5,
+    'description.ja': 5
+  }
 });
 
-// Index unique sur placeId (s'il existe)
 placeSchema.index(
   { 'metadata.placeId': 1 }, 
   { unique: true, sparse: true }
 );
 
-export default mongoose.models.Place || mongoose.model<PlaceDocument>('Place', placeSchema);
+// Export
+const Place = mongoose.models.Place || mongoose.model<PlaceDocument>('Place', placeSchema);
+export default Place;

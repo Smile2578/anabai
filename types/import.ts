@@ -1,7 +1,25 @@
 // types/import.ts
-export type ImportStatus = 'processing' | 'success' | 'error';
+import { Place } from './places/main';
 
-export interface ImportProgressState {
+export interface ImportPreview {
+  original: {
+    Title: string;
+    Note?: string;
+    URL?: string;
+    Comment?: string;
+  };
+  status: 'pending' | 'success' | 'error';
+  enriched?: {
+    success: boolean;
+    place?: Place;
+    error?: string;
+    placeId?: string;
+  };
+  validationErrors?: string[];  // Ajout du champ validationErrors
+  existingPlace?: Place | null;  // Pour gérer les doublons
+}
+
+export interface ImportProgress {
   currentStep: number;
   totalSteps: number;
   label: string;
@@ -13,17 +31,4 @@ export interface ImportProgressState {
   status: ImportStatus;
 }
 
-// Pour l'étape d'import
-export interface ImportStats {
-  total: number;
-  success: number;
-  failed: number;
-}
-
-// Pour l'étape de validation
-export interface ValidationStats {
-  total: number;
-  valid: number;
-  invalid: number;
-  duplicates: number;
-}
+export type ImportStatus = 'processing' | 'success' | 'error';

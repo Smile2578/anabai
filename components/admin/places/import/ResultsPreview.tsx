@@ -1,4 +1,4 @@
-// components/admin/places/DataPreviewTable.tsx
+// components/admin/places/import/ResultsPreview.tsx
 import React from 'react';
 import {
   Table,
@@ -8,8 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ImportPreview } from '@/types/place';
 import { Badge } from "@/components/ui/badge";
+import { ImportPreview } from '@/types/import';
 import { cn } from '@/lib/utils';
 import {
   Star,
@@ -21,7 +21,7 @@ import {
   Globe,
   ArrowRight,
   Image as ImageIcon,
-  AlertCircle,
+  AlertCircle
 } from 'lucide-react';
 import {
   Tooltip,
@@ -30,18 +30,18 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-
-interface DataPreviewTableProps {
+interface ResultsPreviewProps {
   data: ImportPreview[];
   selectedRows?: string[];
   onRowSelect?: (index: number) => void;
 }
 
-function getPriceRangeSymbol(priceRange: number): string {
+function getPriceRangeSymbol(priceRange?: number): string {
+  if (!priceRange) return '';
   return '¥'.repeat(priceRange);
 }
 
-export function DataPreviewTable({ data, selectedRows = [], onRowSelect }: DataPreviewTableProps) {
+export function ResultsPreview({ data, selectedRows = [], onRowSelect }: ResultsPreviewProps) {
   const [expandedRows, setExpandedRows] = React.useState<string[]>([]);
 
   const toggleRow = (index: string) => {
@@ -83,11 +83,11 @@ export function DataPreviewTable({ data, selectedRows = [], onRowSelect }: DataP
                 >
                   <TableCell>
                     {row.status === 'success' ? (
-                      <CheckCircle className="h-4 w-4 text-semantic-success" />
+                      <CheckCircle className="h-4 w-4 text-success" />
                     ) : row.status === 'error' ? (
-                      <XCircle className="h-4 w-4 text-semantic-error" />
+                      <XCircle className="h-4 w-4 text-destructive" />
                     ) : (
-                      <Clock className="h-4 w-4 text-semantic-warning" />
+                      <Clock className="h-4 w-4 text-warning" />
                     )}
                   </TableCell>
 
@@ -103,13 +103,13 @@ export function DataPreviewTable({ data, selectedRows = [], onRowSelect }: DataP
                   <TableCell>
                     {row.enriched?.success && row.enriched.place ? (
                       <div className="space-y-1">
-                        <p>{row.enriched.place.name?.fr}</p>
+                        <p>{row.enriched.place.name.fr}</p>
                         <p className="text-sm text-muted-foreground">
-                          {row.enriched.place.name?.ja}
+                          {row.enriched.place.name.ja}
                         </p>
                       </div>
                     ) : (
-                      <span className="text-semantic-error">
+                      <span className="text-destructive">
                         {row.enriched?.error || 'Non enrichi'}
                       </span>
                     )}
@@ -131,11 +131,12 @@ export function DataPreviewTable({ data, selectedRows = [], onRowSelect }: DataP
                   </TableCell>
 
                   <TableCell>
-                    {row.enriched?.success && row.enriched.place && (
+                    {row.enriched?.success && row.enriched.place?.location && (
                       <div className="space-y-1">
-                        <p>{row.enriched.place.location?.address.fr}</p>
+                        <p>{row.enriched.place.location.address.full.fr}</p>
                         <p className="text-sm text-muted-foreground">
-                          {row.enriched.place.location?.address.city}, {row.enriched.place.location?.address.prefecture}
+                          {row.enriched.place.location.address.prefecture}, 
+                          {row.enriched.place.location.address.city}
                         </p>
                       </div>
                     )}
@@ -145,21 +146,14 @@ export function DataPreviewTable({ data, selectedRows = [], onRowSelect }: DataP
                     {row.enriched?.success && row.enriched.place?.pricing && (
                       <div className="space-y-1">
                         <p className="font-medium">
-                          {getPriceRangeSymbol(row.enriched.place.pricing.priceRange ?? 0)}
+                          {getPriceRangeSymbol(row.enriched.place.pricing.level)}
                         </p>
-                        {row.enriched.place.pricing.priceRange && row.enriched.place.pricing.priceRange > 0 && (
-                          <p className="text-sm text-muted-foreground">
-                            {(row.enriched.place.pricing.priceRange * 1000).toLocaleString()} - 
-                            {(row.enriched.place.pricing.priceRange * 5000).toLocaleString()} ¥
-                          </p>
-                        )}
                       </div>
                     )}
                   </TableCell>
 
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {/* Note */}
                       {row.enriched?.success && row.enriched.place?.metadata?.rating && (
                         <TooltipProvider>
                           <Tooltip>
@@ -178,21 +172,19 @@ export function DataPreviewTable({ data, selectedRows = [], onRowSelect }: DataP
                         </TooltipProvider>
                       )}
 
-                      {/* Photos */}
-                      {row.enriched?.success && row.enriched.place?.images && row.enriched.place.images.length > 0 && (
+                      {row.enriched?.success && row.enriched.place?.images?.length && row.enriched.place.images.length > 0 && (
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger>
                               <ImageIcon className="h-4 w-4 text-blue-500" />
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>{row.enriched.place.images?.length} photo(s)</p>
+                              <p>{row.enriched.place.images.length} photo(s)</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       )}
 
-                      {/* Status */}
                       {row.status === 'success' && (
                         <ArrowRight 
                           className="h-4 w-4 cursor-pointer text-muted-foreground"
@@ -206,7 +198,6 @@ export function DataPreviewTable({ data, selectedRows = [], onRowSelect }: DataP
                   </TableCell>
                 </TableRow>
 
-                {/* Ligne de détails */}
                 {isExpanded && row.enriched?.success && row.enriched.place && (
                   <TableRow className="bg-muted/5">
                     <TableCell colSpan={7} className="p-4">
@@ -243,20 +234,18 @@ export function DataPreviewTable({ data, selectedRows = [], onRowSelect }: DataP
                         {/* Accès */}
                         <div className="space-y-2">
                           <h4 className="font-medium">Accès</h4>
-                          {row.enriched.place.location?.accessInfo && (
-                            <>
-                              <div className="flex items-center gap-2">
-                                <MapPin className="h-4 w-4 text-muted-foreground" />
-                                <span>
-                                  {row.enriched.place.location?.accessInfo?.nearestStation}
-                                  {row.enriched.place.location?.accessInfo?.walkingTime && (
-                                    <span className="text-muted-foreground">
-                                      {' '}({row.enriched.place.location.accessInfo.walkingTime} min)
-                                    </span>
-                                  )}
-                                </span>
-                              </div>
-                            </>
+                          {row.enriched.place.location?.access && (
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
+                              <span>
+                                {row.enriched.place.location.access.nearestStation}
+                                {row.enriched.place.location.access.walkingTime && (
+                                  <span className="text-muted-foreground">
+                                    {' '}({row.enriched.place.location.access.walkingTime} min)
+                                  </span>
+                                )}
+                              </span>
+                            </div>
                           )}
                         </div>
 
@@ -264,23 +253,25 @@ export function DataPreviewTable({ data, selectedRows = [], onRowSelect }: DataP
                         <div className="space-y-2">
                           <h4 className="font-medium">Horaires</h4>
                           <div className="text-sm">
-                            {row.enriched.place.openingHours?.weekdayText?.fr?.map((text, i) => (
-                              <p key={i}>{text}</p>
-                            ))}
+                            {typeof row.enriched.place.openingHours?.weekdayTexts === 'object' ? (
+                              Object.values(row.enriched.place.openingHours.weekdayTexts).map((text: string) => (
+                                <p key={text}>{text}</p>
+                              ))
+                            ) : null}
                           </div>
                         </div>
                       </div>
 
                       {/* Erreurs de validation */}
                       {row.validationErrors && row.validationErrors.length > 0 && (
-                        <div className="mt-4 p-4 bg-semantic-error/10 rounded-md">
-                          <div className="flex items-center gap-2 text-semantic-error mb-2">
+                        <div className="mt-4 p-4 bg-destructive/10 rounded-md">
+                          <div className="flex items-center gap-2 text-destructive mb-2">
                             <AlertCircle className="h-4 w-4" />
                             <h4 className="font-medium">Erreurs de validation</h4>
                           </div>
                           <ul className="list-disc list-inside space-y-1">
                             {row.validationErrors.map((error, i) => (
-                              <li key={i} className="text-sm text-semantic-error">
+                              <li key={i} className="text-sm text-destructive">
                                 {error}
                               </li>
                             ))}

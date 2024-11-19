@@ -1,106 +1,141 @@
 // components/admin/places/PlaceList.tsx
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Place } from '@/types/place';
-import { StatusBadge } from './StatusBadge';
-import { formatDate } from '@/lib/utils/date';
+import { Place } from '@/types/places/main';
+import { PlaceCard } from './PlaceCard';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { MapPin, Calendar, User } from 'lucide-react';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from '@/hooks/use-toast';
 
 interface PlaceListProps {
   places: Place[];
   onPlaceClick: (id: string) => void;
+  onPlaceDelete: (id: string) => Promise<void>;
+  onPlaceArchive: (id: string) => Promise<void>;
+  isLoading?: boolean;
 }
 
-export function PlaceList({ places, onPlaceClick }: PlaceListProps) {
+export function PlaceList({ 
+  places, 
+  onPlaceClick, 
+  onPlaceDelete,
+  onPlaceArchive,
+  isLoading 
+}: PlaceListProps) {
+  const [placeToDelete, setPlaceToDelete] = React.useState<Place | null>(null);
+  const [placeToArchive, setPlaceToArchive] = React.useState<Place | null>(null);
+  const { toast } = useToast();
+
+  // Gestion de la suppression
+  const handleDelete = async () => {
+    if (!placeToDelete) return;
+    try {
+      await onPlaceDelete(placeToDelete._id);
+      toast({
+        title: "Succès",
+        description: "Le lieu a été supprimé",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur", 
+        description: error instanceof Error ? error.message : "Impossible de supprimer le lieu",
+        variant: "destructive",
+      });
+    } finally {
+      setPlaceToDelete(null);
+    }
+  };
+
+  // Gestion de l'archivage
+  const handleArchive = async () => {
+    if (!placeToArchive) return;
+    
+    try {
+      await onPlaceArchive(placeToArchive._id);
+      toast({
+        title: "Succès",
+        description: "Le lieu a été archivé",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Impossible d'archiver le lieu",
+        variant: "destructive",
+      });
+    } finally {
+      setPlaceToArchive(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="h-[400px] bg-muted animate-pulse rounded-lg" />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[300px]">Nom</TableHead>
-            <TableHead>Catégorie</TableHead>
-            <TableHead>Adresse</TableHead>
-            <TableHead>Statut</TableHead>
-            <TableHead>Dernière modification</TableHead>
-            <TableHead>Par</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {places.map((place, index) => (
-            <motion.tr
-              key={place._id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              onClick={() => onPlaceClick(place._id)}
-              className="cursor-pointer hover:bg-muted/50"
-            >
-              <TableCell className="font-medium">
-                <div className="flex items-center gap-2">
-                  {place.images[0]?.url && (
-                    <div className="relative w-10 h-10 rounded-md overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img 
-                        src={place.images[0].url}
-                        alt={place.name.fr}
-                        className="object-cover w-full h-full"
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <p>{place.name.fr}</p>
-                    {place.name.ja && (
-                      <p className="text-sm text-muted-foreground">{place.name.ja}</p>
-                    )}
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-col">
-                  <span>{place.category}</span>
-                  {place.subcategories.length > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      {place.subcategories.slice(0, 2).join(', ')}
-                      {place.subcategories.length > 2 && '...'}
-                    </span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span className="max-w-[200px] truncate">
-                    {place.location.address.fr}
-                  </span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <StatusBadge status={place.metadata.status} />
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{formatDate(place.updatedAt)}</span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span>{place.metadata.verifiedBy || 'Non vérifié'}</span>
-                </div>
-              </TableCell>
-            </motion.tr>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {places.map((place) => (
+          <PlaceCard
+            key={place._id}
+            place={place}
+            onClick={() => onPlaceClick(place._id)}
+            onDelete={() => setPlaceToDelete(place)}
+            onArchive={() => setPlaceToArchive(place)}
+            onEdit={() => onPlaceClick(place._id)}
+          />
+        ))}
+      </div>
+
+      {/* Dialog de confirmation de suppression */}
+      <AlertDialog open={!!placeToDelete} onOpenChange={() => setPlaceToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer {placeToDelete?.name.fr} ? 
+              Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de confirmation d'archivage */}
+      <AlertDialog open={!!placeToArchive} onOpenChange={() => setPlaceToArchive(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer l&apos;archivage</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir archiver {placeToArchive?.name.fr} ?
+              Le lieu ne sera plus visible mais pourra être restauré ultérieurement.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchive}>
+              Archiver
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
