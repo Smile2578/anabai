@@ -8,7 +8,8 @@ export interface LocalizedString {
 }
 
 export interface LocalizedStringRequired {
-  fr: string;  // Français toujours requis
+  [key: string]: string;  // Ajouter un index signature
+  fr: string;
   ja?: string;
   en?: string;
 }

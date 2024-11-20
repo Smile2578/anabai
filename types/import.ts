@@ -9,7 +9,7 @@ export interface ImportPreview {
     Comment?: string;
   };
   status: 'pending' | 'success' | 'error';
-  enriched?: {
+  enriched: {
     success: boolean;
     place?: Place;
     error?: string;

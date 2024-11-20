@@ -1,5 +1,5 @@
 // types/places/base.ts
-import { LocalizedString, LocalizedStringRequired, PriceLevel } from '../common';
+import { LocalizedString, LocalizedStringRequired } from '../common';
 
 export interface PlaceAddress {
   full: LocalizedStringRequired;
@@ -9,6 +9,12 @@ export interface PlaceAddress {
   formatted?: LocalizedStringRequired;
 }
 
+// Ou modifier la fonction pour accepter spécifiquement LocalizedStringRequired
+export function formatOpeningHours(weekdayTexts: LocalizedStringRequired): string[] {
+  if (!weekdayTexts?.fr) return [];
+  return weekdayTexts.fr.split('\n');
+}
+
 export interface AccessInfo {
   nearestStation?: string;
   walkingTime?: number;
@@ -16,9 +22,9 @@ export interface AccessInfo {
 }
 
 export interface OpeningPeriod {
-  day: number;  // 0-6 where 0 is Sunday
-  open: string; // HH:mm format
-  close: string; // HH:mm format
+  day: number;
+  open: string;
+  close: string;
 }
 
 export interface OpeningHours {
@@ -32,17 +38,39 @@ export interface PlaceImage {
   source: string;
   isCover: boolean;
   caption?: LocalizedString;
-  name?: string; // Internal reference name (max 10 chars)
+  name?: string;
 }
 
 export interface PlacePricing {
-  level: PriceLevel;
+  level?: 1 | 2 | 3 | 4 | null;  
   currency: string;
   range?: {
     min: number;
     max: number;
   };
   details?: LocalizedString;
+}
+
+export interface PracticalInfo {
+  bookingRequired: boolean;
+  englishSupport: boolean;
+  paymentMethods: string[];
+  delivery: boolean;      
+  dineIn: boolean;       
+  takeout: boolean;      
+  parkingOptions?: {
+    freeParking: boolean;     
+    paidParking: boolean;     
+    streetParking: boolean;   
+    valetParking: boolean;    
+    parkingAvailable: boolean;
+  };
+  accessibilityOptions?: {
+    wheelchairAccessibleParking: boolean;    
+    wheelchairAccessibleEntrance: boolean;   
+    wheelchairAccessibleRestroom: boolean;   
+    wheelchairAccessibleSeating: boolean;    
+  };
 }
 
 export interface PlaceContact {

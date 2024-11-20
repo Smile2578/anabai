@@ -75,7 +75,7 @@ export function PlaceCard({
           
           {/* Badge de statut */}
           <Badge 
-            className="absolute top-2 right-2"
+            className="absolute bottom-2 right-2"
             variant={
               place.metadata.status === 'publié' ? 'default' :
               place.metadata.status === 'archivé' ? 'destructive' :
@@ -91,7 +91,7 @@ export function PlaceCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute top-2 right-14 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-4 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={e => e.stopPropagation()}
               >
                 <MoreVertical className="h-4 w-4" />
@@ -161,7 +161,7 @@ export function PlaceCard({
             <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
             <div>
               <p className="text-sm">
-                {place.location.address.full.fr}
+                {place.location.address.full?.fr}
               </p>
               {place.location.access?.nearestStation && (
                 <p className="text-muted-foreground text-xs">

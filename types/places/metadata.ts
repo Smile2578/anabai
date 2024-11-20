@@ -1,6 +1,6 @@
-import { Status } from "../common";
-
 // types/places/metadata.ts
+
+import { Status } from "../common";
 export interface PlaceMetadata {
     source: string;
     placeId?: string;

@@ -1,19 +1,14 @@
-// lib/repositories/place-repository.ts
-import { Collection, Db, Filter, ObjectId, Document, WithId } from 'mongodb';
-import { PlaceDocument, Place } from '@/types/place';
-import { FilterQuery } from 'mongoose';
+import { Collection, Db, Filter } from 'mongodb';
+import { Place } from '@/types/places/main';
+import mongoose from 'mongoose';
 
 type CreatePlaceInput = Omit<Place, '_id' | 'createdAt' | 'updatedAt'>;
-type PlaceDocumentInput = Omit<PlaceDocument, '_id' | 'createdAt' | 'updatedAt'>;
 
 export class PlaceRepository {
-  bulkUpdate(places: any[]) {
-    throw new Error('Method not implemented.');
-  }
-  collection: Collection<PlaceDocument>;
+  collection: Collection<Place>;
 
   constructor(db: Db) {
-    this.collection = db.collection<PlaceDocument>('places');
+    this.collection = db.collection<Place>('places');
   }
 
   async findAll(query: {
@@ -22,9 +17,9 @@ export class PlaceRepository {
     status?: string;
     page: number;
     limit: number;
-  }): Promise<{ places: PlaceDocument[]; total: number }> {
-    const filter: Filter<PlaceDocument> = {};
-  
+  }): Promise<{ places: Place[]; total: number }> {
+    const filter: Filter<Place> = {};
+
     if (query.search) {
       filter.$or = [
         { 'name.fr': { $regex: query.search, $options: 'i' } },
@@ -33,17 +28,17 @@ export class PlaceRepository {
         { 'description.ja': { $regex: query.search, $options: 'i' } }
       ];
     }
-  
+
     if (query.category) {
       filter.category = query.category as "Restaurant" | "Hôtel" | "Visite" | "Shopping" | "Café & Bar";
     }
-  
+
     if (query.status) {
       filter['metadata.status'] = query.status;
     }
-  
+
     const skip = (query.page - 1) * query.limit;
-  
+
     const [places, total] = await Promise.all([
       this.collection
         .find(filter)
@@ -52,95 +47,80 @@ export class PlaceRepository {
         .toArray(),
       this.collection.countDocuments(filter)
     ]);
-  
+
     return { places, total };
   }
-  
-  async create(place: CreatePlaceInput): Promise<PlaceDocument | null> {
+
+  async create(place: CreatePlaceInput): Promise<Place | null> {
     try {
       console.log('Tentative de création du lieu:', place.name?.fr);
-
-      if (!place.name?.fr || !place.location?.address?.fr) {
-        console.error('Données obligatoires manquantes:', {
-          name: place.name,
-          address: place.location?.address
-        });
-        return null;
+      
+      // Validation détaillée
+      const requiredFields = {
+        name: place.name?.fr && place.name?.ja,
+        location: place.location?.point?.coordinates && place.location?.address?.full,
+        category: place.category,
+        metadata: place.metadata?.source
+      };
+  
+      console.log('Validation des champs requis:', requiredFields);
+  
+      const missingFields = Object.entries(requiredFields)
+        .filter(([, value]) => !value)
+        .map(([field]) => field);
+  
+      if (missingFields.length > 0) {
+        console.error('Champs requis manquants:', missingFields);
+        throw new Error(`Champs requis manquants: ${missingFields.join(', ')}`);
       }
-
-      // Validation des coordonnées
-      if (!this.validateCoordinates(place.location.coordinates)) {
-        throw new Error('Coordonnées invalides');
-      }
-
-      // Vérification de l'existence d'un lieu similaire
-      const existingPlace = await this.collection.findOne({
-        'metadata.placeId': place.metadata.placeId || ''
-      });
-      if (existingPlace) {
-        console.warn('Un lieu similaire existe déjà:', existingPlace._id);
-        return null;
-      }
-
-      const placeDoc: PlaceDocumentInput = {
+  
+      // Création du document
+      const placeDoc: Place = {
         ...place,
         location: {
           ...place.location,
-          type: 'Point',
-          coordinates: [
-            place.location.coordinates[0],
-            place.location.coordinates[1]
-          ]
+          point: {
+            type: 'Point',
+            coordinates: {
+              lng: place.location.point.coordinates.lng,
+              lat: place.location.point.coordinates.lat
+            }
+          }
         },
-        // Garantir les champs requis
-        category: place.category,
-        subcategories: place.subcategories || [],
-        description: {
-          fr: place.description?.fr || '',
-          ja: place.description?.ja
-        },
-        images: place.images || [],
         metadata: {
           ...place.metadata,
           status: place.metadata.status || 'brouillon',
-        }
+          lastEnriched: new Date()
+        },
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        _id: place.metadata.placeId || new mongoose.Types.ObjectId().toString()
       };
-
-      const result = await this.collection.insertOne(placeDoc as PlaceDocument);
-      
-      if (result.insertedId) {
-        return {
-          ...placeDoc,
-          _id: result.insertedId,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        } as PlaceDocument;
-      }
-      
-      return null;
-
+  
+      console.log('Document à sauvegarder:', JSON.stringify(placeDoc, null, 2));
+  
+      const result = await this.collection.insertOne(placeDoc);
+      console.log('Résultat de la sauvegarde:', result);
+  
+      return result.insertedId ? { ...placeDoc, _id: result.insertedId.toString() } : null;
     } catch (error) {
-      console.error('Erreur lors de la création du lieu:', error);
-      throw error;
+      console.error('Erreur détaillée lors de la création:', error);
+      throw new Error(`Échec de la sauvegarde: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
   }
 
   validateCoordinates(coordinates: [number, number]): boolean {
-    // Validation basique des coordonnées
     if (!Array.isArray(coordinates) || coordinates.length !== 2) {
       return false;
     }
 
     const [longitude, latitude] = coordinates;
 
-    // Vérification que les coordonnées sont des nombres
     if (typeof longitude !== 'number' || typeof latitude !== 'number') {
       return false;
     }
 
-    // Vérification des plages valides pour le Japon
-    // Longitude: environ 122° à 154° E
-    // Latitude: environ 20° à 46° N
     if (longitude < 122 || longitude > 154 || latitude < 20 || latitude > 46) {
       return false;
     }
@@ -148,7 +128,7 @@ export class PlaceRepository {
     return true;
   }
 
-  async findByLocation(coordinates: [number, number], radiusInKm: number): Promise<PlaceDocument[]> {
+  async findByLocation(coordinates: [number, number], radiusInKm: number): Promise<Place[]> {
     try {
       return await this.collection.find({
         'location.coordinates': {
@@ -157,13 +137,13 @@ export class PlaceRepository {
               type: 'Point',
               coordinates: coordinates
             },
-            $maxDistance: radiusInKm * 1000 // Conversion en mètres
+            $maxDistance: radiusInKm * 1000
           }
         },
         isActive: true
       }).toArray();
     } catch (error) {
-      console.error('Error in findByLocation:', error);
+      console.error('Erreur dans findByLocation:', error);
       return [];
     }
   }
@@ -172,7 +152,7 @@ export class PlaceRepository {
     limit?: number;
     skip?: number;
     sort?: { [key: string]: 1 | -1 };
-  } = {}): Promise<PlaceDocument[]> {
+  } = {}): Promise<Place[]> {
     try {
       return await this.collection.find({
         category,
@@ -183,7 +163,7 @@ export class PlaceRepository {
       .sort(options.sort || { createdAt: -1 })
       .toArray();
     } catch (error) {
-      console.error('Error in findByCategory:', error);
+      console.error('Erreur dans findByCategory:', error);
       return [];
     }
   }
@@ -199,9 +179,9 @@ export class PlaceRepository {
     page?: number;
     limit?: number;
     sort?: { [key: string]: 1 | -1 };
-  }): Promise<{ places: PlaceDocument[]; total: number }> {
-    const filter: Filter<PlaceDocument> = { isActive: true };
-    
+  }): Promise<{ places: Place[]; total: number }> {
+    const filter: Filter<Place> = { isActive: true };
+
     if (query.search) {
       filter.$or = [
         { 'name.fr': { $regex: query.search, $options: 'i' } },
@@ -210,33 +190,33 @@ export class PlaceRepository {
         { 'description.ja': { $regex: query.search, $options: 'i' } }
       ];
     }
-    
+
     if (query.category?.length) {
       filter.category = { $in: query.category };
     }
-    
+
     if (query.prefecture) {
       filter['location.address.prefecture'] = query.prefecture;
     }
-    
+
     if (query.city) {
       filter['location.address.city'] = query.city;
     }
-    
+
     if (query.status?.length) {
       filter['metadata.status'] = { $in: query.status };
     }
-    
+
     if (query.priceRange?.length) {
       filter['pricing.priceRange'] = { $in: query.priceRange };
     }
-    
+
     if (query.hasImages) {
       filter.images = { $exists: true, $ne: [] };
     }
 
     const skip = ((query.page || 1) - 1) * (query.limit || 10);
-    
+
     const [places, total] = await Promise.all([
       this.collection
         .find(filter)
@@ -250,7 +230,7 @@ export class PlaceRepository {
     return { places, total };
   }
 
-  async findByPlaceId(placeId: string): Promise<PlaceDocument | null> {
+  async findByPlaceId(placeId: string): Promise<Place | null> {
     try {
       const place = await this.collection.findOne({
         'metadata.placeId': placeId,
@@ -258,7 +238,7 @@ export class PlaceRepository {
       });
       return place;
     } catch (error) {
-      console.error('Error in findByPlaceId:', error);
+      console.error('Erreur dans findByPlaceId:', error);
       throw error;
     }
   }
@@ -299,7 +279,7 @@ export class PlaceRepository {
           ]
         })
       ]);
-  
+
       return {
         total,
         published,

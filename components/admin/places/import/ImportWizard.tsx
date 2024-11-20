@@ -1,4 +1,5 @@
 // components/admin/places/import/ImportWizard.tsx
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FileUpload } from './FileUpload';
@@ -25,8 +26,6 @@ export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
   const [previews, setPreviews] = React.useState<ImportPreview[]>([]);
   const [selectedPreviews, setSelectedPreviews] = React.useState<string[]>([]);
   const [progress, setProgress] = React.useState({
-    current: 0,
-    total: 0,
     label: '',
     status: 'processing' as const
   });
@@ -39,83 +38,38 @@ export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
       setIsLoading(true);
       setError(null);
       setCurrentStep('processing');
+      setProgress({
+        label: 'Import et recherche des lieux',
+        status: 'processing'
+      });
       
-      // Lecture et import
+      // Import et recherche des lieux
       const formData = new FormData();
       formData.append('file', file);
 
-      const importResponse = await fetch('/api/admin/places/import', {
+      const response = await fetch('/api/admin/places/import', {
         method: 'POST',
         body: formData
       });
 
-      if (!importResponse.ok) {
-        throw new Error('Erreur lors de l\'import');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de l\'import');
       }
 
-      const importData = await importResponse.json();
-      setPreviews(importData.previews || []);
+      const data = await response.json();
+      setPreviews(data.previews || []);
       
-      // Enrichissement
-      setProgress({
-        current: 0,
-        total: importData.previews.length,
-        label: 'Enrichissement des données',
-        status: 'processing'
-      });
-
-      const enrichResponse = await fetch('/api/admin/places/enrich', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ previews: importData.previews })
-      });
-
-      if (!enrichResponse.ok) {
-        throw new Error('Erreur lors de l\'enrichissement');
-      }
-
-      const enrichedData = await enrichResponse.json();
-      setPreviews(enrichedData.previews);
-
-      // Validation
-      setProgress({
-        current: enrichedData.previews.length,
-        total: enrichedData.previews.length,
-        label: 'Validation des données',
-        status: 'processing'
-      });
-
-      const validateResponse = await fetch('/api/admin/places/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ previews: enrichedData.previews })
-      });
-
-      if (!validateResponse.ok) {
-        throw new Error('Erreur lors de la validation');
-      }
-
-      const validationData = await validateResponse.json();
-      setPreviews(validationData.results);
-
       // Passage à la prévisualisation
       setCurrentStep('preview');
-      setProgress({
-        current: validationData.results.length,
-        total: validationData.results.length,
-        label: 'Import terminé',
-        status: 'processing'
+      toast({
+        title: "Import terminé",
+        description: data.message || `${data.stats.success} lieux trouvés sur ${data.stats.total} entrées`
       });
 
     } catch (error) {
       console.error('Import error:', error);
       setError(error instanceof Error ? error.message : 'Une erreur est survenue');
-      setProgress({
-        current: 0,
-        total: 0,
-        label: 'Erreur',
-        status: 'processing'
-      });
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : 'Une erreur est survenue',
@@ -143,7 +97,8 @@ export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
       });
 
       if (!saveResponse.ok) {
-        throw new Error('Erreur lors de la sauvegarde');
+        const errorData = await saveResponse.json();
+        throw new Error(errorData.error || 'Erreur lors de la sauvegarde');
       }
 
       const saveData = await saveResponse.json();
@@ -175,16 +130,13 @@ export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
           <FileUpload 
             onFileAccepted={handleFileAccepted}
             isLoading={isLoading}
+            // maxSize et accept ont été supprimés car non valides
           />
         );
-
       case 'processing':
         return (
           <ProcessingStatus
-            currentStep={progress.current}
-            totalSteps={progress.total}
             label={progress.label}
-            progress={progress}
             status={progress.status}
           />
         );
@@ -242,11 +194,11 @@ export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
         </Alert>
       )}
 
-      {currentStep === 'saving' && progress.status === 'processing' && (
+      {currentStep === 'saving' && !error && (
         <Alert>
           <CheckCircle className="h-4 w-4" />
           <AlertDescription>
-            Les lieux ont été importés avec succès
+            Les lieux sont en cours d&apos;importation...
           </AlertDescription>
         </Alert>
       )}

@@ -28,6 +28,18 @@ interface PlaceStatsProps {
   stats: StatsData;
 }
 
+const getSortedTopEntry = (data: Record<string, number>): string => {
+  if (!data || Object.keys(data).length === 0) return 'Aucun';
+  
+  const sorted = Object.entries(data).sort(([,a], [,b]) => b - a);
+  return sorted[0]?.[0] || 'Aucun';
+};
+
+const getPercentage = (value: number, total: number): string => {
+  if (total === 0) return '0%';
+  return `${((value / total) * 100).toFixed(1)}%`;
+};
+
 export function PlaceStats({ stats }: PlaceStatsProps) {
   const mainStats = [
     {
@@ -64,27 +76,27 @@ export function PlaceStats({ stats }: PlaceStatsProps) {
     {
       label: 'Photos',
       value: `${stats.withImages} / ${stats.total}`,
-      subtext: `${((stats.withImages / stats.total) * 100).toFixed(1)}%`,
+      subtext: getPercentage(stats.withImages, stats.total),
       icon: Image,
     },
     {
       label: 'Avis',
       value: stats.totalRatings.toString(),
-      subtext: `${stats.averageRating.toFixed(1)} / 5`,
+      subtext: stats.totalRatings > 0 
+        ? `${stats.averageRating.toFixed(1)} / 5`
+        : 'Aucun avis',
       icon: Star,
     },
     {
       label: 'Catégories',
-      value: Object.keys(stats.byCategory).length.toString(),
-      subtext: 'Plus populaire : ' + Object.entries(stats.byCategory)
-        .sort(([,a], [,b]) => b - a)[0][0],
+      value: Object.keys(stats.byCategory || {}).length.toString(),
+      subtext: `Plus populaire : ${getSortedTopEntry(stats.byCategory)}`,
       icon: MapPin,
     },
     {
       label: 'Préfectures',
-      value: Object.keys(stats.byPrefecture).length.toString(),
-      subtext: 'Plus de lieux : ' + Object.entries(stats.byPrefecture)
-        .sort(([,a], [,b]) => b - a)[0][0],
+      value: Object.keys(stats.byPrefecture || {}).length.toString(),
+      subtext: `Plus de lieux : ${getSortedTopEntry(stats.byPrefecture)}`,
       icon: Users,
     }
   ];

@@ -1,4 +1,4 @@
-// components/places/import/FileUpload.tsx
+// components/admin/places/import/FileUpload.tsx
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, AlertCircle, X } from 'lucide-react';

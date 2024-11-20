@@ -1,12 +1,11 @@
+// app/admin/places/[id]/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { PlaceEditForm } from '@/components/admin/places/PlaceEditForm';
 import { PlaceCard } from '@/components/admin/places/PlaceCard';
 import { toast } from '@/hooks/use-toast';
-import { Place } from '@/types/place';
 import * as React from 'react';
 
 interface PageParams {
@@ -15,7 +14,7 @@ interface PageParams {
 
 export default function PlaceDetailsPage({ params }: { params: Promise<PageParams> }) {
   const router = useRouter();
-  const [place, setPlace] = useState<Place | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
   
   // Utiliser React.use avec le type correct
@@ -68,18 +67,7 @@ export default function PlaceDetailsPage({ params }: { params: Promise<PageParam
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <PlaceEditForm 
-            place={place || undefined}
-            onSubmit={async () => {
-              toast({
-                title: "Succès", 
-                description: "Le lieu a été sauvegardé avec succès",
-              });
-              router.push('/admin/places');
-            }}
-          />
-        </div>
+        
         
         <div className="lg:col-span-1">
           {place && (
