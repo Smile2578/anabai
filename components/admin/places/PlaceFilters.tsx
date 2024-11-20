@@ -13,8 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Category } from '@/types/common';
-import { Status } from '@/types/places/main';
+import { Category, Status } from '@/types/common';
 import { PLACE_CATEGORIES } from '@/lib/config/categories';
 
 interface PlaceFiltersProps {

@@ -96,7 +96,7 @@
 @layer components {
   /* Auth specific components */
   .auth-container {
-    @apply min-h-screen bg-gradient-to-br from-purple-600 to-purple-900;
+    @apply min-h-screen bg-primary-light;
   }
 
   .auth-card {

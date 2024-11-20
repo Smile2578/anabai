@@ -3,7 +3,7 @@ import { Place } from '@/types/places/main';
 import { ImportPreview } from '@/types/import';
 import { PlaceRepository } from '@/lib/repositories/place-repository';
 import { ValidationService } from './ValidationService';
-import { Category, Status } from '@/types/common';
+import { Status } from '@/types/common';
 
 interface StorageResult {
   success: boolean;

@@ -13,8 +13,8 @@ export class GooglePlacesService {
     this.apiKey = apiKey;
   }
 
-  public getPhotoUrl(placeId: string, photoName: string): string {
-    return `${this.baseUrl}/places/${placeId}/media/${photoName}`;
+  public getPhotoUrl(photo: { name: string }): string {
+    return `${this.baseUrl}/media/${photo.name}?key=${this.apiKey}&maxwidth=800&maxheight=600`;
   }
 
   private async fetchWithRetry(

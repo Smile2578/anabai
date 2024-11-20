@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     
     // Récupérer les paramètres de requête
     const search = searchParams.get('search') || undefined;
-    const categories = searchParams.get('category')?.split(',') as Category[] | undefined;
+    const category = searchParams.getAll('categories') as Category[] | undefined;
     const status = searchParams.get('status') as Status | undefined;
     const isGem = searchParams.get('isGem') === 'true';
     const page = parseInt(searchParams.get('page') || '1');
@@ -19,20 +19,56 @@ export async function GET(req: NextRequest) {
     const sort = searchParams.get('sort') 
       ? JSON.parse(searchParams.get('sort') || '{}')
       : { updatedAt: -1 };
+    // Construire le filtre
+    const filter: {
+      isActive: boolean;
+      $or?: { [key: string]: { $regex: string, $options: string } }[];
+      category?: { $in: Category[] };
+      'metadata.status'?: Status;
+      isGem?: boolean;
+    } = {
+      isActive: true // Toujours inclure les lieux actifs par défaut
+    };
+    
+    if (search) {
+      filter.$or = [
+        { 'name.fr': { $regex: search, $options: 'i' } },
+        { 'name.ja': { $regex: search, $options: 'i' } },
+        { 'description.fr': { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    if (category?.length) {
+      filter.category = { $in: category };
+    }
+    
+    if (status) {
+      filter['metadata.status'] = status;
+    }
+    
+    if (isGem) {
+      filter.isGem = true;
+    }
 
-    // Récupérer les lieux avec les nouvelles options
+    // Récupérer les lieux avec le filtre
     const result = await placeRepository.find({
-      search,
-      category: categories?.[0],
-      status,
-      isGem,
+      filter,
       page,
       limit,
       sort
     });
 
-    // Retourner les résultats
-    return NextResponse.json(result);
+    // Calculer des statistiques étendues
+    const stats = await placeRepository.getStats();
+
+    // Retourner les résultats enrichis
+    return NextResponse.json({
+      places: result.places,
+      totalPages: result.totalPages,
+      currentPage: page,
+      totalPlaces: result.total,
+      stats
+    });
 
   } catch (error) {
     console.error('Error fetching places:', error);

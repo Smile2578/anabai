@@ -1,12 +1,14 @@
 // types/places/base.ts
-import { LocalizedString, LocalizedStringRequired, PriceLevel } from '../common';
+import { Category, LocalizedString, LocalizedStringRequired, PriceLevel, Status } from '../common';
+import { GooglePlace } from '../google/place';
+import { Place } from './main';
 
 export interface PlaceAddress {
   full: LocalizedStringRequired;
   prefecture?: string;
   city?: string;
   postalCode?: string;
-  formatted?: LocalizedStringRequired;
+  formatted: LocalizedStringRequired;
 }
 
 export interface AccessInfo {
@@ -38,7 +40,7 @@ export interface PlaceImage {
   source: string;
   isCover: boolean;
   caption?: LocalizedString;
-  name?: string; // Nom de référence interne (max 10 caractères)
+  name?: string; 
 }
 
 export interface PlacePricing {
@@ -48,7 +50,7 @@ export interface PlacePricing {
     min: number;
     max: number;
   };
-  details?: LocalizedString;
+  details: LocalizedStringRequired; // Now required
 }
 
 export interface PracticalInfo {
@@ -90,4 +92,28 @@ export interface PlaceRating {
     rating: number;
     reviewCount: number;
   };
+}
+
+export interface PlaceFilters {
+  search?: string;
+  categories?: Category[];
+  status?: Status;
+  priceRange?: number[];
+  sortBy?: {
+    field: keyof Place;
+    order: 'asc' | 'desc';
+  };
+}
+
+export interface PlaceSearchResult {
+  places: Place[];
+  hasMore: boolean;
+  total: number;
+}
+
+export interface PlaceSearchState {
+  searchTerm: string;
+  selectedPlace: GooglePlace | null;
+  isSearching: boolean;
+  error: string | null;
 }

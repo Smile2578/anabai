@@ -10,7 +10,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Category, Status } from '@/types/common';
 import { Place } from '@/types/places/main';
 import { useRouter } from 'next/navigation';

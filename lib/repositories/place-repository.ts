@@ -1,18 +1,33 @@
 // lib/repositories/place-repository.ts
-import { FilterQuery, PipelineStage } from 'mongoose';
+import { FilterQuery } from 'mongoose';
 import Place, { PlaceDocument } from '@/models/place.model';
 import { Category, Status } from '@/types/common';
 import { Place as PlaceType } from '@/types/places/main';
 
+interface PlaceStats {
+  total: number;
+  published: number;
+  draft: number;
+  archived: number;
+  withImages: number;
+  withoutImages: number;
+  totalRatings: number;
+  averageRating: number;
+  byCategory: Record<string, number>;
+  byPrefecture: Record<string, number>;
+}
+
 interface FindOptions {
+  filter?: FilterQuery<PlaceDocument>;  // Ajout d'un filtre générique
   category?: Category;
+  categories?: Category[];  // Support des catégories multiples
   status?: Status;
   isActive?: boolean;
   search?: string;
   isGem?: boolean;
   near?: {
     coordinates: [number, number];
-    maxDistance?: number; // en mètres
+    maxDistance?: number;
   };
   sort?: {
     [key: string]: 1 | -1;
@@ -107,7 +122,9 @@ export class PlaceRepository {
   async find(options: FindOptions = {}): Promise<FindResult> {
     try {
       const {
+        filter = {},
         category,
+        categories,
         status,
         isActive = true,
         search,
@@ -119,9 +136,15 @@ export class PlaceRepository {
       } = options;
 
       // Construire la requête
-      const query: FilterQuery<PlaceDocument> = { isActive };
+      const query: FilterQuery<PlaceDocument> = {
+        isActive,
+        ...filter
+      };
 
-      if (category) {
+      // Gestion des catégories
+      if (categories?.length) {
+        query.category = { $in: categories };
+      } else if (category) {
         query.category = category;
       }
 
@@ -133,8 +156,13 @@ export class PlaceRepository {
         query.isGem = isGem;
       }
 
+      // Recherche textuelle améliorée
       if (search) {
-        query.$text = { $search: search };
+        query.$or = [
+          { 'name.fr': { $regex: search, $options: 'i' } },
+          { 'name.ja': { $regex: search, $options: 'i' } },
+          { 'description.fr': { $regex: search, $options: 'i' } }
+        ];
       }
 
       if (near) {
@@ -144,7 +172,7 @@ export class PlaceRepository {
               type: 'Point',
               coordinates: near.coordinates
             },
-            $maxDistance: near.maxDistance || 5000 // 5km par défaut
+            $maxDistance: near.maxDistance || 5000
           }
         };
       }
@@ -155,12 +183,12 @@ export class PlaceRepository {
         Place.find(query)
           .sort(sort)
           .skip(skip)
-          .limit(limit),
+          .limit(limit)
+          .lean(),
         Place.countDocuments(query)
       ]);
-
       return {
-        places: results.map(p => this.documentToPlace(p)),
+        places: results.map(p => this.documentToPlace(p as unknown as PlaceDocument)),
         total,
         page,
         totalPages: Math.ceil(total / limit)
@@ -176,92 +204,105 @@ export class PlaceRepository {
     }
   }
 
-  async findNear(
-    coordinates: [number, number],
-    options: {
-      maxDistance?: number;
-      categories?: Category[];
-      limit?: number;
-    } = {}
-  ): Promise<PlaceType[]> {
+  async getStats(): Promise<PlaceStats> {
     try {
-      const {
-        maxDistance = 5000, // 5km par défaut
-        categories,
-        limit = 20
-      } = options;
-
-      const aggregation: PipelineStage[] = [
-        {
-          $geoNear: {
-            near: {
-              type: 'Point',
-              coordinates
+      const [
+        total,
+        statusCounts,
+        imageCounts,
+        categoryStats,
+        prefectureStats,
+        ratingStats
+      ] = await Promise.all([
+        Place.countDocuments({ isActive: true }),
+        Place.aggregate([
+          { $match: { isActive: true } },
+          { $group: { 
+            _id: '$metadata.status',
+            count: { $sum: 1 }
+          }}
+        ]),
+        Place.aggregate([
+          { $match: { isActive: true } },
+          { $group: {
+            _id: null,
+            withImages: { 
+              $sum: { $cond: [{ $gt: [{ $size: '$images' }, 0] }, 1, 0] }
             },
-            distanceField: 'distance',
-            maxDistance,
-            spherical: true
-          }
-        },
-        {
-          $match: {
+            total: { $sum: 1 }
+          }}
+        ]),
+        Place.aggregate([
+          { $match: { isActive: true } },
+          { $group: {
+            _id: '$category',
+            count: { $sum: 1 }
+          }}
+        ]),
+        Place.aggregate([
+          { $match: { isActive: true } },
+          { $group: {
+            _id: '$location.address.prefecture',
+            count: { $sum: 1 }
+          }}
+        ]),
+        Place.aggregate([
+          { $match: { 
             isActive: true,
-            'metadata.status': 'publié'
-          }
-        }
-      ];
+            'metadata.rating': { $exists: true }
+          }},
+          { $group: {
+            _id: null,
+            totalRatings: { $sum: '$metadata.ratingCount' },
+            averageRating: { $avg: '$metadata.rating' }
+          }}
+        ])
+      ]);
 
-      if (categories && categories.length > 0) {
-        aggregation.push({
-          $match: {
-            category: { $in: categories }
-          }
-        });
-      }
+      const statusMap = statusCounts.reduce((acc, {_id, count}) => {
+        acc[_id] = count;
+        return acc;
+      }, {} as Record<string, number>);
 
-      aggregation.push({ $limit: limit });
+      const imageStats = imageCounts[0] || { withImages: 0, total };
+      const ratingData = ratingStats[0] || { totalRatings: 0, averageRating: 0 };
 
-      const places = await Place.aggregate(aggregation);
-      return places.map(p => ({
-        ...this.documentToPlace(p),
-        distance: p.distance
-      }));
+      const categoryMap = categoryStats.reduce((acc, {_id, count}) => {
+        if (_id) acc[_id] = count;
+        return acc;
+      }, {} as Record<string, number>);
 
-    } catch (error) {
-      console.error('Error finding nearby places:', error);
-      return [];
-    }
-  }
+      const prefectureMap = prefectureStats.reduce((acc, {_id, count}) => {
+        if (_id) acc[_id] = count;
+        return acc;
+      }, {} as Record<string, number>);
 
-  async search(
-    query: string,
-    options: {
-      categories?: Category[];
-      limit?: number;
-    } = {}
-  ): Promise<PlaceType[]> {
-    try {
-      const { categories, limit = 20 } = options;
-
-      const searchQuery: FilterQuery<PlaceDocument> = {
-        isActive: true,
-        'metadata.status': 'publié',
-        $text: { $search: query }
+      return {
+        total,
+        published: statusMap['publié'] || 0,
+        draft: statusMap['brouillon'] || 0,
+        archived: statusMap['archivé'] || 0,
+        withImages: imageStats.withImages,
+        withoutImages: total - imageStats.withImages,
+        totalRatings: ratingData.totalRatings,
+        averageRating: ratingData.averageRating,
+        byCategory: categoryMap,
+        byPrefecture: prefectureMap
       };
-
-      if (categories && categories.length > 0) {
-        searchQuery.category = { $in: categories };
-      }
-
-      const places = await Place.find(searchQuery)
-        .sort({ score: { $meta: 'textScore' } })
-        .limit(limit);
-
-      return places.map(p => this.documentToPlace(p));
-
     } catch (error) {
-      console.error('Error searching places:', error);
-      return [];
+      console.error('Error getting stats:', error);
+      return {
+        total: 0,
+        published: 0,
+        draft: 0,
+        archived: 0,
+        withImages: 0,
+        withoutImages: 0,
+        totalRatings: 0,
+        averageRating: 0,
+        byCategory: {},
+        byPrefecture: {}
+      };
     }
   }
 
@@ -277,13 +318,15 @@ export class PlaceRepository {
     }
   }
 
-  private documentToPlace(doc: PlaceDocument): PlaceType {
-    const place = doc.toObject();
+  private documentToPlace(doc: PlaceDocument | Record<string, unknown>): PlaceType {
+    // Si le document est déjà un objet plat (from lean())
+    const place = 'toObject' in doc && typeof doc.toObject === 'function' ? doc.toObject() : doc;
+    
     return {
       ...place,
       _id: place._id.toString(),
-      createdAt: place.createdAt,
-      updatedAt: place.updatedAt
+      createdAt: new Date(place.createdAt),
+      updatedAt: new Date(place.updatedAt)
     };
   }
 }

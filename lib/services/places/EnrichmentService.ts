@@ -138,7 +138,7 @@ export class EnrichmentService {
     return Array.from(subcategories);
   }
 
-  private transformPriceLevel(priceLevel: string): 1 | 2 | 3 | 4 | null {
+  private transformPriceLevel(priceLevel: string): 1 | 2 | 3 | 4 {
     const priceLevelMap: Record<string, 1 | 2 | 3 | 4> = {
       'PRICE_LEVEL_FREE': 1,
       'PRICE_LEVEL_INEXPENSIVE': 1,
@@ -146,7 +146,18 @@ export class EnrichmentService {
       'PRICE_LEVEL_EXPENSIVE': 3,
       'PRICE_LEVEL_VERY_EXPENSIVE': 4
     };
-    return priceLevelMap[priceLevel] || null;
+    return priceLevelMap[priceLevel] || 2; // Prix modéré par défaut
+  }
+
+  private getPriceLevelDescription(priceLevel: string): string {
+    const descriptions: Record<string, string> = {
+      'PRICE_LEVEL_FREE': 'Gratuit',
+      'PRICE_LEVEL_INEXPENSIVE': 'Prix abordable',
+      'PRICE_LEVEL_MODERATE': 'Prix modéré',
+      'PRICE_LEVEL_EXPENSIVE': 'Prix élevé',
+      'PRICE_LEVEL_VERY_EXPENSIVE': 'Prix très élevé'
+    };
+    return descriptions[priceLevel] || 'Prix modéré';
   }
 
   private async extractPricing(details: GooglePlace): Promise<PlacePricing | undefined> {
@@ -160,12 +171,12 @@ export class EnrichmentService {
       currency: 'JPY',
       range: details.priceRange ? {
         min: details.priceRange.lowerPrice || 0,
-        max: details.priceRange.upperPrice || 0
+        max: details.priceRange?.upperPrice !== undefined ? details.priceRange.upperPrice : 0
       } : undefined,
       details: details.priceRange?.text ? {
-        fr: details.priceRange.text,
-        ja: details.priceRange.text
-      } : undefined
+        fr: details.priceRange.text as string,
+        ja: details.priceRange.text as string
+      } : { fr: '', ja: '' }
     };
   }
 
@@ -206,7 +217,7 @@ export class EnrichmentService {
            c.types.includes('subway_station')
     );
     if (stationComponent) {
-      access.nearestStation = stationComponent.longName;
+      access.nearestStation = stationComponent.longText;
     }
 
     // Utiliser routingSummaries pour les infos de transport
@@ -243,53 +254,76 @@ export class EnrichmentService {
         this.googlePlacesService.getPlaceDetails(placeId, 'fr'),
         this.googlePlacesService.getPlaceDetails(placeId, 'ja')
       ]);
-  
+
       // Extraire la préfecture et la ville des composants d'adresse
       const prefecture = detailsFr.addressComponents?.find(
-        (comp: { types: string | string[]; }) => comp.types.includes('administrative_area_level_1')
-      )?.longText;
-  
+        (comp: { types: string[]; longText: string }) => comp.types.includes('administrative_area_level_1')
+      )?.longText || '';
+
       const city = detailsFr.addressComponents?.find(
-        (comp: { types: string | string[]; }) => comp.types.includes('locality') || comp.types.includes('sublocality_level_1')
+        (comp: { types: string[]; longText: string }) => comp.types.includes('locality') || comp.types.includes('sublocality_level_1')
+      )?.longText || '';
+
+      const postalCode = detailsFr.addressComponents?.find(
+        (comp: { types: string[]; longText: string }) => comp.types.includes('postal_code')
       )?.longText;
 
-      console.log('Données brutes reçues de Google Places:', {
-        fr: detailsFr,
-        ja: detailsJa
-      });
-  
-      // Traitement des images
-      const processedImages = await Promise.all(
-        (detailsFr.photos || []).map(async (photo: { name: any; authorAttributions: { displayName: any; }[]; }, index: number) => {
+        // Traitement des images avec noms courts
+      let images = await Promise.all(
+        (detailsFr.photos || []).map(async (photo: { authorAttributions: { displayName: string }[]; name: string }, index: number) => {
           try {
-            const photoUrl = photo.name;
-            console.log('URL de la photo:', photoUrl);
+            const photoUrl = this.googlePlacesService.getPhotoUrl(photo);
+            const shortName = `img_${(index + 1).toString().padStart(2, '0')}`; // ex: img_01
             
             return {
-              url: photoUrl, // Pour le moment, on garde l'URL directe
+              url: photoUrl,
               source: 'Google Places',
               isCover: index === 0,
-              name: `photo_${index + 1}`,
-              caption: photo.authorAttributions?.[0] ? {
-                fr: photo.authorAttributions[0].displayName
-              } : undefined
+              name: shortName,
+              caption: {
+                fr: photo.authorAttributions?.[0]?.displayName || 'Image du lieu',
+              }
             };
           } catch (error) {
             console.error(`Erreur de traitement d'image:`, error);
-            return {
-              url: '/placeholder-image.jpg', // URL par défaut
-              source: 'Default',
-              isCover: index === 0,
-              name: `placeholder_${index + 1}`
-            };
+            return null;
           }
         })
       );
-      
-      const images = processedImages.filter(Boolean);
-      
-      console.log('Images traitées:', images);
-  
+
+      let openingHours;
+        if (detailsFr.currentOpeningHours?.periods?.length > 0 || detailsFr.regularOpeningHours?.periods?.length > 0) {
+          const hours = detailsFr.currentOpeningHours || detailsFr.regularOpeningHours;
+          if (hours && hours.periods.length > 0 && hours.weekdayDescriptions.length > 0) {
+            openingHours = {
+              weekdayTexts: {
+                fr: hours.weekdayDescriptions.join('\n')
+              },
+              periods: hours.periods.map((period: { open: { day: number; hour: number; minute: number }; close?: { hour: number; minute: number } }) => ({
+                day: period.open.day,
+                open: `${period.open.hour}:${period.open.minute.toString().padStart(2, '0')}`,
+                close: period.close ? 
+                  `${period.close.hour}:${period.close.minute.toString().padStart(2, '0')}` :
+                  '23:59'
+              }))
+            };
+          }
+        }
+
+      // Filtrer les images null et ajouter une image par défaut si nécessaire
+      images = images.filter(Boolean);
+      if (images.length === 0) {
+        images = [{
+          url: '/images/placeholder.jpg',
+          source: 'Default',
+          isCover: true,
+          name: 'img_00',
+          caption: {
+            fr: 'Image par défaut',
+          }
+        }];
+      }
+
       // Construction du lieu enrichi
       const enrichedPlace: Place = {
         name: {
@@ -299,43 +333,55 @@ export class EnrichmentService {
         location: {
           point: {
             type: 'Point',
-            coordinates: {
-              lng: detailsFr.location.longitude,
-              lat: detailsFr.location.latitude
-            }
+            coordinates: [
+              detailsFr.location.longitude,
+              detailsFr.location.latitude
+            ]
           },
           address: {
             full: {
               fr: detailsFr.formattedAddress,
               ja: detailsJa.formattedAddress
             },
+            formatted: {
+              fr: detailsFr.formattedAddress,
+              ja: detailsJa.formattedAddress
+            },
             prefecture,
             city,
-            postalCode: detailsFr.addressComponents?.find(
-              (comp: { types: string | string[]; }) => comp.types.includes('postal_code')
-            )?.longText
-          }
+            postalCode
+          },
+          access: await this.enrichAccessInfo(detailsFr)
         },
         category: this.determineCategory(detailsFr.types),
         subcategories: this.determineSubcategories(detailsFr.types, this.determineCategory(detailsFr.types)),
         images,
-        description: detailsFr.editorialSummary ? {
-          fr: detailsFr.editorialSummary.text,
-          ja: detailsJa.editorialSummary?.text
-        } : undefined,
-        openingHours: detailsFr.currentOpeningHours || detailsFr.regularOpeningHours ? {
-          weekdayTexts: {
-            fr: (detailsFr.currentOpeningHours || detailsFr.regularOpeningHours)!.weekdayDescriptions.join('\n'),
-            ja: (detailsJa.currentOpeningHours || detailsJa.regularOpeningHours)!.weekdayDescriptions.join('\n')
-          },
-          periods: (detailsFr.currentOpeningHours || detailsFr.regularOpeningHours)!.periods.map((period: { open: { day: any; hour: any; minute: { toString: () => string; }; }; close: { hour: any; minute: { toString: () => string; }; }; }) => ({
-            day: period.open.day,
-            open: `${period.open.hour}:${period.open.minute.toString().padStart(2, '0')}`,
-            close: period.close ? 
-              `${period.close.hour}:${period.close.minute.toString().padStart(2, '0')}` :
-              '23:59'
-          }))
-        } : undefined,
+        description: {
+          fr: detailsFr.editorialSummary?.text || 
+              `${detailsFr.displayName.text} - ${detailsFr.formattedAddress}`,
+          ja: detailsJa.editorialSummary?.text || 
+              detailsJa.displayName.text
+        },
+        openingHours,
+        pricing: detailsFr.priceLevel ? {
+          level: this.transformPriceLevel(detailsFr.priceLevel),
+          currency: 'JPY',
+          range: detailsFr.priceRange ? {
+            min: detailsFr.priceRange.lowerPrice || 0,
+            max: detailsFr.priceRange.upperPrice || 0
+          } : undefined,
+          details: {
+            fr: detailsFr.priceRange?.text || this.getPriceLevelDescription(detailsFr.priceLevel),
+            ja: detailsJa.priceRange?.text
+          }
+        } : {
+          level: 2,
+          currency: 'JPY',
+          details: {
+            fr: 'Prix modéré',
+            ja: '適度な価格'
+          }
+        },
         contact: {
           phone: detailsFr.internationalPhoneNumber,
           website: detailsFr.websiteUri,
@@ -344,7 +390,7 @@ export class EnrichmentService {
         metadata: {
           source: 'Google Places',
           placeId,
-          status: 'brouillon', // Statut par défaut
+          status: 'publié',
           lastEnriched: new Date(),
           rating: detailsFr.rating,
           ratingCount: detailsFr.userRatingCount,
@@ -356,14 +402,14 @@ export class EnrichmentService {
         isGem: false,
         _id: placeId
       };
-      console.log('Place enrichie:', JSON.stringify(enrichedPlace, null, 2));
+
       return enrichedPlace;
-  
     } catch (error) {
       console.error(`Erreur lors de l'enrichissement détaillé pour ${placeId}:`, error);
       throw error;
     }
   }
+
 
   private validateEnrichedData(place: Place): EnrichmentLog {
     const log: EnrichmentLog = {

@@ -63,7 +63,7 @@ export const VALIDATION_RULES = {
   },
   metadata: {
     status: {
-      values: ['active', 'inactive']
+      values: ['publié', 'brouillon', 'archivé']
     }
   } 
 } as const;

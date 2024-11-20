@@ -193,12 +193,6 @@ export function ResultsPreview({
                           <p className="font-medium">
                             {getPriceRangeSymbol(row.enriched.place.pricing.level ?? 0)}
                           </p>
-                          {row.enriched.place.pricing.range && (
-                            <p className="text-sm text-muted-foreground">
-                              {row.enriched.place.pricing.range.min ?? 0} - 
-                              {row.enriched.place.pricing.range.max} ¥
-                            </p>
-                          )}
                         </div>
                       )}
                     </TableCell>

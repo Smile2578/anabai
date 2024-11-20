@@ -1,5 +1,5 @@
 // models/place.model.ts
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 import type { Place } from '@/types/places/main';
 
 export interface PlaceDocument extends Omit<Place, '_id'>, Document {
@@ -45,25 +45,36 @@ const placeSchema = new Schema<PlaceDocument>(
         type: {
           type: String,
           enum: ['Point'],
-          required: true,
+          required: true
         },
         coordinates: {
-          type: [Number],
+          type: [Number], // MongoDB geospatial format
           required: true,
-        },
+          validate: {
+            validator: function(v: number[]) {
+              return v.length === 2 && 
+                     v[0] >= -180 && v[0] <= 180 && // longitude
+                     v[1] >= -90 && v[1] <= 90;     // latitude
+            },
+            message: 'Invalid coordinates format or values'
+          }
+        }
       },
       address: {
         full: LocalizedStringRequiredSchema,
         prefecture: String,
         city: String,
         postalCode: String,
-        formatted: LocalizedStringRequiredSchema,
+        formatted: {
+          type: LocalizedStringRequiredSchema,
+          required: true  // Ensuring formatted address is required
+        }
       },
       access: {
         nearestStation: String,
         walkingTime: Number,
-        transportOptions: [String],
-      },
+        transportOptions: [String]
+      }
     },
     
     // Catégorisation
@@ -83,43 +94,64 @@ const placeSchema = new Schema<PlaceDocument>(
     },
     
     // Description et médias
-    description: LocalizedStringSchema,
-    images: [{
-      url: String,
-      source: String,
-      isCover: Boolean,
-      caption: LocalizedStringSchema,
-      name: {
-        type: String,
-        maxlength: 10,
-      },
-    }],
+    description: {
+      type: LocalizedStringRequiredSchema,
+      required: true
+    },
+    images: {
+      type: [{
+        url: { type: String, required: true },
+        source: { type: String, required: true },
+        isCover: { type: Boolean, required: true },
+        caption: LocalizedStringSchema,
+        name: {
+          type: String,
+          maxlength: 10
+        }
+      }],
+      validate: {
+        validator: function(v: { url: string; source: string; isCover: boolean; caption?: string; name?: string }[]) {
+          return v.length > 0;  
+        },
+        message: 'Au moins une image est requise'
+      }
+    },
     
     // Informations pratiques
     openingHours: {
-      periods: [{
-        day: Number,
-        open: String,
-        close: String,
-      }],
-      weekdayTexts: LocalizedStringRequiredSchema,
-      holidayDates: [Date],
+      required: false,  
+      type: new Schema({
+        periods: [{
+          day: Number,
+          open: String,
+          close: String,
+        }],
+        weekdayTexts: new Schema({  
+          fr: String, 
+          ja: String,
+          en: String
+        }, { _id: false }),  
+        holidayDates: [Date]
+      }, { _id: false })  
     },
     
     pricing: {
       level: {
         type: Number,
-        enum: [1, 2, 3, 4],
+        enum: [1, 2, 3, 4]
       },
       currency: {
         type: String,
-        default: 'JPY',
+        default: 'JPY'
       },
       range: {
         min: Number,
-        max: Number,
+        max: Number
       },
-      details: LocalizedStringSchema,
+      details: {
+        type: LocalizedStringRequiredSchema,
+        required: true 
+      }
     },
     
     // Contact
@@ -156,7 +188,7 @@ const placeSchema = new Schema<PlaceDocument>(
       status: {
         type: String,
         enum: ['brouillon', 'publié', 'archivé'],
-        default: 'brouillon',
+        default: 'publié',
       },
       tags: [String],
       businessStatus: String,
@@ -194,6 +226,22 @@ placeSchema.index(
   { unique: true, sparse: true }
 );
 
-// Export
-const Place = mongoose.models.Place || mongoose.model<PlaceDocument>('Place', placeSchema);
+placeSchema.pre('validate', function(next) {
+  if (this.openingHours) {
+    if (!this.openingHours.weekdayTexts || !this.openingHours.periods || this.openingHours.periods.length === 0) {
+      this.openingHours = undefined;
+    }
+  }
+  next();
+});
+
+// Correction de l'export du modèle
+let Place: Model<PlaceDocument>;
+
+try {
+  Place = mongoose.model<PlaceDocument>('Place');
+} catch {
+  Place = mongoose.model<PlaceDocument>('Place', placeSchema);
+}
+
 export default Place;

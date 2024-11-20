@@ -126,7 +126,7 @@ export class ImageService {
 
   if (images.length === 0) {
     console.warn('No images available, using placeholder.');
-    return '/cache/images/placeholder.webp'; // Image par défaut
+    return '/cache/images/placeholder.webp'; 
   }
 
   try {
@@ -136,7 +136,7 @@ export class ImageService {
     return cachedPath;
   } catch (error) {
     console.error('Error caching primary image:', error);
-    return '/cache/images/placeholder.webp'; // En cas d'erreur, utiliser un fallback
+    return '/cache/images/placeholder.webp'; 
   }
 }
 

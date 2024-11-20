@@ -1,70 +1,78 @@
-// components/admin/places/hooks/usePlaceActions.ts
+// hooks/usePlaceActions.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Status } from '@/types/common';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 export function usePlaceActions(placeId: string) {
   const queryClient = useQueryClient();
 
-  const { mutate: deletePlace, isPending: isDeleting } = useMutation({
+  const deletePlace = useMutation({
     mutationFn: async () => {
       const response = await fetch(`/api/admin/places/${placeId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }
+        method: 'DELETE'
       });
       if (!response.ok) throw new Error('Erreur lors de la suppression');
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['places'] });
-      toast.success('Lieu supprimé avec succès');
+      toast({ description: "Le lieu a été supprimé avec succès" });
     },
-    onError: (error) => {
-      toast.error('Erreur lors de la suppression : ' + error.message);
+    onError: () => {
+      toast({
+        variant: "destructive",
+        description: "Impossible de supprimer le lieu"
+      });
     }
   });
 
-  const { mutate: toggleStatus, isPending: isTogglingStatus } = useMutation({
+  const toggleStatus = useMutation({
     mutationFn: async (newStatus: Status) => {
       const response = await fetch(`/api/admin/places/${placeId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 'metadata.status': newStatus })
+        body: JSON.stringify({
+          metadata: { status: newStatus }
+        })
       });
-      if (!response.ok) throw new Error('Erreur lors du changement de statut');
+      if (!response.ok) throw new Error('Erreur lors de la mise à jour du statut');
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['places'] });
-      toast.success('Statut mis à jour avec succès');
+      toast({ description: "Le statut a été mis à jour avec succès" });
     },
-    onError: (error) => {
-      toast.error('Erreur lors du changement de statut : ' + error.message);
+    onError: () => {
+      toast({
+        variant: "destructive",
+        description: "Impossible de mettre à jour le statut"
+      });
     }
   });
 
-  const { mutate: toggleGem, isPending: isTogglingGem } = useMutation({
+  const toggleGem = useMutation({
     mutationFn: async () => {
       const response = await fetch(`/api/admin/places/${placeId}/gem`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        method: 'POST'
       });
-      if (!response.ok) throw new Error('Erreur lors du changement de statut gem');
+      if (!response.ok) throw new Error('Erreur lors de la mise à jour');
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['places'] });
-      toast.success('Statut gem mis à jour avec succès');
+      toast({ description: "Les gems ont été mises à jour avec succès" });
     },
-    onError: (error) => {
-      toast.error('Erreur lors du changement de statut gem : ' + error.message);
+    onError: () => {
+      toast({
+        variant: "destructive",
+        description: "Impossible de mettre à jour les gems"
+      });
     }
   });
 
   return {
-    deletePlace,
-    toggleStatus,
-    toggleGem,
-    isLoading: isDeleting || isTogglingStatus || isTogglingGem
+    deletePlace: deletePlace.mutate,
+    toggleStatus: toggleStatus.mutate,
+    toggleGem: toggleGem.mutate,
+    isLoading: deletePlace.isPending || toggleStatus.isPending || toggleGem.isPending
   };
 }
