@@ -8,7 +8,7 @@ export interface LocalizedString {
 }
 
 export interface LocalizedStringRequired {
-  [key: string]: string;  // Ajouter un index signature
+  [key: string]: string | undefined;  // Index signature
   fr: string;
   ja?: string;
   en?: string;
@@ -22,8 +22,8 @@ export type GeographicPoint = {
   };
 };
 
-export type Category = 'Restaurant' | 'Hôtel' | 'Visite' | 'Shopping' | 'Café & Bar';
-
 export type Status = 'brouillon' | 'publié' | 'archivé';
 
 export type PriceLevel = 1 | 2 | 3 | 4;
+
+export { type Category, type Subcategory } from '@/lib/config/categories';

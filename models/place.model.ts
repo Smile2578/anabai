@@ -77,6 +77,10 @@ const placeSchema = new Schema<PlaceDocument>(
       type: String,
       index: true,
     }],
+    isGem: {
+      type: Boolean,
+      default: false,
+    },
     
     // Description et médias
     description: LocalizedStringSchema,

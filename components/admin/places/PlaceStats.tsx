@@ -8,7 +8,7 @@ import {
   Archive,
   Users,
   Star,
-  Image
+  Image as ImageIcon
 } from 'lucide-react';
 
 interface StatsData {
@@ -30,7 +30,6 @@ interface PlaceStatsProps {
 
 const getSortedTopEntry = (data: Record<string, number>): string => {
   if (!data || Object.keys(data).length === 0) return 'Aucun';
-  
   const sorted = Object.entries(data).sort(([,a], [,b]) => b - a);
   return sorted[0]?.[0] || 'Aucun';
 };
@@ -77,7 +76,7 @@ export function PlaceStats({ stats }: PlaceStatsProps) {
       label: 'Photos',
       value: `${stats.withImages} / ${stats.total}`,
       subtext: getPercentage(stats.withImages, stats.total),
-      icon: Image,
+      icon: ImageIcon,
     },
     {
       label: 'Avis',

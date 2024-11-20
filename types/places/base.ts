@@ -1,5 +1,5 @@
 // types/places/base.ts
-import { LocalizedString, LocalizedStringRequired } from '../common';
+import { LocalizedString, LocalizedStringRequired, PriceLevel } from '../common';
 
 export interface PlaceAddress {
   full: LocalizedStringRequired;
@@ -9,12 +9,6 @@ export interface PlaceAddress {
   formatted?: LocalizedStringRequired;
 }
 
-// Ou modifier la fonction pour accepter spécifiquement LocalizedStringRequired
-export function formatOpeningHours(weekdayTexts: LocalizedStringRequired): string[] {
-  if (!weekdayTexts?.fr) return [];
-  return weekdayTexts.fr.split('\n');
-}
-
 export interface AccessInfo {
   nearestStation?: string;
   walkingTime?: number;
@@ -22,15 +16,21 @@ export interface AccessInfo {
 }
 
 export interface OpeningPeriod {
-  day: number;
-  open: string;
-  close: string;
+  day: number;  // 0-6, où 0 est dimanche
+  open: string; // Format HH:mm
+  close: string; // Format HH:mm
 }
 
 export interface OpeningHours {
   periods: OpeningPeriod[];
   weekdayTexts: LocalizedStringRequired;
   holidayDates?: Date[];
+  specialHours?: {
+    date: Date;
+    open: string;
+    close: string;
+    description?: LocalizedString;
+  }[];
 }
 
 export interface PlaceImage {
@@ -38,11 +38,11 @@ export interface PlaceImage {
   source: string;
   isCover: boolean;
   caption?: LocalizedString;
-  name?: string;
+  name?: string; // Nom de référence interne (max 10 caractères)
 }
 
 export interface PlacePricing {
-  level?: 1 | 2 | 3 | 4 | null;  
+  level?: PriceLevel;
   currency: string;
   range?: {
     min: number;
@@ -55,21 +55,21 @@ export interface PracticalInfo {
   bookingRequired: boolean;
   englishSupport: boolean;
   paymentMethods: string[];
-  delivery: boolean;      
-  dineIn: boolean;       
-  takeout: boolean;      
+  delivery: boolean;
+  dineIn: boolean;
+  takeout: boolean;
   parkingOptions?: {
-    freeParking: boolean;     
-    paidParking: boolean;     
-    streetParking: boolean;   
-    valetParking: boolean;    
-    parkingAvailable: boolean;
+    freeParking?: boolean;
+    paidParking?: boolean;
+    streetParking?: boolean;
+    valetParking?: boolean;
+    parkingAvailable?: boolean;
   };
   accessibilityOptions?: {
-    wheelchairAccessibleParking: boolean;    
-    wheelchairAccessibleEntrance: boolean;   
-    wheelchairAccessibleRestroom: boolean;   
-    wheelchairAccessibleSeating: boolean;    
+    wheelchairAccessibleParking?: boolean;
+    wheelchairAccessibleEntrance?: boolean;
+    wheelchairAccessibleRestroom?: boolean;
+    wheelchairAccessibleSeating?: boolean;
   };
 }
 

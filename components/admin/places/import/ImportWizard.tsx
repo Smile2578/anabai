@@ -1,5 +1,4 @@
 // components/admin/places/import/ImportWizard.tsx
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FileUpload } from './FileUpload';
@@ -16,23 +15,20 @@ interface ImportWizardProps {
   onCancel: () => void;
 }
 
-type ImportStep = 'upload' | 'processing' | 'preview' | 'saving';
-
 export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
-  // États
-  const [currentStep, setCurrentStep] = React.useState<ImportStep>('upload');
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [currentStep, setCurrentStep] = React.useState<'upload' | 'processing' | 'enriching' | 'preview' | 'saving'>('upload');
   const [previews, setPreviews] = React.useState<ImportPreview[]>([]);
   const [selectedPreviews, setSelectedPreviews] = React.useState<string[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   const [progress, setProgress] = React.useState({
     label: '',
+    subLabel: '',
     status: 'processing' as const
   });
 
   const { toast } = useToast();
 
-  // Gestion du fichier CSV
   const handleFileAccepted = async (file: File) => {
     try {
       setIsLoading(true);
@@ -40,51 +36,77 @@ export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
       setCurrentStep('processing');
       setProgress({
         label: 'Import et recherche des lieux',
+        subLabel: 'Analyse du fichier CSV...',
         status: 'processing'
       });
       
-      // Import et recherche des lieux
+      // Import initial
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/admin/places/import', {
+      const importResponse = await fetch('/api/admin/places/import', {
         method: 'POST',
         body: formData
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!importResponse.ok) {
+        const errorData = await importResponse.json();
         throw new Error(errorData.error || 'Erreur lors de l\'import');
       }
 
-      const data = await response.json();
-      setPreviews(data.previews || []);
+      const importData = await importResponse.json();
       
-      // Passage à la prévisualisation
+      // Enrichissement
+      setCurrentStep('enriching');
+      setProgress({
+        label: 'Enrichissement des données',
+        subLabel: 'Récupération des informations détaillées...',
+        status: 'processing'
+      });
+
+      const enrichResponse = await fetch('/api/admin/places/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ previews: importData.previews })
+      });
+
+      if (!enrichResponse.ok) {
+        const errorData = await enrichResponse.json();
+        throw new Error(errorData.error || 'Erreur lors de l\'enrichissement');
+      }
+
+      const enrichData = await enrichResponse.json();
+      setPreviews(enrichData.results);
       setCurrentStep('preview');
+      
       toast({
         title: "Import terminé",
-        description: data.message || `${data.stats.success} lieux trouvés sur ${data.stats.total} entrées`
+        description: `${enrichData.stats.success} lieu(x) trouvé(s) sur ${enrichData.stats.total} entrée(s)`
       });
 
     } catch (error) {
-      console.error('Import error:', error);
+      console.error('Import/Enrich error:', error);
       setError(error instanceof Error ? error.message : 'Une erreur est survenue');
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : 'Une erreur est survenue',
         variant: "destructive"
       });
+      setCurrentStep('upload');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Sauvegarde des lieux sélectionnés
   const handleSave = async () => {
     try {
       setIsLoading(true);
       setCurrentStep('saving');
+      setProgress({
+        label: 'Sauvegarde en cours',
+        subLabel: 'Enregistrement des lieux...',
+        status: 'processing'
+      });
       
       const selectedData = previews.filter((_, index) => 
         selectedPreviews.includes(index.toString())
@@ -117,12 +139,12 @@ export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
         description: error instanceof Error ? error.message : 'Erreur lors de la sauvegarde',
         variant: "destructive"
       });
+      setCurrentStep('preview');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Rendu conditionnel selon l'étape
   const renderStep = () => {
     switch (currentStep) {
       case 'upload':
@@ -130,17 +152,18 @@ export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
           <FileUpload 
             onFileAccepted={handleFileAccepted}
             isLoading={isLoading}
-            // maxSize et accept ont été supprimés car non valides
           />
         );
       case 'processing':
+      case 'enriching':
         return (
           <ProcessingStatus
             label={progress.label}
+            subLabel={progress.subLabel}
             status={progress.status}
+            currentStep={currentStep}
           />
         );
-
       case 'preview':
       case 'saving':
         return (
@@ -153,6 +176,12 @@ export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
                   prev.includes(index.toString())
                     ? prev.filter(i => i !== index.toString())
                     : [...prev, index.toString()]
+                );
+              }}
+              onSelectAll={(selected) => {
+                setSelectedPreviews(selected ? 
+                  previews.map((_, i) => i.toString()) : 
+                  []
                 );
               }}
             />

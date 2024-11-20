@@ -1,56 +1,32 @@
-// app/layout.tsx
-import type { Metadata } from "next";
-import { Providers } from '@/providers/providers';
-import { cn } from "@/lib/utils";
-import "@/styles/globals.css";
+import type { Metadata } from 'next'
+import { Plus_Jakarta_Sans } from 'next/font/google'
+import '../styles/globals.css'
+import { ThemeProvider } from 'next-themes'
+
+const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: "AnabAI | Découvrez le Japon Authentique",
-  description: "AnabAI - Votre assistant personnel pour découvrir les trésors cachés du Japon",
-  metadataBase: new URL('https://anabai.com'),
-  openGraph: {
-    type: 'website',
-    locale: 'fr_FR',
-    url: 'https://anabai.com',
-    title: 'AnabAI | Découvrez le Japon Authentique',
-    description: 'AnabAI - Votre assistant personnel pour découvrir les trésors cachés du Japon',
-    siteName: 'AnabAI',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'AnabAI | Découvrez le Japon Authentique',
-    description: 'AnabAI - Votre assistant personnel pour découvrir les trésors cachés du Japon',
-  },
-  icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+  title: 'AnabAI - Votre assistant voyage intelligent pour le Japon',
+  description: 'Découvrez le Japon authentique avec AnabAI, votre assistant de voyage IA personnalisé. Planifiez votre itinéraire, trouvez des spots secrets et vivez des expériences uniques.',
+}
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
-    <html 
-      lang="fr" 
-      suppressHydrationWarning
-    >
-      <body
-        className={cn(
-          "min-h-screen bg-background font-sans antialiased"
-        )}
-      >
-        <Providers>
+    <html lang="fr" suppressHydrationWarning>
+      <body className={plusJakartaSans.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
           {children}
-        </Providers>
+        </ThemeProvider>
       </body>
     </html>
-  );
+  )
 }

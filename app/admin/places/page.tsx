@@ -1,7 +1,7 @@
 // app/admin/places/page.tsx
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,113 +12,61 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PlaceStats } from '@/components/admin/places/PlaceStats';
-import { PlaceFilters } from '@/components/admin/places/PlaceFilters';
 import { PlaceList } from '@/components/admin/places/PlaceList';
 import { ImportWizard } from '@/components/admin/places/import/ImportWizard';
 import { useToast } from '@/hooks/use-toast';
-import { Place } from '@/types/places/main';
 import { Category, Status } from '@/types/common';
+import { usePlaces } from '@/hooks/usePlaces';
 
-type FilterType = 'categories' | 'status' | 'priceRange';
-type FilterValue = Category | Status | number;
+
+
+const defaultStats = {
+  total: 0,
+  published: 0,
+  draft: 0,
+  archived: 0,
+  withImages: 0,
+  withoutImages: 0,
+  totalRatings: 0,
+  averageRating: 0,
+  byCategory: {},
+  byPrefecture: {}
+};
 
 export default function PlacesPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // États
-  const [searchValue, setSearchValue] = useState('');
-  const [selectedFilters, setSelectedFilters] = useState<{
-    categories: Category[];
-    status: Status[];
-    priceRange: number[];
-  }>({
-    categories: [],
-    status: [],
-    priceRange: []
+  // États de filtrage et pagination
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<Category | undefined>();
+  const [selectedStatus, setSelectedStatus] = useState<Status | undefined>();
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+
+  // Utilisation du hook usePlaces avec les bons types
+  const { 
+    data,
+    isLoading,
+    error 
+  } = usePlaces({
+    search: searchQuery,
+    category: selectedCategory,
+    status: selectedStatus,
+    page: currentPage,
+    limit: 20
   });
-  
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [places, setPlaces] = useState<Place[]>([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    published: 0,
-    draft: 0,
-    archived: 0,
-    withImages: 0,
-    withoutImages: 0,
-    totalRatings: 0,
-    averageRating: 0,
-    byCategory: {},
-    byPrefecture: {}
-  });
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Charger les lieux
-  const fetchPlaces = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      
-      const queryParams = new URLSearchParams();
-      if (searchValue) queryParams.append('search', searchValue);
-      if (selectedFilters.categories.length > 0) {
-        queryParams.append('category', selectedFilters.categories.join(','));
-      }
-      if (selectedFilters.status.length > 0) {
-        queryParams.append('status', selectedFilters.status.join(','));
-      }
-      if (selectedFilters.priceRange.length > 0) {
-        queryParams.append('priceRange', selectedFilters.priceRange.join(','));
-      }
-
-      const response = await fetch(`/api/admin/places?${queryParams}`);
-      if (!response.ok) throw new Error('Erreur lors de la récupération des lieux');
-      
-      const data = await response.json();
-      setPlaces(data.places);
-      setStats(data.stats);
-
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les lieux",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [searchValue, selectedFilters, toast]);
-
-  useEffect(() => {
-    fetchPlaces();
-  }, [fetchPlaces]);
-
-  // Gestion des filtres
-  const handleFilterChange = (type: FilterType, value: FilterValue) => {
-    setSelectedFilters(prev => {
-      const currentValues = prev[type];
-      const valueExists = currentValues.includes(value as never);
-      
-      return {
-        ...prev,
-        [type]: valueExists
-          ? currentValues.filter(v => v !== value)
-          : [...currentValues, value]
-      };
-    });
-  };
-
-  const handleClearFilters = () => {
-    setSelectedFilters({
-      categories: [],
-      status: [],
-      priceRange: []
-    });
-    setSearchValue('');
-  };
+  // Extraction des données avec des valeurs par défaut
+  const places = data?.places || [];
+  const stats = data?.stats || defaultStats;
+  const totalPages = data?.totalPages || 1;
 
   // Gestion des actions sur les lieux
+  const handleEdit = (id: string) => {
+    router.push(`/admin/places/${id}`);
+  };
+
   const handleDelete = async (id: string) => {
     try {
       const response = await fetch(`/api/admin/places/${id}`, {
@@ -126,51 +74,16 @@ export default function PlacesPage() {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de la suppression');
+        throw new Error('Erreur lors de la suppression');
       }
       
-      await fetchPlaces();
       toast({
-        title: "Succès",
-        description: "Le lieu a été supprimé"
+        description: "Le lieu a été supprimé avec succès"
       });
     } catch (error) {
-      console.error('Error deleting place:', error);
       toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Impossible de supprimer le lieu",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleArchive = async (id: string) => {
-    try {
-      const response = await fetch(`/api/admin/places/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          metadata: { status: 'archivé' }
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de l\'archivage');
-      }
-      
-      await fetchPlaces();
-      toast({
-        title: "Succès",
-        description: "Le lieu a été archivé"
-      });
-    } catch (error) {
-      console.error('Error archiving place:', error);
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Impossible d'archiver le lieu",
-        variant: "destructive"
+        variant: "destructive",
+        description: "Impossible de supprimer le lieu"
       });
     }
   };
@@ -197,23 +110,30 @@ export default function PlacesPage() {
       {/* Statistiques */}
       <PlaceStats stats={stats} />
 
-      {/* Filtres */}
+      {/* Filtres et liste */}
       <div className="space-y-6">
-        <PlaceFilters
-          searchValue={searchValue}
-          onSearchChange={setSearchValue}
-          selectedFilters={selectedFilters}
-          onFilterChange={(type: string, value: Category[] | number[] | Status[]) => handleFilterChange(type as FilterType, value as unknown as FilterValue)}
-          onClearFilters={handleClearFilters}
-        />
+        <div className="flex gap-4 items-center">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Rechercher..."
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          {/* Ici vous pouvez ajouter vos autres filtres */}
+        </div>
 
-        {/* Liste des lieux */}
         <PlaceList
-          places={places}
-          onPlaceClick={(id) => router.push(`/admin/places/${id}`)}
-          onPlaceDelete={handleDelete}
-          onPlaceArchive={handleArchive}
+          data={places}
           isLoading={isLoading}
+          error={error instanceof Error ? error : null}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          pagination={{
+            currentPage,
+            totalPages,
+            onPageChange: setCurrentPage
+          }}
         />
       </div>
 
@@ -226,7 +146,6 @@ export default function PlacesPage() {
           <ImportWizard
             onComplete={() => {
               setIsImportModalOpen(false);
-              fetchPlaces();
             }}
             onCancel={() => setIsImportModalOpen(false)}
           />

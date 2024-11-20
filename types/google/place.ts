@@ -1,23 +1,30 @@
 // types/google/place.ts
-import { 
-  GoogleOpeningHours, 
-  GooglePhoto, 
-  GooglePriceRange, 
+import {
+  GoogleOpeningHours,
+  GooglePhoto,
+  GooglePriceRange,
   GooglePaymentOptions,
   GoogleRoutingSummary,
   GoogleAccessibilityOptions,
   GoogleParkingOptions,
-  GoogleEditorialSummary
+  GoogleEditorialSummary,
+  GoogleReview
 } from './details';
-import { GoogleAddressComponent, GoogleDisplayName, GoogleLocation } from './base';
+import {
+  GoogleAddressComponent,
+  GoogleDisplayName,
+  GoogleLocation,
+  GoogleViewport
+} from './base';
 
 export interface GooglePlace {
-  name: string;
-  id: string;
+  name: string; // Format: places/PLACE_ID
+  id: string;   // PLACE_ID seul
   displayName: GoogleDisplayName;
   formattedAddress: string;
   addressComponents: GoogleAddressComponent[];
   location: GoogleLocation;
+  viewport?: GoogleViewport;
   
   types: string[];
   primaryType?: string;
@@ -27,9 +34,12 @@ export interface GooglePlace {
   editorialSummary?: GoogleEditorialSummary;
   rating?: number;
   userRatingCount?: number;
+  reviews?: GoogleReview[];
   
   currentOpeningHours?: GoogleOpeningHours;
   regularOpeningHours?: GoogleOpeningHours;
+  secondaryOpeningHours?: GoogleOpeningHours[];
+  
   priceLevel?: string;
   priceRange?: GooglePriceRange;
   
@@ -39,8 +49,9 @@ export interface GooglePlace {
   googleMapsUri?: string;
   
   businessStatus?: string;
+  iconBackgroundColor?: string;
+  iconMaskBaseUri?: string;
   
-  // Nouveaux champs
   accessibilityOptions?: GoogleAccessibilityOptions;
   parkingOptions?: GoogleParkingOptions;
   routingSummaries?: GoogleRoutingSummary[];
@@ -49,4 +60,6 @@ export interface GooglePlace {
   reservable?: boolean;
   takeout?: boolean;
   paymentOptions?: GooglePaymentOptions;
+  
+  utcOffsetMinutes?: number;
 }

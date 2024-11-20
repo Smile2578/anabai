@@ -1,10 +1,7 @@
 // lib/services/core/LocationService.ts
 import { GOOGLE_MAPS_CONFIG } from '@/lib/config/google-maps';
-
-export interface Coordinates {
-  latitude: number;
-  longitude: number;
-}
+import { GoogleLocation } from '@/types/google/base';
+import { GeographicPoint } from '@/types/common';
 
 export interface LocationBounds {
   north: number;
@@ -16,28 +13,30 @@ export interface LocationBounds {
 export class LocationService {
   private static readonly japanBounds = GOOGLE_MAPS_CONFIG.geocoding.bounds;
 
-  static validateCoordinates(coordinates: [number, number]): boolean {
-    const [longitude, latitude] = coordinates;
+  static validateCoordinates(coordinates: { lng: number; lat: number }): boolean {
+    const { lat, lng } = coordinates;
     
     // Vérification basique des types
-    if (typeof longitude !== 'number' || typeof latitude !== 'number') {
+    if (typeof lng !== 'number' || typeof lat !== 'number') {
+      console.warn('Invalid coordinate types:', { lat, lng });
       return false;
     }
 
     // Vérification des limites globales
     if (
-      latitude < -90 || latitude > 90 ||
-      longitude < -180 || longitude > 180
+      lat < -90 || lat > 90 ||
+      lng < -180 || lng > 180
     ) {
+      console.warn('Coordinates out of global bounds:', { lat, lng });
       return false;
     }
 
     // Vérification si dans les limites du Japon
-    return this.isInJapan({ latitude, longitude });
+    return this.isInJapan({ latitude: lat, longitude: lng });
   }
 
-  static isInJapan(coords: Coordinates): boolean {
-    const { latitude, longitude } = coords;
+  static isInJapan(location: GoogleLocation): boolean {
+    const { latitude, longitude } = location;
     const bounds = this.japanBounds;
 
     return (
@@ -48,17 +47,29 @@ export class LocationService {
     );
   }
 
-  static convertCoordinates(coords: [number, number]): Coordinates {
-    const [longitude, latitude] = coords;
-    return { latitude, longitude };
+  static convertToGoogleLocation(point: GeographicPoint): GoogleLocation {
+    return {
+      latitude: point.coordinates.lat,
+      longitude: point.coordinates.lng
+    };
   }
 
-  static calculateDistance(coord1: Coordinates, coord2: Coordinates): number {
+  static convertToGeographicPoint(location: GoogleLocation): GeographicPoint {
+    return {
+      type: 'Point',
+      coordinates: {
+        lat: location.latitude,
+        lng: location.longitude
+      }
+    };
+  }
+
+  static calculateDistance(point1: GoogleLocation, point2: GoogleLocation): number {
     const R = 6371; // Rayon de la Terre en km
-    const dLat = this.toRad(coord2.latitude - coord1.latitude);
-    const dLon = this.toRad(coord2.longitude - coord1.longitude);
-    const lat1 = this.toRad(coord1.latitude);
-    const lat2 = this.toRad(coord2.latitude);
+    const dLat = this.toRad(point2.latitude - point1.latitude);
+    const dLon = this.toRad(point2.longitude - point1.longitude);
+    const lat1 = this.toRad(point1.latitude);
+    const lat2 = this.toRad(point2.latitude);
 
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
       Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2);
@@ -70,16 +81,15 @@ export class LocationService {
     return degrees * Math.PI / 180;
   }
 
-  static formatCoordinates(coordinates: Coordinates): string {
-    return `${coordinates.latitude.toFixed(6)}, ${coordinates.longitude.toFixed(6)}`;
+  static formatLocation(location: GoogleLocation): string {
+    return `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
   }
 
-  static parseCoordinates(coordString: string): Coordinates | null {
+  static parseLocation(locationString: string): GoogleLocation | null {
     try {
-      const [lat, lng] = coordString.split(',').map(Number);
-      if (isNaN(lat) || isNaN(lng)) {
-        return null;
-      }
+      const [lat, lng] = locationString.split(',').map(n => parseFloat(n.trim()));
+      if (isNaN(lat) || isNaN(lng)) return null;
+      
       return { latitude: lat, longitude: lng };
     } catch {
       return null;

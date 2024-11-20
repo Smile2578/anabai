@@ -1,8 +1,9 @@
+// lib/services/places/ImportService.ts
 import { parse } from 'csv-parse/sync';
 import { GooglePlacesService } from '../core/GooglePlacesService';
+import { GeocodingService } from '../core/GeocodingService';
 import { ImportPreview } from '@/types/import';
-import { Place } from '@/types/places/main';
-import { Category } from '@/types/common';
+import { validateGoogleMapsUrl } from '@/lib/utils/place-utils';
 
 interface ImportResult {
   success: boolean;
@@ -16,11 +17,12 @@ interface ImportResult {
 
 export class ImportService {
   constructor(
-    private googlePlacesService: GooglePlacesService
+    private googlePlacesService: GooglePlacesService,
+    private geocodingService: GeocodingService
   ) {}
 
   private validateCSVHeaders(headers: string[]): void {
-    const requiredHeaders = ['Title'];
+    const requiredHeaders = ['Title', 'URL'];
     const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
     
     if (missingHeaders.length > 0) {
@@ -28,32 +30,12 @@ export class ImportService {
     }
   }
 
-  private determineCategory(types: string[]): Category {
-    const typeMapping: Record<string, Category> = {
-      'restaurant': 'Restaurant',
-      'food': 'Restaurant',
-      'cafe': 'Café & Bar',
-      'bar': 'Café & Bar',
-      'lodging': 'Hôtel',
-      'store': 'Shopping',
-      'shopping_mall': 'Shopping'
-    };
-
-    for (const type of types) {
-      if (type in typeMapping) {
-        return typeMapping[type];
-      }
-    }
-
-    return 'Visite';
-  }
-
-  private async processRecord(record: { Title: string; Note?: string; URL?: string; Comment?: string; }): Promise<ImportPreview> {
+  private async processRecord(record: { Title: string; URL?: string; Note?: string; Comment?: string; }): Promise<ImportPreview> {
     const preview: ImportPreview = {
       original: {
         Title: record.Title || '',
-        Note: record.Note || '',
         URL: record.URL || '',
+        Note: record.Note || '',
         Comment: record.Comment || ''
       },
       status: 'pending',
@@ -67,111 +49,32 @@ export class ImportService {
         throw new Error('Titre manquant');
       }
 
-      // Recherche directe par titre
-      console.log(`Recherche du lieu: "${record.Title}"`);
-      const placeInfo = await this.googlePlacesService.searchPlaceByTitle(record.Title);
+      let placeId: string | null = null;
 
-      if (placeInfo) {
-        console.log(`Lieu trouvé: ${placeInfo.name} (ID: ${placeInfo.id})`);
-        
-        // Récupérer les détails complets
-        const googlePlace = await this.googlePlacesService.getPlaceDetails(placeInfo.id);
-        
-        // Convertir GooglePlace en Place
-        const place: Place = {
-          name: {
-            fr: googlePlace.displayName?.text || '',
-            ja: googlePlace.displayName?.text || ''
-          },
-          location: {
-            point: {
-              type: 'Point',
-              coordinates: {
-                lng: googlePlace.location.longitude,
-                lat: googlePlace.location.latitude
-              },
-            },
-            
-            address: {
-              full: {
-                fr: googlePlace.formattedAddress,
-                ja: googlePlace.formattedAddress
-              },
-              prefecture: googlePlace.addressComponents.find(
-                c => c.types.includes('administrative_area_level_1')
-              )?.longText,
-              city: googlePlace.addressComponents.find(
-                c => c.types.includes('locality')
-              )?.longText
-            }
-          },
-          category: this.determineCategory(googlePlace.types),
-          subcategories: googlePlace.types || [],
-          description: googlePlace.editorialSummary ? {
-            fr: googlePlace.editorialSummary.text
-          } : undefined,
-          images: googlePlace.photos ? [{
-            url: `${this.googlePlacesService.baseUrl}/${googlePlace.photos[0].name}/media`,
-            source: 'Google Places',
-            isCover: true,
-            caption: googlePlace.photos[0].authorAttributions?.[0] ? {
-              fr: googlePlace.photos[0].authorAttributions[0].displayName
-            } : undefined
-          }] : [],
-        
-          // Ajouter les horaires
-          openingHours: googlePlace.currentOpeningHours || googlePlace.regularOpeningHours ? {
-            weekdayTexts: {
-              fr: (googlePlace.currentOpeningHours || googlePlace.regularOpeningHours)!.weekdayDescriptions.join('\n'),
-              ja: (googlePlace.currentOpeningHours || googlePlace.regularOpeningHours)!.weekdayDescriptions.join('\n')
-            },
-            periods: (googlePlace.currentOpeningHours || googlePlace.regularOpeningHours)!.periods.map(period => ({
-              day: period.open.day,
-              open: `${period.open.hour}:${period.open.minute.toString().padStart(2, '0')}`,
-              close: period.close ? 
-                `${period.close.hour}:${period.close.minute.toString().padStart(2, '0')}` :
-                '23:59'
-            }))
-          } : undefined,
-        
-          // Ajouter le prix
-          pricing: googlePlace.priceLevel ? {
-            level: parseInt(googlePlace.priceLevel) as 1 | 2 | 3 | 4,
-            currency: 'JPY'
-          } : undefined,
-        
-          // Ajouter les contacts
-          contact: {
-            phone: googlePlace.internationalPhoneNumber,
-            website: googlePlace.websiteUri,
-            googleMapsUrl: googlePlace.googleMapsUri
-          },
-          metadata: {
-            source: 'Google Places',
-            placeId: placeInfo.id,
-            status: 'brouillon',
-            lastEnriched: new Date(),
-            rating: googlePlace.rating,
-            ratingCount: googlePlace.userRatingCount,
-            businessStatus: googlePlace.businessStatus
-          },
-          originalData: {
-            title: record.Title,
-            note: record.Note,
-            url: record.URL,
-            comment: record.Comment
-          },
-          isActive: true,
-          updatedAt: new Date(),
-          createdAt: new Date(),
-          _id: placeInfo.id
-        };
+      // Si une URL est fournie, essayer d'abord d'extraire le placeId de l'URL
+      if (record.URL) {
+        const { isValid, placeId: extractedId } = await validateGoogleMapsUrl(record.URL);
+        if (isValid && extractedId) {
+          placeId = extractedId;
+        }
+      }
 
-        // Mettre à jour le preview
+      // Si pas de placeId via URL, essayer via geocoding
+      if (!placeId) {
+        const geocodingResult = await this.geocodingService.geocode(record.Title);
+        placeId = geocodingResult?.placeId || null;
+      }
+
+      // Si toujours pas de placeId, essayer la recherche directe
+      if (!placeId) {
+        const searchResult = await this.googlePlacesService.searchPlace(record.Title);
+        placeId = searchResult?.id || null;
+      }
+
+      if (placeId) {
         preview.enriched = {
           success: true,
-          placeId: placeInfo.id,
-          place
+          placeId
         };
         preview.status = 'success';
       } else {

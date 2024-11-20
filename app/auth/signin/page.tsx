@@ -1,5 +1,3 @@
-// app/auth/signin/page.tsx
-
 'use client';
 
 import { signIn } from 'next-auth/react';
@@ -8,7 +6,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
-import { Loader } from 'react-feather';
+import { Loader } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import AnabaLogo from '@/components/brand/AnabaLogo';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -16,7 +17,6 @@ export default function SignInPage() {
   const callbackUrl = searchParams.get('callbackUrl') || '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -34,7 +34,6 @@ export default function SignInPage() {
     setLoading(false);
 
     if (res && !res.error) {
-      // Rediriger vers la page précédente ou la page d'accueil
       router.push(callbackUrl);
     } else {
       setError('Email ou mot de passe incorrect.');
@@ -42,53 +41,76 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-6">
-      <h1 className="mb-6 text-2xl font-bold">Connexion</h1>
-      {error && (
-        <Alert variant="destructive" className="mb-4">
-          {error}
-        </Alert>
-      )}
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
-        <div>
-          <Input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <Input
-            type="password"
-            placeholder="Mot de passe"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? (
-            <Loader className="w-5 h-5 animate-spin" />
-          ) : (
-            'Se connecter'
+    <div className="auth-container flex items-center justify-center">
+      <div className="auth-card w-full max-w-md">
+        <div className="auth-form-container">
+          <div className="text-center mb-8">
+            <div className="flex justify-center">
+              <AnabaLogo />
+            </div>
+            <h1 className="auth-title">Connexion à AnabAI</h1>
+            <p className="auth-subtitle">Découvrez le Japon authentique</p>
+          </div>
+          
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              {error}
+            </Alert>
           )}
-        </Button>
-      </form>
-      <div className="mt-6">
-        <p>
-          Pas de compte ?{' '}
-          <a href="/auth/signup" className="text-blue-500 hover:underline">
-            Inscrivez-vous
-          </a>
-        </p>
-        <p className="mt-2">
-          Mot de passe oublié ?{' '}
-          <a href="/auth/forgot-password" className="text-blue-500 hover:underline">
-            Réinitialisez-le
-          </a>
-        </p>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="auth-input"
+              />
+            </div>
+            <div>
+              <Input
+                type="password"
+                placeholder="Mot de passe"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="auth-input"
+              />
+            </div>
+            <Button type="submit" className="auth-button" disabled={loading}>
+              {loading ? (
+                <Loader className="w-5 h-5 animate-spin" />
+              ) : (
+                'Se connecter'
+              )}
+            </Button>
+          </form>
+          
+          <div className="auth-divider">
+            <span>ou</span>
+          </div>
+          
+          <div className="space-y-3">
+            <button className="auth-social-button">
+              <Image src="/google-icon.png" alt="Google" width={20} height={20} />
+              Continuer avec Google
+            </button>
+          </div>
+          
+          <div className="mt-6 text-center">
+            <p className="text-white/60">
+              Pas de compte ?{' '}
+              <Link href="/auth/signup" className="auth-link">
+                Inscrivez-vous
+              </Link>
+            </p>
+            <Link href="/auth/forgot-password" className="auth-link block mt-2">
+              Mot de passe oublié ?
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

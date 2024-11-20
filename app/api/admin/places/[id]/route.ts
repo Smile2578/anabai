@@ -1,8 +1,10 @@
 // app/api/admin/places/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connection';
-import { PlaceRepository } from '@/lib/repositories/place-repository';
-
+import { placeRepository } from '@/lib/repositories/place-repository';
+import { ValidationService } from '@/lib/services/places/ValidationService';
+import { LocationService } from '@/lib/services/core/LocationService';
+import { StorageService } from '@/lib/services/places/StorageService';
 
 interface RouteParams {
   params: {
@@ -12,19 +14,10 @@ interface RouteParams {
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
+    await connectDB();
     const { id } = params;
     
-    const mongoose = await connectDB();
-    const db = mongoose.connection.db;
-    if (!db) {
-      throw new Error('Database connection failed');
-    }
-    const placeRepository = new PlaceRepository(db);
-    const place = await placeRepository.collection.findOne({ 
-      id: id, // Changement de _id à id
-      isActive: true
-    });
-    
+    const place = await placeRepository.findById(id);
     if (!place) {
       return NextResponse.json(
         { error: 'Lieu non trouvé' },
@@ -48,32 +41,24 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
+    await connectDB();
     const { id } = params;
     const updates = await req.json();
     
-    const mongoose = await connectDB();
-    const db = mongoose.connection.db;
-    if (!db) {
-      throw new Error('Database connection failed');
-    }
-    const placeRepository = new PlaceRepository(db);
-    const result = await placeRepository.collection.findOneAndUpdate(
-      { id: id }, // Changement de _id à id
-      { $set: {
-        ...updates,
-        updatedAt: new Date()
-      }},
-      { returnDocument: 'after' }
-    );
+    const locationService = new LocationService();
+    const validationService = new ValidationService(locationService);
+    const storageService = new StorageService(placeRepository, validationService);
 
-    if (!result) {
+    const result = await storageService.updatePlace(id, updates);
+    
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Lieu non trouvé' },
-        { status: 404 }
+        { error: result.error },
+        { status: result.error === 'Lieu non trouvé' ? 404 : 400 }
       );
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(result.place);
 
   } catch (error) {
     console.error('Error updating place:', error);
@@ -89,49 +74,22 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
+    await connectDB();
     const { id } = params;
     
-    const mongoose = await connectDB();
-    const db = mongoose.connection.db;
-    if (!db) {
-      throw new Error('Database connection failed');
-    }
-    const placeRepository = new PlaceRepository(db);
-
     // Vérifier si c'est une suppression douce
     const searchParams = new URL(req.url).searchParams;
-    const isSoftDelete = searchParams.get('soft') === 'true';
+    const isSoftDelete = searchParams.get('soft') !== 'false';
 
-    if (isSoftDelete) {
-      const result = await placeRepository.collection.findOneAndUpdate(
-        { id: id }, // Changement de _id à id pour correspondre au type attendu
-        { 
-          $set: { 
-            isActive: false,
-            updatedAt: new Date()
-          }
-          },
-        { returnDocument: 'after' }
-      );
+    const locationService = new LocationService();
+    const validationService = new ValidationService(locationService);
+    const storageService = new StorageService(placeRepository, validationService);
 
-      if (!result) {
-        return NextResponse.json(
-          { error: 'Lieu non trouvé' },
-          { status: 404 }
-        );
-      }
+    const result = await storageService.deletePlace(id, isSoftDelete);
 
-      return NextResponse.json({ success: true, place: result });
-    }
-
-    // Suppression complète
-    const result = await placeRepository.collection.deleteOne({ 
-        _id: id, // Correction de la syntaxe et utilisation de _id
-    });
-
-    if (result.deletedCount === 0) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Lieu non trouvé' },
+        { error: result.error },
         { status: 404 }
       );
     }
@@ -139,7 +97,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ success: true });
 
   } catch (error) {
-    console.error('Erreur lors de la suppression du lieu:', error);
+    console.error('Error deleting place:', error);
     return NextResponse.json(
       { 
         error: 'Erreur lors de la suppression du lieu',

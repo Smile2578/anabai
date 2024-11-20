@@ -20,17 +20,17 @@ export default function AnabaLogo() {
     >
       <motion.div
         initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: -5 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1.5 }}
       >
         <div className="flex items-center justify-center relative">
           <h1 
             className={cn(
               "anaba-title mr-2 md:mr-4",
-              "text-xl sm:text-2xl md:text-3xl"
+              "text-l sm:text-l md:text-2xl"
             )}
           >
-            Anaba
+            Anaba.IO
           </h1>
           <div className={cn(
             "relative",

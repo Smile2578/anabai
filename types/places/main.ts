@@ -1,16 +1,7 @@
 // types/places/main.ts
-import { Category, GeographicPoint, LocalizedString, LocalizedStringRequired } from "../common";
-import { 
-  AccessInfo, 
-  OpeningHours, 
-  PlaceAddress, 
-  PlaceContact, 
-  PlaceImage, 
-  PlacePricing, 
-  PlaceRating,
-  PracticalInfo 
-} from "./base";
-import { PlaceMetadata } from "./metadata";
+import { Category, GeographicPoint, LocalizedString, LocalizedStringRequired, Subcategory } from '../common';
+import { AccessInfo, OpeningHours, PlaceAddress, PlaceContact, PlaceImage, PlacePricing, PlaceRating, PracticalInfo } from './base';
+import { PlaceMetadata } from './metadata';
 
 export interface Place {
   originalData?: {
@@ -28,7 +19,7 @@ export interface Place {
   };
   
   category: Category;
-  subcategories: string[];
+  subcategories: Subcategory[];
   
   description?: LocalizedString;
   images: PlaceImage[];
@@ -42,5 +33,6 @@ export interface Place {
   isActive: boolean;
   updatedAt: Date;
   createdAt: Date;
+  isGem: boolean;
   _id: string;
 }

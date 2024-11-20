@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 interface UsersTableProps {
   users: User[];
@@ -49,16 +49,10 @@ interface UsersTableProps {
 export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
-  const getStatusBadge = (status: User['status']) => {
-    switch (status) {
-      case 'active':
-        return <Badge variant="default">Actif</Badge>;
-      case 'inactive':
-        return <Badge variant="secondary">Inactif</Badge>;
-      default:
-        return null;
-    }
-  };
+  const handleDelete = useCallback((userId: string) => {
+    onDelete(userId);
+    setDeletingUserId(null);
+  }, [onDelete]);
 
   const getRoleBadge = (role: User['role']) => {
     switch (role) {
@@ -103,16 +97,21 @@ export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem key={`edit-${user.id}`} onClick={() => onEdit(user)}>
+                      <DropdownMenuItem onClick={() => onEdit(user)}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Modifier
                       </DropdownMenuItem>
-                      <DropdownMenuItem key={`contact-${user.id}`} onClick={() => window.location.href = `mailto:${user.email}`}>
+                      <DropdownMenuItem 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          window.location.href = `mailto:${user.email}`;
+                        }}
+                      >
                         <Mail className="mr-2 h-4 w-4" />
                         Contacter
                       </DropdownMenuItem>
                       {user.role !== 'admin' && (
-                        <DropdownMenuItem key={`delete-${user.id}`} onClick={() => setDeletingUserId(user.id)}>
+                        <DropdownMenuItem onClick={() => setDeletingUserId(user.id)}>
                           <Trash2 className="mr-2 h-4 w-4" />
                           Supprimer
                         </DropdownMenuItem>
@@ -143,12 +142,7 @@ export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (deletingUserId) {
-                  onDelete(deletingUserId);
-                  setDeletingUserId(null);
-                }
-              }}
+              onClick={() => deletingUserId && handleDelete(deletingUserId)}
             >
               Supprimer
             </AlertDialogAction>
