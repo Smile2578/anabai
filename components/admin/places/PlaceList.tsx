@@ -1,5 +1,5 @@
 // components/admin/places/PlaceList.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
@@ -14,23 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Category, Status } from '@/types/common';
 import { Place } from '@/types/places/main';
 import { useRouter } from 'next/navigation';
-import { FilterBar } from './FilterBar';
 import { PlaceActions } from './PlaceActions';
 import { Badge } from '@/components/ui/badge';
-import { usePlaces } from '@/hooks/usePlaces';
 
-export interface PlaceListProps {
-  data: Place[];
-  isLoading: boolean;
-  error: Error | null;
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => Promise<void>;
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    onPageChange: (page: number) => void;
-  };
-}
 
 export interface PlaceListProps {
   data: Place[];
@@ -58,7 +44,36 @@ export function PlaceList({
   const [category, setCategory] = useState<Category>();
   const [status, setStatus] = useState<Status>();
   const [page, setPage] = useState(1);
+  const [fetchedPlaces, setFetchedPlaces] = useState<Place[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<Error | null>(null);
 
+  useEffect(() => {
+    const fetchPlaces = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (search) params.append('search', search);
+        if (category) params.append('category', category);
+        if (status) params.append('status', status);
+        params.append('page', page.toString());
+        params.append('limit', '50');
+
+        const response = await fetch(`/api/admin/places?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des lieux');
+        }
+        const data = await response.json();
+        setFetchedPlaces(data.places);
+      } catch (err) {
+        setFetchError(err instanceof Error ? err : new Error('Une erreur est survenue'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlaces();
+  }, [search, category, status, page]);
 
   const handleSearch = (value: string) => {
     setSearch(value);
@@ -79,12 +94,12 @@ export function PlaceList({
     router.push(`/admin/places/${id}`);
   };
 
-  if (error) {
+  if (fetchError || error) {
     return (
       <Card>
         <CardContent className="pt-6">
           <div className="text-center text-red-500">
-            Erreur lors du chargement des lieux : {error.message}
+            Erreur lors du chargement des lieux : {(fetchError || error)?.message}
           </div>
         </CardContent>
       </Card>
@@ -106,20 +121,20 @@ export function PlaceList({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {loading || isLoading ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center">
                   Chargement...
                 </TableCell>
               </TableRow>
-            ) : places?.length === 0 ? (
+            ) : fetchedPlaces?.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center">
                   Aucun lieu trouvé
                 </TableCell>
               </TableRow>
             ) : (
-              places?.map((place: Place) => (
+              fetchedPlaces?.map((place: Place) => (
                 <PlaceRow 
                   key={place._id} 
                   place={place} 
@@ -134,7 +149,7 @@ export function PlaceList({
 
       <div className="flex justify-between items-center">
         <div className="text-sm text-gray-500">
-          {places.length} lieux trouvés
+          {fetchedPlaces.length} lieux trouvés
         </div>
         <div className="flex gap-2">
           <Button
@@ -162,6 +177,7 @@ interface PlaceRowProps {
   onEdit: (id: string) => void;
   onDelete: (id: string) => Promise<void>;
 }
+
 function PlaceRow({ place, onEdit }: PlaceRowProps) {
   return (
     <TableRow>

@@ -120,6 +120,25 @@ export class ImageService {
      throw new Error(errors.join(', '));
    }
  }
+ 
+ async cachePrimaryImage(images: { url: string; isCover: boolean }[]): Promise<string> {
+  await this.ensureCacheDir();
+
+  if (images.length === 0) {
+    console.warn('No images available, using placeholder.');
+    return '/cache/images/placeholder.webp'; // Image par défaut
+  }
+
+  try {
+    const coverImage = images.find(img => img.isCover) || images[0];
+    const cachedPath = await this.cacheImage(coverImage.url);
+    console.log(`Primary image cached at: ${cachedPath}`);
+    return cachedPath;
+  } catch (error) {
+    console.error('Error caching primary image:', error);
+    return '/cache/images/placeholder.webp'; // En cas d'erreur, utiliser un fallback
+  }
+}
 
  async cacheImage(url: string): Promise<string> {
    await this.ensureCacheDir();
