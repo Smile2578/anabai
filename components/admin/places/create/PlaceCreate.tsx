@@ -1,43 +1,81 @@
 // components/admin/places/create/PlaceCreate.tsx
-import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation } from '@tanstack/react-query';
-import { GooglePlace } from '@/types/google/place';
+
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { usePlaceCreate } from '@/hooks/usePlaceCreate';
 import { GooglePlaceSearch } from './GooglePlaceSearch';
 import { PlacePreview } from './PlacePreview';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 export function PlaceCreate() {
   const router = useRouter();
-  const [selectedPlace, setSelectedPlace] = useState<GooglePlace | null>(null);
-  
-  const { mutate: createPlace, isPending } = useMutation({
-    mutationFn: async (placeId: string) => {
-      const response = await fetch('/api/admin/places/create', {
-        method: 'POST',
-        body: JSON.stringify({ placeId })
-      });
-      if (!response.ok) throw new Error('Création impossible');
-      return response.json();
-    },
-    onSuccess: (data) => {
-      router.push(`/admin/places/${data._id}`);
+
+  const {
+    searchTerm,
+    selectedPlace,
+    searchResults,
+    isSearching,
+    isCreating,
+    error,
+    handleSearchChange,
+    handlePlaceSelect,
+    createPlace,
+    clearSelection,
+  } = usePlaceCreate({
+    onSuccess: (placeId) => {
+      router.push(`/admin/places/${placeId}`);
     }
   });
 
-  const handlePlaceSelect = useCallback((place: GooglePlace) => {
-    setSelectedPlace(place);
-  }, []);
 
   return (
-    <div className="space-y-4">
-      <GooglePlaceSearch onSelect={handlePlaceSelect} />
-      {selectedPlace && (
-        <PlacePreview 
-          place={selectedPlace}
-          onConfirm={() => createPlace(selectedPlace.id)}
-          isLoading={isPending}
-        />
-      )}
+    <div className="container mx-auto py-8 space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {selectedPlace ? 'Aperçu du lieu' : 'Rechercher un lieu'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Messages d'erreur */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Barre de recherche ou détails du lieu */}
+          {!selectedPlace ? (
+            <GooglePlaceSearch
+              value={searchTerm}
+              onChange={handleSearchChange}
+              onSelect={handlePlaceSelect}
+              results={searchResults}
+              isLoading={isSearching}
+              error={error}
+            />
+          ) : (
+            <PlacePreview 
+              place={selectedPlace}
+              onConfirm={createPlace}
+              onCancel={clearSelection}
+              isLoading={isCreating}
+            />
+          )}
+          
+          {/* Loader pendant la création */}
+          {isCreating && (
+            <div className="flex flex-col items-center gap-4 py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">
+                Création du lieu en cours...
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

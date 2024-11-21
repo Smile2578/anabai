@@ -16,15 +16,17 @@ import { Badge } from "@/components/ui/badge";
 import { Category, Status } from '@/types/common';
 import { PLACE_CATEGORIES } from '@/lib/config/categories';
 
+type FilterType = 'categories' | 'status' | 'priceRange';
+
 interface PlaceFiltersProps {
   searchValue: string;
   onSearchChange: (value: string) => void;
   selectedFilters: {
     categories: Category[];
     status: Status[];
-    priceRange?: number[];
+    priceRange: number[];
   };
-  onFilterChange: (type: string, value: number[] | Category[] | Status[]) => void;
+  onFilterChange: (type: FilterType, value: Category[] | Status[] | number[]) => void;
   onClearFilters: () => void;
 }
 
@@ -38,7 +40,7 @@ export function PlaceFilters({
   const hasActiveFilters = 
     selectedFilters.categories.length > 0 || 
     selectedFilters.status.length > 0 ||
-    (selectedFilters.priceRange?.length ?? 0) > 0;
+    selectedFilters.priceRange.length > 0;
 
   return (
     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
@@ -74,7 +76,7 @@ export function PlaceFilters({
                 <Badge variant="secondary" className="ml-1">
                   {selectedFilters.categories.length + 
                    selectedFilters.status.length +
-                   (selectedFilters.priceRange?.length ?? 0)}
+                   selectedFilters.priceRange.length}
                 </Badge>
               )}
             </Button>
@@ -82,13 +84,18 @@ export function PlaceFilters({
           <DropdownMenuContent align="end" className="w-56">
             {/* Catégories */}
             <DropdownMenuLabel>Catégories</DropdownMenuLabel>
-            {Object.keys(PLACE_CATEGORIES).map((category) => (
+            {(Object.keys(PLACE_CATEGORIES) as Category[]).map((category) => (
               <DropdownMenuCheckboxItem
                 key={category}
-                checked={selectedFilters.categories.includes(category as Category)}
-                onCheckedChange={() => onFilterChange('categories', [category as Category])}
+                checked={selectedFilters.categories.includes(category)}
+                onCheckedChange={(checked) => {
+                  const newCategories = checked 
+                    ? [...selectedFilters.categories, category]
+                    : selectedFilters.categories.filter(c => c !== category);
+                  onFilterChange('categories', newCategories);
+                }}
               >
-                {PLACE_CATEGORIES[category as keyof typeof PLACE_CATEGORIES].label}
+                {category}
               </DropdownMenuCheckboxItem>
             ))}
 
@@ -100,7 +107,12 @@ export function PlaceFilters({
               <DropdownMenuCheckboxItem
                 key={status}
                 checked={selectedFilters.status.includes(status as Status)}
-                onCheckedChange={() => onFilterChange('status', [status as Status])}
+                onCheckedChange={(checked) => {
+                  const newStatus = checked
+                    ? [...selectedFilters.status, status as Status]
+                    : selectedFilters.status.filter(s => s !== status);
+                  onFilterChange('status', newStatus);
+                }}
               >
                 <Badge 
                   variant={
@@ -122,8 +134,13 @@ export function PlaceFilters({
             {[1, 2, 3, 4].map((level) => (
               <DropdownMenuCheckboxItem
                 key={level}
-                checked={selectedFilters.priceRange?.includes(level)}
-                onCheckedChange={() => onFilterChange('priceRange', [level])}
+                checked={selectedFilters.priceRange.includes(level)}
+                onCheckedChange={(checked) => {
+                  const newPriceRange = checked
+                    ? [...selectedFilters.priceRange, level]
+                    : selectedFilters.priceRange.filter(p => p !== level);
+                  onFilterChange('priceRange', newPriceRange);
+                }}
               >
                 {'¥'.repeat(level)}
               </DropdownMenuCheckboxItem>

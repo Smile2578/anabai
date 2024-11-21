@@ -111,9 +111,11 @@ export interface PlaceSearchResult {
   total: number;
 }
 
+
 export interface PlaceSearchState {
   searchTerm: string;
   selectedPlace: GooglePlace | null;
+  searchResults: GooglePlace[];
   isSearching: boolean;
   error: string | null;
 }

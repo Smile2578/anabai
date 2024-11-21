@@ -6,48 +6,67 @@ import { Place } from '@/types/places/main';
 interface PlacesResponse {
   places: Place[];
   totalPages: number;
+  currentPage: number;
   stats: {
     total: number;
     published: number;
     draft: number;
     archived: number;
-    withImages: number;
-    withoutImages: number;
-    totalRatings: number;
-    averageRating: number;
-    byCategory: Record<string, number>;
-    byPrefecture: Record<string, number>;
   };
 }
 
-interface UseplacesOptions {
+interface UsePlacesOptions {
   search?: string;
-  category?: Category;
+  categories?: Category[];
   status?: Status;
   page?: number;
   limit?: number;
   isGem?: boolean;
 }
 
-export function usePlaces(options: UseplacesOptions = {}) {
-  const { search, category, status, page = 1, limit = 50, isGem } = options;
+async function fetchPlaces(options: UsePlacesOptions): Promise<PlacesResponse> {
+  const params = new URLSearchParams();
+  
+  if (options.search) params.append('search', options.search);
+  if (options.categories?.length) {
+    options.categories.forEach(cat => params.append('categories', cat));
+  }
+  if (options.status) params.append('status', options.status);
+  if (options.page) params.append('page', options.page.toString());
+  if (options.limit) params.append('limit', options.limit.toString());
+  if (options.isGem) params.append('isGem', 'true');
 
-  return useQuery<PlacesResponse>({
-    queryKey: ['places', { search, category, status, page, limit, isGem }],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (search) params.append('search', search);
-      if (category) params.append('category', category);
-      if (status) params.append('status', status);
-      if (isGem) params.append('isGem', 'true');
-      params.append('page', page.toString());
-      params.append('limit', limit.toString());
+  const response = await fetch(`/api/admin/places?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch places');
+  }
+  return response.json();
+}
 
-      const response = await fetch(`/api/admin/places?${params.toString()}`);
-      if (!response.ok) {
-        throw new Error('Erreur lors de la récupération des lieux');
-      }
-      return response.json();
-    },
+export function usePlaces(options: UsePlacesOptions = {}) {
+  const { page = 1 } = options;
+
+  const queryKey = ['places', { ...options }];
+  
+  const query = useQuery<PlacesResponse, Error>({
+    queryKey,
+    queryFn: () => fetchPlaces(options),
+    staleTime: 30 * 1000, // Consider data fresh for 30 seconds
   });
+
+  return {
+    places: query.data?.places ?? [],
+    totalPages: query.data?.totalPages ?? 1,
+    currentPage: query.data?.currentPage ?? page,
+    stats: query.data?.stats ?? {
+      total: 0,
+      published: 0,
+      draft: 0,
+      archived: 0,
+    },
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    error: query.error,
+    refetch: query.refetch
+  };
 }

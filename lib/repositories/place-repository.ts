@@ -206,89 +206,95 @@ export class PlaceRepository {
 
   async getStats(): Promise<PlaceStats> {
     try {
-      const [
-        total,
-        statusCounts,
-        imageCounts,
-        categoryStats,
-        prefectureStats,
-        ratingStats
-      ] = await Promise.all([
-        Place.countDocuments({ isActive: true }),
-        Place.aggregate([
-          { $match: { isActive: true } },
-          { $group: { 
-            _id: '$metadata.status',
-            count: { $sum: 1 }
-          }}
-        ]),
-        Place.aggregate([
-          { $match: { isActive: true } },
-          { $group: {
-            _id: null,
-            withImages: { 
-              $sum: { $cond: [{ $gt: [{ $size: '$images' }, 0] }, 1, 0] }
-            },
-            total: { $sum: 1 }
-          }}
-        ]),
-        Place.aggregate([
-          { $match: { isActive: true } },
-          { $group: {
-            _id: '$category',
-            count: { $sum: 1 }
-          }}
-        ]),
-        Place.aggregate([
-          { $match: { isActive: true } },
-          { $group: {
-            _id: '$location.address.prefecture',
-            count: { $sum: 1 }
-          }}
-        ]),
-        Place.aggregate([
-          { $match: { 
-            isActive: true,
-            'metadata.rating': { $exists: true }
-          }},
-          { $group: {
-            _id: null,
-            totalRatings: { $sum: '$metadata.ratingCount' },
-            averageRating: { $avg: '$metadata.rating' }
-          }}
-        ])
+      const stats = await Place.aggregate([
+        {
+          $facet: {
+            // Comptage par statut
+            'statusCounts': [
+              {
+                $group: {
+                  _id: '$metadata.status',
+                  count: { $sum: 1 }
+                }
+              }
+            ],
+            // Comptage total et images
+            'imageCounts': [
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: 1 },
+                  withImages: { 
+                    $sum: { 
+                      $cond: [{ $gt: [{ $size: { $ifNull: ['$images', []] } }, 0] }, 1, 0]
+                    }
+                  }
+                }
+              }
+            ],
+            // Ratings
+            'ratings': [
+              {
+                $group: {
+                  _id: null,
+                  totalRatings: { $sum: { $ifNull: ['$metadata.ratingCount', 0] } },
+                  averageRating: { $avg: { $ifNull: ['$metadata.rating', 0] } }
+                }
+              }
+            ],
+            // Par catégorie
+            'byCategory': [
+              {
+                $group: {
+                  _id: '$category',
+                  count: { $sum: 1 }
+                }
+              }
+            ],
+            // Par préfecture
+            'byPrefecture': [
+              {
+                $group: {
+                  _id: '$location.address.prefecture',
+                  count: { $sum: 1 }
+                }
+              }
+            ]
+          }
+        }
       ]);
-
-      const statusMap = statusCounts.reduce((acc, {_id, count}) => {
-        acc[_id] = count;
+  
+      const statusCounts = stats[0].statusCounts.reduce((acc: Record<string, number>, curr: { _id: string; count: number }) => {
+        acc[curr._id] = curr.count;
         return acc;
-      }, {} as Record<string, number>);
-
-      const imageStats = imageCounts[0] || { withImages: 0, total };
-      const ratingData = ratingStats[0] || { totalRatings: 0, averageRating: 0 };
-
-      const categoryMap = categoryStats.reduce((acc, {_id, count}) => {
-        if (_id) acc[_id] = count;
+      }, {});
+  
+      const imageCounts = stats[0].imageCounts[0] || { total: 0, withImages: 0 };
+      const ratings = stats[0].ratings[0] || { totalRatings: 0, averageRating: 0 };
+  
+      const byCategory = stats[0].byCategory.reduce((acc: Record<string, number>, curr: { _id: string; count: number }) => {
+        if (curr._id) acc[curr._id] = curr.count;
         return acc;
-      }, {} as Record<string, number>);
-
-      const prefectureMap = prefectureStats.reduce((acc, {_id, count}) => {
-        if (_id) acc[_id] = count;
+      }, {});
+  
+      const byPrefecture = stats[0].byPrefecture.reduce((acc: Record<string, number>, curr: { _id: string; count: number }) => {
+        if (curr._id) acc[curr._id] = curr.count;
         return acc;
-      }, {} as Record<string, number>);
-
+      }, {});
+  
       return {
-        total,
-        published: statusMap['publié'] || 0,
-        draft: statusMap['brouillon'] || 0,
-        archived: statusMap['archivé'] || 0,
-        withImages: imageStats.withImages,
-        withoutImages: total - imageStats.withImages,
-        totalRatings: ratingData.totalRatings,
-        averageRating: ratingData.averageRating,
-        byCategory: categoryMap,
-        byPrefecture: prefectureMap
+        total: imageCounts.total,
+        published: statusCounts['publié'] || 0,
+        draft: statusCounts['brouillon'] || 0,
+        archived: statusCounts['archivé'] || 0,
+        withImages: imageCounts.withImages,
+        withoutImages: imageCounts.total - imageCounts.withImages,
+        totalRatings: ratings.totalRatings,
+        averageRating: ratings.averageRating,
+        byCategory,
+        byPrefecture
       };
+  
     } catch (error) {
       console.error('Error getting stats:', error);
       return {

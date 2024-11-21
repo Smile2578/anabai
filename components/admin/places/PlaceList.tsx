@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Category, Status } from '@/types/common';
 import { Place } from '@/types/places/main';
-import { useRouter } from 'next/navigation';
 import { PlaceActions } from './PlaceActions';
 import { Badge } from '@/components/ui/badge';
 
@@ -31,18 +30,17 @@ export interface PlaceListProps {
 }
 
 export function PlaceList({
-  data: places,
   isLoading,
   error,
   onEdit,
   onDelete,
   pagination
 }: PlaceListProps) {
-  const router = useRouter();
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<Category>();
-  const [status, setStatus] = useState<Status>();
-  const [page, setPage] = useState(1);
+
+  const [search] = useState('');
+  const [category] = useState<Category>();
+  const [status] = useState<Status>();
+  const [page] = useState(1);
   const [fetchedPlaces, setFetchedPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<Error | null>(null);
@@ -74,24 +72,7 @@ export function PlaceList({
     fetchPlaces();
   }, [search, category, status, page]);
 
-  const handleSearch = (value: string) => {
-    setSearch(value);
-    setPage(1);
-  };
 
-  const handleCategoryChange = (value: Category) => {
-    setCategory(value);
-    setPage(1);
-  };
-
-  const handleStatusChange = (value: Status) => {
-    setStatus(value);
-    setPage(1);
-  };
-
-  const handleEdit = (id: string) => {
-    router.push(`/admin/places/${id}`);
-  };
 
   if (fetchError || error) {
     return (

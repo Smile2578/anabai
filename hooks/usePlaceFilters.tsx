@@ -1,7 +1,7 @@
 // hooks/usePlaceFilters.ts
 import { useCallback, useState } from 'react';
 import { PlaceFilters } from '@/types/places/base';
-import { useDebounce } from '@/hooks/useDebounce';
+import { useDebounce } from './useDebounce';
 
 export function usePlaceFilters(initialFilters?: Partial<PlaceFilters>) {
   const [filters, setFilters] = useState<PlaceFilters>({

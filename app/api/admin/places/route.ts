@@ -4,70 +4,109 @@ import connectDB from '@/lib/db/connection';
 import { placeRepository } from '@/lib/repositories/place-repository';
 import { Category, Status } from '@/types/common';
 
+type SearchFilter = {
+  'name.fr': { $regex: string; $options: string };
+  'name.ja': { $regex: string; $options: string };
+  'description.fr': { $regex: string; $options: string };
+};
+
+interface PlaceFilter {
+  isActive: boolean;
+  $or?: SearchFilter[];
+  category?: { $in: Category[] };
+  'metadata.status'?: Status;
+  isGem?: boolean;
+}
+
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
     const searchParams = new URL(req.url).searchParams;
     
-    // Récupérer les paramètres de requête
+    // Extraire les paramètres de requête
     const search = searchParams.get('search') || undefined;
-    const category = searchParams.getAll('categories') as Category[] | undefined;
+    const categories = searchParams.getAll('categories') as Category[] | undefined;
     const status = searchParams.get('status') as Status | undefined;
     const isGem = searchParams.get('isGem') === 'true';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
-    const sort = searchParams.get('sort') 
-      ? JSON.parse(searchParams.get('sort') || '{}')
-      : { updatedAt: -1 };
+
     // Construire le filtre
-    const filter: {
-      isActive: boolean;
-      $or?: { [key: string]: { $regex: string, $options: string } }[];
-      category?: { $in: Category[] };
-      'metadata.status'?: Status;
-      isGem?: boolean;
-    } = {
-      isActive: true // Toujours inclure les lieux actifs par défaut
+    const filter: PlaceFilter = {
+      isActive: true
     };
-    
+
     if (search) {
       filter.$or = [
-        { 'name.fr': { $regex: search, $options: 'i' } },
-        { 'name.ja': { $regex: search, $options: 'i' } },
-        { 'description.fr': { $regex: search, $options: 'i' } }
+        {
+          'name.fr': { $regex: search, $options: 'i' },
+          'name.ja': {
+            $regex: '',
+            $options: ''
+          },
+          'description.fr': {
+            $regex: '',
+            $options: ''
+          }
+        },
+        {
+          'name.ja': { $regex: search, $options: 'i' },
+          'name.fr': {
+            $regex: '',
+            $options: ''
+          },
+          'description.fr': {
+            $regex: '',
+            $options: ''
+          }
+        },
+        {
+          'description.fr': { $regex: search, $options: 'i' },
+          'name.fr': {
+            $regex: '',
+            $options: ''
+          },
+          'name.ja': {
+            $regex: '',
+            $options: ''
+          }
+        }
       ];
     }
-    
-    if (category?.length) {
-      filter.category = { $in: category };
+
+    if (categories?.length) {
+      filter.category = { $in: categories };
     }
-    
+
     if (status) {
       filter['metadata.status'] = status;
     }
-    
+
     if (isGem) {
       filter.isGem = true;
     }
 
     // Récupérer les lieux avec le filtre
-    const result = await placeRepository.find({
+    const placesData = await placeRepository.find({
       filter,
       page,
       limit,
-      sort
+      sort: { updatedAt: -1 }
     });
 
-    // Calculer des statistiques étendues
-    const stats = await placeRepository.getStats();
+    // Calculer les stats pour les lieux actuels
+    const statsResults = await placeRepository.getStats();
 
-    // Retourner les résultats enrichis
     return NextResponse.json({
-      places: result.places,
-      totalPages: result.totalPages,
+      places: placesData.places,
+      totalPages: placesData.totalPages,
       currentPage: page,
-      totalPlaces: result.total,
-      stats
+      stats: {
+        total: statsResults.total,
+        published: statsResults.published,
+        draft: statsResults.draft,
+        archived: statsResults.archived
+      }
     });
 
   } catch (error) {

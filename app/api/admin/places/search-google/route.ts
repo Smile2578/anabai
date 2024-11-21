@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GooglePlacesService } from '@/lib/services/core/GooglePlacesService';
 
+const googlePlacesService = new GooglePlacesService();
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -14,11 +16,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const googlePlacesService = new GooglePlacesService();
-    const results = await googlePlacesService.searchPlaces(query);
+    const results = await googlePlacesService.searchPlacesInteractive(query);
 
     return NextResponse.json({
-      places: results.places
+      places: results
     });
 
   } catch (error) {

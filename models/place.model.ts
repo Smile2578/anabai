@@ -189,6 +189,8 @@ const placeSchema = new Schema<PlaceDocument>(
         type: String,
         enum: ['brouillon', 'publié', 'archivé'],
         default: 'publié',
+        required: true,
+        index: true,
       },
       tags: [String],
       businessStatus: String,
