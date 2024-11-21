@@ -1,9 +1,9 @@
-// lib/services/places/ImportService.ts
 import { parse } from 'csv-parse/sync';
 import { GooglePlacesService } from '../core/GooglePlacesService';
 import { GeocodingService } from '../core/GeocodingService';
 import { ImportPreview } from '@/types/import';
 import { validateGoogleMapsUrl } from '@/lib/utils/place-utils';
+import { GOOGLE_MAPS_CONFIG } from '@/lib/config/google-maps';
 
 interface ImportResult {
   success: boolean;
@@ -12,6 +12,8 @@ interface ImportResult {
     total: number;
     success: number;
     failed: number;
+    japanOnly: number;
+    notFound: number;
   };
 }
 
@@ -20,6 +22,16 @@ export class ImportService {
     private googlePlacesService: GooglePlacesService,
     private geocodingService: GeocodingService
   ) {}
+
+  private async validateLocation(lat: number, lng: number): Promise<boolean> {
+    const bounds = GOOGLE_MAPS_CONFIG.geocoding.bounds;
+    return (
+      lat >= bounds.south &&
+      lat <= bounds.north &&
+      lng >= bounds.west &&
+      lng <= bounds.east
+    );
+  }
 
   private validateCSVHeaders(headers: string[]): void {
     const requiredHeaders = ['Title', 'URL'];
@@ -30,7 +42,12 @@ export class ImportService {
     }
   }
 
-  private async processRecord(record: { Title: string; URL?: string; Note?: string; Comment?: string; }): Promise<ImportPreview> {
+  private async processRecord(record: { 
+    Title: string; 
+    URL?: string; 
+    Note?: string; 
+    Comment?: string; 
+  }): Promise<ImportPreview> {
     const preview: ImportPreview = {
       original: {
         Title: record.Title || '',
@@ -55,20 +72,50 @@ export class ImportService {
       if (record.URL) {
         const { isValid, placeId: extractedId } = await validateGoogleMapsUrl(record.URL);
         if (isValid && extractedId) {
-          placeId = extractedId;
+          // Vérifier la localisation
+          const place = await this.googlePlacesService.searchPlaceById(extractedId);
+          if (place && await this.validateLocation(
+            place.location.latitude,
+            place.location.longitude
+          )) {
+            placeId = extractedId;
+          } else {
+            throw new Error('Le lieu n\'est pas au Japon');
+          }
         }
       }
 
       // Si pas de placeId via URL, essayer via geocoding
       if (!placeId) {
         const geocodingResult = await this.geocodingService.geocode(record.Title);
-        placeId = geocodingResult?.placeId || null;
+        if (geocodingResult?.coordinates) {
+          // Vérifier si au Japon
+          if (await this.validateLocation(
+            geocodingResult.coordinates.lat,
+            geocodingResult.coordinates.lng
+          )) {
+            placeId = geocodingResult.placeId || null;
+          } else {
+            throw new Error('Le lieu n\'est pas au Japon');
+          }
+        }
       }
 
       // Si toujours pas de placeId, essayer la recherche directe
       if (!placeId) {
         const searchResult = await this.googlePlacesService.searchPlace(record.Title);
-        placeId = searchResult?.id || null;
+        if (searchResult?.id) {
+          // Vérifier encore une fois la localisation
+          const place = await this.googlePlacesService.searchPlaceById(searchResult.id);
+          if (place && await this.validateLocation(
+            place.location.latitude,
+            place.location.longitude
+          )) {
+            placeId = searchResult.id;
+          } else {
+            throw new Error('Le lieu n\'est pas au Japon');
+          }
+        }
       }
 
       if (placeId) {
@@ -109,23 +156,33 @@ export class ImportService {
 
       // Traiter les enregistrements en série pour éviter de surcharger l'API
       const previews: ImportPreview[] = [];
+      const stats = {
+        total: records.length,
+        success: 0,
+        failed: 0,
+        japanOnly: 0,
+        notFound: 0
+      };
+
       for (const record of records) {
         const preview = await this.processRecord(record);
         previews.push(preview);
         
+        if (preview.status === 'success') {
+          stats.success++;
+        } else {
+          stats.failed++;
+          if (preview.enriched?.error?.includes('Japon')) {
+            stats.japanOnly++;
+          }
+          if (preview.enriched?.error?.includes('introuvable')) {
+            stats.notFound++;
+          }
+        }
+        
         // Pause entre les requêtes
         await new Promise(resolve => setTimeout(resolve, 200));
       }
-
-      // Calculer les statistiques
-      const stats = previews.reduce(
-        (acc, preview) => ({
-          total: acc.total + 1,
-          success: acc.success + (preview.status === 'success' ? 1 : 0),
-          failed: acc.failed + (preview.status === 'error' ? 1 : 0)
-        }),
-        { total: 0, success: 0, failed: 0 }
-      );
 
       console.log('Résultats de l\'import:', stats);
 
