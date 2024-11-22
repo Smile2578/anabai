@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { hash } from "bcrypt";
 import connectDB from '@/lib/db/connection';
 import User from '@/models/User';
@@ -21,7 +21,7 @@ export async function GET() {
 }
 
 // POST /api/admin/users - Créer un nouvel utilisateur
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const body = await req.json();
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
 
 // PUT /api/admin/users/[userId] - Modifier un utilisateur
 export async function PUT(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { userId: string } }
 ) {
   try {
@@ -117,7 +117,7 @@ export async function PUT(
 
 // DELETE /api/admin/users/[userId] - Supprimer un utilisateur
 export async function DELETE(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { userId: string } }
 ) {
   try {
@@ -134,3 +134,4 @@ export async function DELETE(
     );
   }
 }
+
