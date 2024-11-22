@@ -72,13 +72,9 @@ export async function POST(req: NextRequest) {
 }
 
 // PUT /api/admin/users/[userId] - Modifier un utilisateur
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export async function PUT(req: NextRequest, userId: string) {
   try {
     await connectDB();
-    const { userId } = params;
     const body = await req.json();
     const { email, name, role, status } = body;
 
@@ -116,10 +112,7 @@ export async function PUT(
 }
 
 // DELETE /api/admin/users/[userId] - Supprimer un utilisateur
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export async function DELETE(req: NextRequest, { params }: { params: { userId: string } }) {
   try {
     await connectDB();
     const { userId } = params;
@@ -134,4 +127,3 @@ export async function DELETE(
     );
   }
 }
-
