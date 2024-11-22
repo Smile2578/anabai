@@ -1,0 +1,20 @@
+{
+    "installCommand": "npm install --legacy-peer-deps",
+    "functions": {
+      "app/api/**/*": {
+        "memory": 1024,
+        "maxDuration": 10
+      }
+    },
+    "headers": [
+      {
+        "source": "/api/(.*)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "s-maxage=60, stale-while-revalidate=59"
+          }
+        ]
+      }
+    ]
+  }
