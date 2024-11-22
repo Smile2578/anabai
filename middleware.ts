@@ -5,7 +5,7 @@ export default withAuth(
   async function middleware(req) {
     const token = req.nextauth.token;
 
-    console.log('Middleware token:', token);
+    console.log('Middleware token:', token); // Vérifiez ici si le token est `null`
 
     if (req.nextUrl.pathname.startsWith('/admin')) {
       if (!token) {
@@ -24,12 +24,13 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token }) => {
-        console.log('Authorized callback:', token);
+        console.log('Authorized callback token:', token); // Inspectez pourquoi le token est `null`
         return token?.role === 'admin';
       },
     },
   }
 );
+
 
 export const config = {
   matcher: ['/admin/:path*'],
