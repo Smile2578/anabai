@@ -29,6 +29,7 @@ export default function SignInPage() {
       redirect: false,
       email,
       password,
+      callbackUrl,
     });
 
     setLoading(false);
@@ -36,7 +37,7 @@ export default function SignInPage() {
     if (res && !res.error) {
       router.push(callbackUrl);
     } else {
-      setError('Email ou mot de passe incorrect.');
+      setError(res?.error || 'Email ou mot de passe incorrect.');
     }
   };
 
