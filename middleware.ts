@@ -7,7 +7,11 @@ export async function middleware(req: NextRequest) {
   console.log('Request URL:', req.nextUrl.href);
   console.log('Request Pathname:', req.nextUrl.pathname);
 
-  // Récupérer le token JWT depuis les cookies
+  // Vérifions les cookies pour débogage
+  const cookies = req.cookies.getAll();
+  console.log('Request cookies:', cookies);
+
+  // Essayez de récupérer le token via `getToken`
   const token = await getToken({ req, secret });
 
   console.log('Middleware token:', token);

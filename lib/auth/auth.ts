@@ -71,6 +71,18 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+  cookies: {
+    sessionToken: {
+      name: `__Secure-next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      },
+    },
+  },
+  
   pages: {
     signIn: '/auth/signin',
     error: '/auth/error',
@@ -83,16 +95,5 @@ export const authOptions: NextAuthOptions = {
   jwt: {
     secret: process.env.NEXTAUTH_SECRET,
     maxAge: 30 * 24 * 60 * 60, // 30 jours
-  },
-  cookies: {
-    sessionToken: {
-      name: `__Secure-next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-      },
-    },
   },
 };
