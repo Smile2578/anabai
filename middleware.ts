@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
-
+    console.log('Middleware token role:', token?.role);
     if (req.nextUrl.pathname.startsWith('/admin')) {
       // Si l'utilisateur n'est pas connecté, rediriger vers la page de connexion
       if (!token) {
@@ -18,7 +18,6 @@ export default withAuth(
         return NextResponse.redirect(new URL('/', req.url));
       }
       console.log('Middleware token role:', token.role);
-
     }
   },
   {
