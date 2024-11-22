@@ -1,11 +1,17 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
 export default withAuth(
   async function middleware(req) {
-    const token = req.nextauth.token;
+    let token = req.nextauth.token;
 
-    console.log('Middleware token:', token); // Vérifiez ici si le token est `null`
+    if (!token) {
+      console.log('Token not found in req.nextauth. Fetching manually...');
+      token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    }
+
+    console.log('Middleware token:', token);
 
     if (req.nextUrl.pathname.startsWith('/admin')) {
       if (!token) {
@@ -24,13 +30,12 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token }) => {
-        console.log('Authorized callback token:', token); // Inspectez pourquoi le token est `null`
+        console.log('Authorized callback token:', token);
         return token?.role === 'admin';
       },
     },
   }
 );
-
 
 export const config = {
   matcher: ['/admin/:path*'],
