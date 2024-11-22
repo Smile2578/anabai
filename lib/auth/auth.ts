@@ -66,6 +66,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
       }
+      console.log('JWT callback completed at', new Date().toISOString(), 'with token:', token);
       return token;
     },
     async session({ session, token }) {
@@ -73,6 +74,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
       }
+      console.log('Session callback completed at', new Date().toISOString(), 'with session:', session);
       return session;
     },
   },
@@ -123,8 +125,6 @@ authOptions.providers.push(
             console.log('Invalid password');
             throw new Error('Mot de passe incorrect');
           }
-  
-          
           console.log('Authorize function completed at', new Date().toISOString());
           return {
             id: user._id.toString(),

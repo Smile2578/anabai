@@ -17,6 +17,8 @@ export default withAuth(
       if (token.role !== 'admin') {
         return NextResponse.redirect(new URL('/', req.url));
       }
+      console.log('Middleware token role:', token.role);
+
     }
   },
   {
