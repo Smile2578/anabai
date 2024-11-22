@@ -2,10 +2,19 @@
 
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Alert } from '@/components/ui/alert';
+import { Loader } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import AnabaLogo from '@/components/brand/AnabaLogo';
 
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -20,37 +29,90 @@ export default function SignInPage() {
       redirect: false,
       email,
       password,
+      callbackUrl,
     });
 
     setLoading(false);
 
     if (res && !res.error) {
-      router.push('/');
+      router.push(callbackUrl);
     } else {
       setError(res?.error || 'Email ou mot de passe incorrect.');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-      />
-      <input
-        type="password"
-        placeholder="Mot de passe"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-      />
-      <button type="submit" disabled={loading}>
-        {loading ? 'Chargement...' : 'Se connecter'}
-      </button>
-      {error && <p>{error}</p>}
-    </form>
+    <div className="auth-container flex items-center justify-center">
+      <div className="auth-card w-full max-w-md">
+        <div className="auth-form-container">
+          <div className="text-center mb-8">
+            <div className="flex justify-center">
+              <AnabaLogo />
+            </div>
+            <h1 className="auth-title">Connexion à AnabAI</h1>
+            <p className="auth-subtitle">Découvrez le Japon authentique</p>
+          </div>
+          
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              {error}
+            </Alert>
+          )}
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="auth-input"
+              />
+            </div>
+            <div>
+              <Input
+                type="password"
+                placeholder="Mot de passe"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="auth-input"
+              />
+            </div>
+            <Button type="submit" className="auth-button" disabled={loading}>
+              {loading ? (
+                <Loader className="w-5 h-5 animate-spin" />
+              ) : (
+                'Se connecter'
+              )}
+            </Button>
+          </form>
+          
+          <div className="auth-divider">
+            <span>ou</span>
+          </div>
+          
+          <div className="space-y-3">
+            <button className="auth-social-button">
+              <Image src="/google-icon.png" alt="Google" width={20} height={20} />
+              Continuer avec Google
+            </button>
+          </div>
+          
+          <div className="mt-6 text-center">
+            <p className="text-white/60">
+              Pas de compte ?{' '}
+              <Link href="/auth/signup" className="auth-link">
+                Inscrivez-vous
+              </Link>
+            </p>
+            <Link href="/auth/forgot-password" className="auth-link block mt-2">
+              Mot de passe oublié ?
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

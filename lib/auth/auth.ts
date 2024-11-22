@@ -15,22 +15,21 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials: { email: string; password: string } | undefined) {
         if (!credentials) throw new Error('Identifiants requis');
         await connectDB();
-
-        const user = await User.findOne({ email: credentials.email }).select('+password') as IUser | null;
+        const user = await User.findOne({ email: credentials.email })
+          .select('+password') as IUser | null;
         if (!user) throw new Error('Aucun utilisateur trouvé');
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) throw new Error('Mot de passe incorrect');
-
         return { id: user.id, name: user.name, email: user.email, role: user.role };
       },
     }),
   ],
   session: {
-    strategy: 'jwt',
+    strategy: 'jwt', // Désactive le chiffrement, utilise des JWT signés
   },
   jwt: {
-    secret: process.env.NEXTAUTH_SECRET,
-    maxAge: 30 * 24 * 60 * 60,
+    secret: process.env.NEXTAUTH_SECRET, // Clé utilisée pour signer les JWT
+    maxAge: 30 * 24 * 60 * 60, // Durée de vie des JWT
   },
   callbacks: {
     async jwt({ token, user }) {
