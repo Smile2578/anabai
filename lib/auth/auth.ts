@@ -86,6 +86,7 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
+// Credentials Provider
 authOptions.providers.push(
     CredentialsProvider({
       name: 'Credentials',
@@ -94,22 +95,37 @@ authOptions.providers.push(
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        try {
-          await connectDB();
+        console.log('Authorize function called with email:', credentials?.email);
+        console.log('Authorize function started at', new Date().toISOString());
   
+        try {
+          const dbConnectionStart = Date.now();
+          await connectDB();
+          console.log('Database connected in', Date.now() - dbConnectionStart, 'ms');
+  
+          const userLookupStart = Date.now();
           const user = await User.findOne({ email: credentials?.email })
             .select('+password') as IUser | null;
+          console.log('User lookup completed in', Date.now() - userLookupStart, 'ms');
   
           if (!user) {
+            console.log('No user found with this email');
             throw new Error('Aucun utilisateur trouvé avec cet email');
           }
   
+          console.log('User found:', user.email);
+  
+          const passwordCompareStart = Date.now();
           const isValid = await bcrypt.compare(credentials!.password, user.password);
+          console.log('Password comparison completed in', Date.now() - passwordCompareStart, 'ms');
   
           if (!isValid) {
+            console.log('Invalid password');
             throw new Error('Mot de passe incorrect');
           }
   
+          console.log('User authenticated successfully');
+          console.log('Authorize function completed at', new Date().toISOString());
           return {
             id: user._id.toString(),
             name: user.name,
