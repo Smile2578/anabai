@@ -86,7 +86,7 @@ export default function UsersManagement() {
   const handleSaveUser = async (userData: Partial<User>) => {
     try {
       const isEditing = !!editingUser;
-      const url = isEditing ? `/api/admin/users/${editingUser.id}` : '/api/admin/users';
+      const url = isEditing ? `/api/admin/users/${editingUser!.id}` : '/api/admin/users';
       const method = isEditing ? 'PUT' : 'POST';
 
       const response = await fetch(url, {

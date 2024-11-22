@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { hash } from "bcrypt";
+// app/api/admin/users/route.ts
+import { NextResponse } from 'next/server';
+import { hash } from 'bcrypt';
 import connectDB from '@/lib/db/connection';
 import User from '@/models/User';
 
@@ -21,7 +22,7 @@ export async function GET() {
 }
 
 // POST /api/admin/users - Créer un nouvel utilisateur
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     await connectDB();
     const body = await req.json();
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
       role,
       status,
       password: hashedPassword,
-      provider: "credentials"
+      provider: "credentials",
     });
 
     const userData = {
@@ -66,70 +67,6 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json(
       { error: "Erreur lors de la création de l'utilisateur" },
-      { status: 500 }
-    );
-  }
-}
-
-// PUT /api/admin/users/[userId] - Modifier un utilisateur
-export async function PUT(
-  req: NextRequest,
-  context: { params: { userId: string } }
-) {
-  try {
-    await connectDB();
-    const body = await req.json();
-    const { email, name, role, status } = body;
-    const { userId } = context.params;
-
-    // Vérifier si l'email existe déjà pour un autre utilisateur
-    const existingUser = await User.findOne({
-      email,
-      _id: { $ne: userId }
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "Un utilisateur avec cet email existe déjà" },
-        { status: 400 }
-      );
-    }
-
-    const user = await User.findByIdAndUpdate(
-      userId,
-      {
-        email,
-        name,
-        role,
-        status
-      },
-      { new: true }
-    ).select('id name email role status createdAt lastLogin');
-
-    return NextResponse.json(user);
-  } catch {
-    return NextResponse.json(
-      { error: "Erreur lors de la modification de l'utilisateur" },
-      { status: 500 }
-    );
-  }
-}
-
-// DELETE /api/admin/users/[userId] - Supprimer un utilisateur
-export async function DELETE(
-  req: NextRequest,
-  context: { params: { userId: string } }
-) {
-  try {
-    await connectDB();
-    const { userId } = context.params;
-
-    await User.findByIdAndDelete(userId);
-
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json(
-      { error: "Erreur lors de la suppression de l'utilisateur" },
       { status: 500 }
     );
   }
