@@ -17,7 +17,7 @@ import { useTheme } from 'next-themes';
 import { User } from 'next-auth';
 
 interface HeaderProps {
-  user: User;
+  user?: User;
 }
 
 export default function Header({ user }: HeaderProps) {
