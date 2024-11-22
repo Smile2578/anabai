@@ -124,7 +124,7 @@ authOptions.providers.push(
             throw new Error('Mot de passe incorrect');
           }
   
-          console.log('User authenticated successfully');
+          console.log('User authenticated successfully at', new Date().toISOString(), 'with email:', credentials?.email, 'and role:', user.role);
           console.log('Authorize function completed at', new Date().toISOString());
           return {
             id: user._id.toString(),
