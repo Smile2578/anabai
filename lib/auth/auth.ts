@@ -27,15 +27,18 @@ export const authOptions: NextAuthOptions = {
             .select('+password') as IUser | null;
 
           if (!user) {
+            console.error('No user found with this email.');
             throw new Error('Aucun utilisateur trouvé avec cet email');
           }
 
           const isValid = await bcrypt.compare(credentials!.password, user.password);
 
           if (!isValid) {
+            console.error('Invalid password.');
             throw new Error('Mot de passe incorrect');
           }
 
+          console.log('User authenticated successfully:', user.email);
           return {
             id: user._id.toString(),
             name: user.name,
@@ -55,7 +58,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
       }
-      console.log('JWT token:', token);
+      console.log('JWT token generated:', token);
       return token;
     },
     async session({ session, token }) {
