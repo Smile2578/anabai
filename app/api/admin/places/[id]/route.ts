@@ -1,21 +1,19 @@
 // app/api/admin/places/[id]/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connection';
 import { placeRepository } from '@/lib/repositories/place-repository';
-import { ValidationService } from '@/lib/services/places/ValidationService';
-import { LocationService } from '@/lib/services/core/LocationService';
-import { StorageService } from '@/lib/services/places/StorageService';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
-    const { id } = params;
+    const { id } = await params;
     
     const place = await placeRepository.findById(id);
     if (!place) {
@@ -30,10 +28,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   } catch (error) {
     console.error('Error fetching place:', error);
     return NextResponse.json(
-      { 
-        error: 'Erreur lors de la récupération du lieu',
-        details: error instanceof Error ? error.message : 'Erreur inconnue'
-      },
+      { error: 'Erreur lors de la récupération du lieu' },
       { status: 500 }
     );
   }
@@ -42,31 +37,23 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
-    const { id } = params;
+    const { id } = await params;
     const updates = await req.json();
     
-    const locationService = new LocationService();
-    const validationService = new ValidationService(locationService);
-    const storageService = new StorageService(placeRepository, validationService);
-
-    const result = await storageService.updatePlace(id, updates);
-    
-    if (!result.success) {
+    const place = await placeRepository.update(id, updates);
+    if (!place) {
       return NextResponse.json(
-        { error: result.error },
-        { status: result.error === 'Lieu non trouvé' ? 404 : 400 }
+        { error: 'Lieu non trouvé' },
+        { status: 404 }
       );
     }
 
-    return NextResponse.json(result.place);
+    return NextResponse.json(place);
 
   } catch (error) {
     console.error('Error updating place:', error);
     return NextResponse.json(
-      { 
-        error: 'Erreur lors de la mise à jour du lieu',
-        details: error instanceof Error ? error.message : 'Erreur inconnue'
-      },
+      { error: 'Erreur lors de la mise à jour du lieu' },
       { status: 500 }
     );
   }
@@ -75,21 +62,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
-    const { id } = params;
+    const { id } = await params;
     
-    // Vérifier si c'est une suppression douce
-    const searchParams = new URL(req.url).searchParams;
-    const isSoftDelete = searchParams.get('soft') !== 'false';
-
-    const locationService = new LocationService();
-    const validationService = new ValidationService(locationService);
-    const storageService = new StorageService(placeRepository, validationService);
-
-    const result = await storageService.deletePlace(id, isSoftDelete);
-
-    if (!result.success) {
+    const success = await placeRepository.delete(id);
+    if (!success) {
       return NextResponse.json(
-        { error: result.error },
+        { error: 'Lieu non trouvé' },
         { status: 404 }
       );
     }
@@ -99,10 +77,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
   } catch (error) {
     console.error('Error deleting place:', error);
     return NextResponse.json(
-      { 
-        error: 'Erreur lors de la suppression du lieu',
-        details: error instanceof Error ? error.message : 'Erreur inconnue'
-      },
+      { error: 'Erreur lors de la suppression du lieu' },
       { status: 500 }
     );
   }

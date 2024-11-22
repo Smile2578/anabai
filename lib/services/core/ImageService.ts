@@ -140,37 +140,32 @@ export class ImageService {
   }
 }
 
- async cacheImage(url: string): Promise<string> {
-   await this.ensureCacheDir();
+async cacheImage(url: string): Promise<string> {
+  await this.ensureCacheDir();
 
-   try {
-     // Génération du nom de fichier
-     const cacheKey = this.generateCacheKey(url);
-     const filename = `${cacheKey}.webp`;
-     const cachePath = path.join(this.cacheDir, filename);
-     const publicPath = `/cache/images/${filename}`;
+  try {
+    // Générer un nom de fichier unique
+    const cacheKey = this.generateCacheKey(url);
+    const filename = `${cacheKey}.webp`;
+    const cachePath = path.join(this.cacheDir, filename);
+    const publicPath = `/cache/images/${filename}`;
 
-     // Vérifier si l'image existe déjà en cache
-     try {
-       await fs.access(cachePath);
-       console.log(`Image already cached: ${publicPath}`);
-       return publicPath;
-     } catch {
-       // L'image n'existe pas en cache, la traiter
-       const imageBuffer = await this.downloadImage(url);
-       const processedImage = await this.processImage(imageBuffer);
-       
-       await this.validateImage(processedImage);
-       await fs.writeFile(cachePath, processedImage.buffer);
-       
-       console.log(`Image cached: ${publicPath}`);
-       return publicPath;
-     }
-   } catch (error) {
-     console.error('Error processing image:', error);
-     throw error;
-   }
- }
+    // Vérifier si l'image existe déjà en cache
+    try {
+      await fs.access(cachePath);
+      return publicPath;
+    } catch {
+      // Si l'image n'existe pas, la télécharger et la traiter
+      const imageBuffer = await this.downloadImage(url);
+      const processedImage = await this.processImage(imageBuffer);
+      await fs.writeFile(cachePath, processedImage.buffer);
+      return publicPath;
+    }
+  } catch (error) {
+    console.error('Error caching image:', error);
+    return '/images/placeholder.jpg'; // Image par défaut en cas d'erreur
+  }
+}
 
  async clearCache(olderThan?: Date): Promise<void> {
    await this.ensureCacheDir();

@@ -67,6 +67,7 @@ export function usePlaces(options: UsePlacesOptions = {}) {
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,
-    refetch: query.refetch
+    refetch: query.refetch,
+    data: query.data
   };
 }

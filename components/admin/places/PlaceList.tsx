@@ -14,6 +14,7 @@ import { Category, Status } from '@/types/common';
 import { Place } from '@/types/places/main';
 import { PlaceActions } from './PlaceActions';
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 
 
 export interface PlaceListProps {
@@ -94,6 +95,8 @@ export function PlaceList({
             <TableRow>
               <TableHead>Nom</TableHead>
               <TableHead>Catégorie</TableHead>
+              <TableHead>Sous-catégorie</TableHead>
+              <TableHead>Ville</TableHead>
               <TableHead>Préfecture</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead>Dernière mise à jour</TableHead>
@@ -159,17 +162,24 @@ interface PlaceRowProps {
 }
 
 function PlaceRow({ place, onEdit }: PlaceRowProps) {
+  const router = useRouter();
   return (
-    <TableRow>
-      <TableCell>
-        <div>
-          <div className="font-medium">{place.name.fr}</div>
-          <div className="text-sm text-gray-500">{place.name.ja}</div>
-        </div>
+    <TableRow key={place._id} className="group">
+                  <TableCell>
+                    <div className="cursor-pointer" onClick={() => router.push(`/admin/places/${place._id}`)}>
+                      <div className="font-medium group-hover:text-primary transition-colors">
+                        {place.name.fr}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {place.name.ja}
+                      </div>
+                    </div>
       </TableCell>
       <TableCell>
         <Badge variant="outline">{place.category}</Badge>
       </TableCell>
+      <TableCell>{place.subcategories}</TableCell>
+      <TableCell>{place.location.address.city}</TableCell>
       <TableCell>{place.location.address.prefecture}</TableCell>
       <TableCell>
         <Badge 

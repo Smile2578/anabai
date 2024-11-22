@@ -7,6 +7,8 @@ import { PLACE_CATEGORIES } from '@/lib/config/categories';
 import { GooglePlace } from '@/types/google/place';
 import { PlacePricing, AccessInfo, PracticalInfo } from '@/types/places/base';
 import { ImportPreview } from '@/types/import';
+import { GooglePhoto } from '@/types/google/details';
+import { PlaceImage } from '@/types/places/base';
 
 interface EnrichmentLog {
   placeId: string;
@@ -269,34 +271,36 @@ export class EnrichmentService {
       )?.longText;
 
         // Traitement des images avec noms courts
-      let images = await Promise.all(
-        (detailsFr.photos || []).map(async (photo: { authorAttributions: { displayName: string }[]; name: string }, index: number) => {
-          try {
-            const photoUrl = this.googlePlacesService.getPhotoUrl(photo);
-            const shortName = `img_${(index + 1).toString().padStart(2, '0')}`; // ex: img_01
-            
-            return {
-              url: photoUrl,
-              source: 'Google Places',
-              isCover: index === 0,
-              name: shortName,
-              caption: {
-                fr: photo.authorAttributions?.[0]?.displayName || 'Image du lieu',
-              }
-            };
-          } catch (error) {
-            console.error(`Erreur de traitement d'image:`, error);
-            return null;
-          }
-        })
-      );
-
+        let images = await Promise.all(
+          (detailsFr.photos || []).map(async (photo: GooglePhoto, index: number) => {
+            try {
+              const photoUrl = this.googlePlacesService.getPhotoUrl(photo);
+              const shortName = `img_${(index + 1).toString().padStart(2, '0')}`;
+              
+              // Utiliser ImageService pour cacher l'image
+              const cachedUrl = await this.imageService.cacheImage(photoUrl);
+              
+              return {
+                url: cachedUrl, // Utiliser l'URL mise en cache
+                source: 'Google Places',
+                isCover: index === 0,
+                name: shortName,
+                caption: {
+                  fr: photo.authorAttributions?.[0]?.displayName || 'Image du lieu',
+                }
+              };
+            } catch (error) {
+              console.error(`Erreur de traitement d'image:`, error);
+              return null;
+            }
+          })
+        );
       let openingHours;
-        if (detailsFr.currentOpeningHours?.periods?.length > 0 || detailsFr.regularOpeningHours?.periods?.length > 0) {
-          const hours = detailsFr.currentOpeningHours || detailsFr.regularOpeningHours;
-          if (hours && hours.periods.length > 0 && hours.weekdayDescriptions.length > 0) {
-            openingHours = {
-              weekdayTexts: {
+      if (detailsFr.currentOpeningHours?.periods?.length || detailsFr.regularOpeningHours?.periods?.length) {
+        const hours = detailsFr.currentOpeningHours || detailsFr.regularOpeningHours;
+        if (hours?.periods?.length && hours?.weekdayDescriptions?.length) {
+          openingHours = {
+            weekdayTexts: {
                 fr: hours.weekdayDescriptions.join('\n')
               },
               periods: hours.periods.map((period: { open: { day: number; hour: number; minute: number }; close?: { hour: number; minute: number } }) => ({
@@ -355,11 +359,11 @@ export class EnrichmentService {
         },
         category: this.determineCategory(detailsFr.types),
         subcategories: this.determineSubcategories(detailsFr.types, this.determineCategory(detailsFr.types)),
-        images,
+        images: images as PlaceImage[],
         description: {
           fr: detailsFr.editorialSummary?.text || 
               `${detailsFr.displayName.text} - ${detailsFr.formattedAddress}`,
-          ja: detailsJa.editorialSummary?.text || 
+          ja: detailsJa.editorialSummary?.text ||
               detailsJa.displayName.text
         },
         openingHours,

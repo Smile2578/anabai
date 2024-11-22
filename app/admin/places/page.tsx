@@ -34,6 +34,11 @@ export default function PlacesPage() {
   const [selectedCategories] = useState<Category[]>([]);
   const [selectedStatus] = useState<Status>();
   const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFilters] = useState<PlaceFilters>({
+    categories: [],
+    status: [],
+    priceRange: []
+  });
   
   // Données et chargement
   const { 
@@ -43,8 +48,8 @@ export default function PlacesPage() {
     refetch
   } = usePlaces({
     search: searchQuery,
-    category: selectedCategories[0],
-    status: selectedStatus,
+    categories: filters.categories,
+    status: filters.status[0], 
     page: currentPage,
     limit: 50
   });
@@ -63,13 +68,6 @@ export default function PlacesPage() {
     byPrefecture: {}
   };
   const totalPages = data?.totalPages || 1;
-
-  const [filters, setFilters] = useState<PlaceFilters>({
-    categories: [],
-    status: [],
-    priceRange: []
-  });
-
   // Handler des filtres
   const handleFilterChange = (
     type: 'categories' | 'status' | 'priceRange',
@@ -79,7 +77,8 @@ export default function PlacesPage() {
       ...prev,
       [type]: value
     }));
-    setCurrentPage(1); // Reset pagination when filters change
+    setCurrentPage(1); 
+    refetch(); 
   };
 
   // Handler de nettoyage

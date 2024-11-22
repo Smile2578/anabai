@@ -5,18 +5,22 @@ import { placeRepository } from '@/lib/repositories/place-repository';
 import { Category, Status } from '@/types/common';
 
 type SearchFilter = {
-  'name.fr': { $regex: string; $options: string };
-  'name.ja': { $regex: string; $options: string };
-  'description.fr': { $regex: string; $options: string };
+  $regex: string;
+  $options: string;
 };
 
 interface PlaceFilter {
   isActive: boolean;
-  $or?: SearchFilter[];
+  $or?: Array<{
+    'name.fr'?: SearchFilter;
+    'name.ja'?: SearchFilter;
+    'description.fr'?: SearchFilter;
+  }>;
   category?: { $in: Category[] };
   'metadata.status'?: Status;
   isGem?: boolean;
 }
+
 
 export async function GET(req: NextRequest) {
   try {
@@ -38,42 +42,12 @@ export async function GET(req: NextRequest) {
 
     if (search) {
       filter.$or = [
-        {
-          'name.fr': { $regex: search, $options: 'i' },
-          'name.ja': {
-            $regex: '',
-            $options: ''
-          },
-          'description.fr': {
-            $regex: '',
-            $options: ''
-          }
-        },
-        {
-          'name.ja': { $regex: search, $options: 'i' },
-          'name.fr': {
-            $regex: '',
-            $options: ''
-          },
-          'description.fr': {
-            $regex: '',
-            $options: ''
-          }
-        },
-        {
-          'description.fr': { $regex: search, $options: 'i' },
-          'name.fr': {
-            $regex: '',
-            $options: ''
-          },
-          'name.ja': {
-            $regex: '',
-            $options: ''
-          }
-        }
+        { 'name.fr': { $regex: search, $options: 'i' } },
+        { 'name.ja': { $regex: search, $options: 'i' } },
+        { 'description.fr': { $regex: search, $options: 'i' } }
       ];
     }
-
+    
     if (categories?.length) {
       filter.category = { $in: categories };
     }
@@ -96,17 +70,13 @@ export async function GET(req: NextRequest) {
 
     // Calculer les stats pour les lieux actuels
     const statsResults = await placeRepository.getStats();
-
+    const totalPages = Math.ceil(placesData.total / limit);
+    
     return NextResponse.json({
       places: placesData.places,
       totalPages: placesData.totalPages,
-      currentPage: page,
-      stats: {
-        total: statsResults.total,
-        published: statsResults.published,
-        draft: statsResults.draft,
-        archived: statsResults.archived
-      }
+      currentPage: placesData.page,
+      stats: statsResults
     });
 
   } catch (error) {

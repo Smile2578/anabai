@@ -73,6 +73,7 @@ export const PLACE_CATEGORIES = {
       'Salon de thé',
       'Bar à saké',
       'Karaoké',
+      'Discothèque',
     ]
   }
 } as const;

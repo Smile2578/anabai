@@ -37,4 +37,5 @@ export interface GoogleDisplayName {
   export interface GoogleAttributions {
     source: string;
     attributionUrl: string;
+    displayName: string;
   }

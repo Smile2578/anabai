@@ -1,6 +1,6 @@
 // types/places/main.ts
 import { Category, LocalizedStringRequired, Subcategory } from '../common';
-import { AccessInfo, OpeningHours, PlaceAddress, PlaceContact, PlaceImage, PlacePricing, PlaceRating, PracticalInfo } from './base';
+import { AccessInfo, OpeningHours, PlaceAddress, PlaceContact, PlaceImage, PlacePricing, PlaceRating, PracticalInfo, PlanningInfo } from './base';
 import { PlaceMetadata } from './metadata';
 
 export interface Place {
@@ -37,4 +37,6 @@ export interface Place {
   createdAt: Date;
   isGem: boolean;
   _id: string;
+  planningInfo?: PlanningInfo; 
+
 }

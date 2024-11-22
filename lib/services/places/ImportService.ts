@@ -2,8 +2,10 @@ import { parse } from 'csv-parse/sync';
 import { GooglePlacesService } from '../core/GooglePlacesService';
 import { GeocodingService } from '../core/GeocodingService';
 import { ImportPreview } from '@/types/import';
-import { validateGoogleMapsUrl } from '@/lib/utils/place-utils';
 import { GOOGLE_MAPS_CONFIG } from '@/lib/config/google-maps';
+import { GooglePlace } from '@/types/google/place';
+import { Place } from '@/types/places/main';
+import { Category, Subcategory } from '@/types/common';
 
 interface ImportResult {
   success: boolean;
@@ -23,7 +25,7 @@ export class ImportService {
     private geocodingService: GeocodingService
   ) {}
 
-  private async validateLocation(lat: number, lng: number): Promise<boolean> {
+  private validateLocation(lat: number, lng: number): boolean {
     const bounds = GOOGLE_MAPS_CONFIG.geocoding.bounds;
     return (
       lat >= bounds.south &&
@@ -31,6 +33,117 @@ export class ImportService {
       lng >= bounds.west &&
       lng <= bounds.east
     );
+  }
+
+  private determineCategory(types: string[]): Category {
+    // Mapper les types Google vers nos catégories
+    const typeMapping: Record<string, Category> = {
+      'restaurant': 'Restaurant',
+      'food': 'Restaurant',
+      'cafe': 'Café & Bar',
+      'bar': 'Café & Bar',
+      'lodging': 'Hôtel',
+      'hotel': 'Hôtel',
+      'shopping_mall': 'Shopping',
+      'store': 'Shopping',
+      'point_of_interest': 'Visite',
+      'tourist_attraction': 'Visite'
+    };
+
+    for (const type of types) {
+      const category = typeMapping[type];
+      if (category) {
+        return category;
+      }
+    }
+
+    return 'Visite'; // Catégorie par défaut
+  }
+
+  private determineSubcategories(types: string[], category: Category): Subcategory[] {
+    // Exemple de mapping pour quelques sous-catégories
+    const subcategories = new Set<Subcategory>();
+
+    if (category === 'Restaurant') {
+      if (types.includes('ramen_restaurant')) subcategories.add('Ramen');
+      if (types.includes('sushi_restaurant')) subcategories.add('Sushi');
+    } else if (category === 'Visite') {
+      if (types.includes('temple')) subcategories.add('Temple');
+      if (types.includes('museum')) subcategories.add('Musée');
+    }
+
+    return Array.from(subcategories);
+  }
+
+  private transformToPlace(googlePlace: GooglePlace, originalData: ImportPreview['original']): Place {
+    const category = this.determineCategory(googlePlace.types);
+    const subcategories = this.determineSubcategories(googlePlace.types, category);
+
+    // Conversion du format originalData
+    const transformedOriginalData = {
+      title: originalData.Title,
+      note: originalData.Note,
+      url: originalData.URL,
+      comment: originalData.Comment
+    };
+
+    // Création des URLs des photos sans utiliser getPhotoUrl
+    const photos = googlePlace.photos?.map((photo, index) => ({
+      url: this.googlePlacesService.getPhotoUrl(photo),
+      source: 'Google Places',
+      isCover: index === 0,
+      name: `img_${(index + 1).toString().padStart(2, '0')}`
+    })) || [];
+
+    
+    return {
+      _id: googlePlace.id,
+      originalData: transformedOriginalData,
+      name: {
+        fr: googlePlace.displayName.text,
+        ja: googlePlace.displayName.text // On utilise la même valeur pour le moment
+      },
+      location: {
+        point: {
+          type: 'Point',
+          coordinates: [
+            googlePlace.location.longitude,
+            googlePlace.location.latitude
+          ]
+        },
+        address: {
+          full: {
+            fr: googlePlace.formattedAddress,
+            ja: googlePlace.formattedAddress
+          },
+          formatted: {
+            fr: googlePlace.formattedAddress,
+            ja: googlePlace.formattedAddress
+          },
+          prefecture: 'À déterminer', // À extraire des adressComponents
+          city: 'À déterminer'
+        }
+      },
+      category,
+      subcategories,
+      description: {
+        fr: googlePlace.editorialSummary?.text || googlePlace.displayName.text,
+        ja: googlePlace.displayName.text
+      },
+      images: photos,
+      metadata: {
+        source: 'Google Places',
+        placeId: googlePlace.id,
+        status: 'brouillon',
+        businessStatus: googlePlace.businessStatus,
+        rating: googlePlace.rating,
+        userRatingsTotal: googlePlace.userRatingCount
+      },
+      isActive: true,
+      updatedAt: new Date(),
+      createdAt: new Date(),
+      isGem: false
+    };
   }
 
   private validateCSVHeaders(headers: string[]): void {
@@ -66,68 +179,42 @@ export class ImportService {
         throw new Error('Titre manquant');
       }
 
-      let placeId: string | null = null;
-
-      // Si une URL est fournie, essayer d'abord d'extraire le placeId de l'URL
-      if (record.URL) {
-        const { isValid, placeId: extractedId } = await validateGoogleMapsUrl(record.URL);
-        if (isValid && extractedId) {
-          // Vérifier la localisation
-          const place = await this.googlePlacesService.searchPlaceById(extractedId);
-          if (place && await this.validateLocation(
-            place.location.latitude,
-            place.location.longitude
-          )) {
-            placeId = extractedId;
-          } else {
-            throw new Error('Le lieu n\'est pas au Japon');
-          }
-        }
+      // Rechercher directement le lieu par son nom
+      const searchResult = await this.googlePlacesService.searchPlace(record.Title);
+      
+      if (!searchResult) {
+        throw new Error('Lieu introuvable');
       }
 
-      // Si pas de placeId via URL, essayer via geocoding
-      if (!placeId) {
-        const geocodingResult = await this.geocodingService.geocode(record.Title);
-        if (geocodingResult?.coordinates) {
-          // Vérifier si au Japon
-          if (await this.validateLocation(
-            geocodingResult.coordinates.lat,
-            geocodingResult.coordinates.lng
-          )) {
-            placeId = geocodingResult.placeId || null;
-          } else {
-            throw new Error('Le lieu n\'est pas au Japon');
-          }
-        }
+      // Récupérer les détails pour vérifier la localisation
+      const placeDetails = await this.googlePlacesService.getPlaceDetails(searchResult.id);
+      
+      if (!placeDetails) {
+        throw new Error('Impossible de récupérer les détails du lieu');
       }
 
-      // Si toujours pas de placeId, essayer la recherche directe
-      if (!placeId) {
-        const searchResult = await this.googlePlacesService.searchPlace(record.Title);
-        if (searchResult?.id) {
-          // Vérifier encore une fois la localisation
-          const place = await this.googlePlacesService.searchPlaceById(searchResult.id);
-          if (place && await this.validateLocation(
-            place.location.latitude,
-            place.location.longitude
-          )) {
-            placeId = searchResult.id;
-          } else {
-            throw new Error('Le lieu n\'est pas au Japon');
-          }
-        }
+      // Vérifier si le lieu est au Japon
+      const location = {
+        lat: placeDetails.location.latitude,
+        lng: placeDetails.location.longitude
+      };
+
+      const isInJapan = this.validateLocation(location.lat, location.lng);
+      
+      if (!isInJapan) {
+        throw new Error('Le lieu n\'est pas au Japon');
       }
 
-      if (placeId) {
-        preview.enriched = {
-          success: true,
-          placeId
-        };
-        preview.status = 'success';
-      } else {
-        preview.status = 'error';
-        preview.enriched.error = 'Lieu introuvable';
-      }
+      // Transformer GooglePlace en notre type Place
+      const place = this.transformToPlace(placeDetails, preview.original);
+
+      // Si on arrive ici, le lieu est valide et au Japon
+      preview.enriched = {
+        success: true,
+        placeId: searchResult.id,
+        place
+      };
+      preview.status = 'success';
 
     } catch (error) {
       console.error(`Erreur lors du traitement de "${record.Title}":`, error);

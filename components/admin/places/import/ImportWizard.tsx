@@ -167,7 +167,7 @@ export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
       case 'preview':
       case 'saving':
         return (
-          <div className="space-y-6">
+          <div className="space-y-6 overflow-auto">
             <ResultsPreview
               data={previews}
               selectedRows={selectedPreviews}

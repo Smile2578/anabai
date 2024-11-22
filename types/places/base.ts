@@ -53,25 +53,45 @@ export interface PlacePricing {
   details: LocalizedStringRequired; // Now required
 }
 
+export interface PlanningInfo {
+  recommendedDuration?: {
+    min: number;
+    max: number;
+  };
+  peakHours?: Array<{
+    day: number;
+    start: string;
+    end: string;
+  }>;
+  bestTiming?: 'morning' | 'afternoon' | 'evening' | 'night' | 'any';
+  seasonality?: Array<{
+    season: 'spring' | 'summer' | 'autumn' | 'winter';
+    recommended: boolean;
+    details: LocalizedString;
+  }>;
+  tips?: LocalizedString;
+  warnings?: LocalizedString;
+}
+
 export interface PracticalInfo {
-  bookingRequired: boolean;
-  englishSupport: boolean;
-  paymentMethods: string[];
-  delivery: boolean;
-  dineIn: boolean;
-  takeout: boolean;
+  bookingRequired?: boolean;
+  englishSupport?: boolean;
+  paymentMethods?: string[];
+  delivery?: boolean;
+  dineIn?: boolean;
+  takeout?: boolean;
   parkingOptions?: {
-    freeParking?: boolean;
-    paidParking?: boolean;
-    streetParking?: boolean;
-    valetParking?: boolean;
-    parkingAvailable?: boolean;
+    freeParking: boolean;
+    paidParking: boolean;
+    streetParking: boolean;
+    valetParking: boolean;
+    parkingAvailable: boolean;
   };
   accessibilityOptions?: {
-    wheelchairAccessibleParking?: boolean;
-    wheelchairAccessibleEntrance?: boolean;
-    wheelchairAccessibleRestroom?: boolean;
-    wheelchairAccessibleSeating?: boolean;
+    wheelchairAccessibleParking: boolean;
+    wheelchairAccessibleEntrance: boolean;
+    wheelchairAccessibleRestroom: boolean;
+    wheelchairAccessibleSeating: boolean;
   };
 }
 

@@ -1,83 +1,96 @@
 // app/admin/places/[id]/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
-import { PlaceCard } from '@/components/admin/places/PlaceCard';
-import { toast } from '@/hooks/use-toast';
-import * as React from 'react';
+import { PlaceEditForm } from '@/components/admin/places/PlaceEditForm';
+import { usePlace } from '@/hooks/usePlace';
+import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Loader2, Trash2, ArrowLeft } from 'lucide-react';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import Link from 'next/link';
 
-interface PageParams {
-  id: string;
-}
-
-export default function PlaceDetailsPage({ params }: { params: Promise<PageParams> }) {
+export default function PlaceEditPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
   const router = useRouter();
+  const { place, isLoading, error, updatePlace, deletePlace } = usePlace(resolvedParams.id);
 
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Utiliser React.use avec le type correct
-  const { id } = React.use(params) as PageParams;
-
-  useEffect(() => {
-    const fetchPlace = async () => {
-      try {
-        if (id === 'new') {
-          setPlace(null);
-          setIsLoading(false);
-          return;
-        }
-
-        const response = await fetch(`/api/admin/places/${id}`);
-        if (!response.ok) throw new Error('Erreur lors de la récupération du lieu');
-        
-        const data = await response.json();
-        setPlace(data);
-      } catch (error) {
-        console.error('Erreur:', error);
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les informations du lieu",
-          variant: "destructive"
-        });
-        router.push('/admin/places');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPlace();
-  }, [id, router]);
+  const handleDelete = async () => {
+    try {
+      await deletePlace();
+      router.push('/admin/places');
+    } catch (error) {
+      console.error('Error deleting place:', error);
+    }
+  };
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container py-6">
+        <div className="rounded-lg bg-destructive/10 p-4 text-destructive">
+          Une erreur est survenue lors du chargement du lieu.
+        </div>
+      </div>
+    );
+  }
+
+  if (!place) {
+    return (
+      <div className="container py-6">
+        <div className="rounded-lg bg-muted p-4">
+          Lieu non trouvé.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">
-          {id === 'new' ? 'Nouveau lieu' : 'Modifier le lieu'}
+    <div className="container py-6">
+      <div className="flex justify-between items-center mb-6">
+        <Link href="/admin/places">
+          <Button variant="link"><ArrowLeft className="w-4 h-4 mr-2" />Retour</Button>
+        </Link>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Éditer {place.name.fr}
         </h1>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive">
+              <Trash2 className="w-4 h-4 mr-2" />
+              Supprimer
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Cette action est irréversible. Le lieu sera définitivement supprimé.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive">
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        
-        <div className="lg:col-span-1">
-          {place && (
-            <div className="sticky top-8">
-              <h2 className="text-xl font-semibold mb-4">Aperçu</h2>
-              <PlaceCard place={place} />
-            </div>
-          )}
-        </div>
-      </div>
+      <TooltipProvider>
+      <PlaceEditForm
+        place={place}
+        onSubmit={updatePlace}
+        />
+      </TooltipProvider>
     </div>
   );
 }

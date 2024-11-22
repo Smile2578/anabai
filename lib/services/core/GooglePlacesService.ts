@@ -1,4 +1,3 @@
-// lib/services/core/GooglePlacesService.ts
 import { GooglePlace } from '@/types/google/place';
 import { Language } from '@/types/common';
 import { GOOGLE_MAPS_CONFIG } from '@/lib/config/google-maps';
@@ -10,8 +9,8 @@ type CacheParams = {
 };
 
 export class GooglePlacesService {
-  private readonly baseUrl = 'https://places.googleapis.com/v1';
-  private readonly apiKey: string;
+  public readonly baseUrl = 'https://places.googleapis.com/v1';
+  protected readonly apiKey: string;
   private readonly cache: Map<string, { data: unknown; timestamp: number }>;
   private readonly rateLimiter: {
     tokens: number;
@@ -63,6 +62,10 @@ export class GooglePlacesService {
         setTimeout(resolve, waitTime);
       }
     });
+  }
+
+  public getPhotoUrl(photo: { name: string }): string {
+    return `${this.baseUrl}/media/${photo.name}?key=${this.apiKey}&maxwidth=800&maxheight=600&quality=80`;
   }
 
   private async fetchWithCache(
@@ -155,7 +158,18 @@ export class GooglePlacesService {
       const searchRequest = {
         textQuery: query,
         languageCode: language,
-        locationBias: GOOGLE_MAPS_CONFIG.geocoding.bounds
+        locationBias: {
+          rectangle: {
+            low: {
+              latitude: GOOGLE_MAPS_CONFIG.geocoding.bounds.south,
+              longitude: GOOGLE_MAPS_CONFIG.geocoding.bounds.west
+            },
+            high: {
+              latitude: GOOGLE_MAPS_CONFIG.geocoding.bounds.north,
+              longitude: GOOGLE_MAPS_CONFIG.geocoding.bounds.east
+            }
+          }
+        }
       };
 
       const response = await this.fetchWithCache('/places:searchText', {
@@ -206,10 +220,10 @@ export class GooglePlacesService {
     maxResults: number = 5
   ): Promise<GooglePlace[]> {
     try {
+      // Construire les paramètres de recherche sans restriction de type
       const searchRequest = {
         textQuery: query,
         languageCode: language,
-        maxResultCount: maxResults,
         locationBias: {
           rectangle: {
             low: {
@@ -229,82 +243,43 @@ export class GooglePlacesService {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': this.apiKey,
-          'X-Goog-FieldMask': GOOGLE_MAPS_CONFIG.fields.details
+          'X-Goog-FieldMask': 'places'
         },
         body: JSON.stringify(searchRequest)
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
+        console.error('Places API Error Response:', data);
         throw new Error(
-          `Google Places API error: ${errorData.error?.message || response.statusText}`
+          `Failed to search places: ${data.error?.message || response.statusText}`
         );
       }
 
-      const data = await response.json();
-
       if (!data.places || !Array.isArray(data.places)) {
+        console.log('No places found in response:', data);
         return [];
       }
 
+      const places = data.places.slice(0, maxResults);
+
       // Récupérer les détails pour chaque lieu trouvé
       const detailedPlaces = await Promise.all(
-        data.places.slice(0, maxResults).map((place: GooglePlace) => 
-          this.getPlaceDetails(place.id, language)
-            .catch(error => {
-              console.error(`Error fetching details for ${place.id}:`, error);
-              return null;
-            })
-        )
+        places.map(async (place: GooglePlace) => {
+          try {
+            return await this.getPlaceDetails(place.id, language);
+          } catch (error) {
+            console.error(`Error fetching details for ${place.id}:`, error);
+            return null;
+          }
+        })
       );
 
       return detailedPlaces.filter((place): place is GooglePlace => place !== null);
 
     } catch (error) {
-      console.error('Error searching places:', error);
-      throw error;
-    }
-  }
-
-  public async searchPlaceById(
-    placeId: string,
-    language: Language = 'fr'
-  ): Promise<GooglePlace | null> {
-    try {
-      const response = await fetch(`${this.baseUrl}/places/${placeId}`, {
-        headers: {
-          'X-Goog-Api-Key': this.apiKey,
-          'X-Goog-FieldMask': GOOGLE_MAPS_CONFIG.fields.details,
-          'Accept-Language': language
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch place details: ${response.statusText}`
-        );
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`Error fetching place ${placeId}:`, error);
-      return null;
-    }
-  }
-
-  private async getMultiplePlacesDetails(
-    placeIds: string[],
-    language: Language = 'fr'
-  ): Promise<GooglePlace[]> {
-    try {
-      // Limiter à 5 requêtes simultanées pour éviter la surcharge
-      const results = await Promise.all(
-        placeIds.map(id => this.getPlaceDetails(id, language))
-      );
-      
-      return results.filter(Boolean);
-    } catch (error) {
-      console.error('Error fetching multiple place details:', error);
+      console.error('Error in searchPlacesInteractive:', error);
       throw error;
     }
   }

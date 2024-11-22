@@ -1,8 +1,66 @@
 // models/place.model.ts
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import type { Place } from '@/types/places/main';
+import type { 
+  OpeningHours, 
+  PlanningInfo, 
+  PracticalInfo,
+  PlaceImage,
+  PlaceAddress,
+  AccessInfo,
+  PlacePricing,
+  PlaceContact,
+  PlaceRating
+} from '@/types/places/base';
 
-export interface PlaceDocument extends Omit<Place, '_id'>, Document {
+// Mettre à jour l'interface PlaceDocument pour inclure tous les champs
+export interface PlaceDocument extends Document {
+  originalData?: {
+    title?: string;
+    note?: string;
+    url?: string;
+    comment?: string;
+  };
+  name: {
+    fr: string;
+    ja?: string;
+    en?: string;
+  };
+  _id: string;
+  location: {
+    point: {
+      type: 'Point';
+      coordinates: number[];
+    };
+    address: PlaceAddress;
+    access?: AccessInfo;
+  };
+  category: string;
+  subcategories: string[];
+  isGem: boolean;
+  description: {
+    fr: string;
+    ja?: string;
+    en?: string;
+  };
+  images: PlaceImage[];
+  openingHours?: OpeningHours;
+  pricing?: PlacePricing;
+  contact?: PlaceContact;
+  rating?: PlaceRating;
+  planningInfo?: PlanningInfo;
+  practicalInfo?: PracticalInfo;
+  metadata: {
+    source: string;
+    placeId?: string;
+    lastEnriched?: Date;
+    lastVerified?: Date;
+    verifiedBy?: string;
+    status: 'brouillon' | 'publié' | 'archivé';
+    tags?: string[];
+    businessStatus?: string;
+  };
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -67,7 +125,7 @@ const placeSchema = new Schema<PlaceDocument>(
         postalCode: String,
         formatted: {
           type: LocalizedStringRequiredSchema,
-          required: true  // Ensuring formatted address is required
+          required: true
         }
       },
       access: {
@@ -119,22 +177,27 @@ const placeSchema = new Schema<PlaceDocument>(
     
     // Informations pratiques
     openingHours: {
-      required: false,  
       type: new Schema({
         periods: [{
-          day: Number,
+          day: { type: Number, required: true },
+          open: { type: String, required: true },
+          close: { type: String, required: true }
+        }],
+        weekdayTexts: {
+          type: LocalizedStringRequiredSchema,
+          required: true
+        },
+        holidayDates: [Date],
+        specialHours: [{
+          date: Date,
           open: String,
           close: String,
-        }],
-        weekdayTexts: new Schema({  
-          fr: String, 
-          ja: String,
-          en: String
-        }, { _id: false }),  
-        holidayDates: [Date]
-      }, { _id: false })  
+          description: LocalizedStringSchema
+        }]
+      }, { _id: false }),
+      required: false
     },
-    
+
     pricing: {
       level: {
         type: Number,
@@ -176,6 +239,62 @@ const placeSchema = new Schema<PlaceDocument>(
         rating: Number,
         reviewCount: Number,
       },
+    },
+
+    // Informations de planification
+    planningInfo: {
+      type: new Schema({
+        recommendedDuration: {
+          min: Number,
+          max: Number
+        },
+        peakHours: [{
+          day: { type: Number, required: true },
+          start: { type: String, required: true },
+          end: { type: String, required: true }
+        }],
+        bestTiming: {
+          type: String,
+          enum: ['morning', 'afternoon', 'evening', 'night', 'any']
+        },
+        seasonality: [{
+          season: {
+            type: String,
+            enum: ['spring', 'summer', 'autumn', 'winter'],
+            required: true
+          },
+          recommended: { type: Boolean, required: true },
+          details: { type: LocalizedStringSchema }
+        }],
+        tips: { type: LocalizedStringSchema },
+        warnings: { type: LocalizedStringSchema }
+      }, { _id: false }),
+      required: false
+    },
+
+    practicalInfo: {
+      type: new Schema({
+        bookingRequired: Boolean,
+        englishSupport: Boolean,
+        paymentMethods: [String],
+        delivery: Boolean,
+        dineIn: Boolean,
+        takeout: Boolean,
+        parkingOptions: {
+          freeParking: Boolean,
+          paidParking: Boolean,
+          streetParking: Boolean,
+          valetParking: Boolean,
+          parkingAvailable: Boolean
+        },
+        accessibilityOptions: {
+          wheelchairAccessibleParking: Boolean,
+          wheelchairAccessibleEntrance: Boolean,
+          wheelchairAccessibleRestroom: Boolean,
+          wheelchairAccessibleSeating: Boolean
+        }
+      }, { _id: false }),
+      required: false
     },
     
     // Métadonnées
