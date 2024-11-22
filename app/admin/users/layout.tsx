@@ -1,4 +1,3 @@
-// app/admin/users/layout.tsx
 import { Metadata } from "next";
 import { Suspense } from "react";
 import { Card } from "@/components/ui/card";
@@ -13,11 +12,10 @@ interface UsersLayoutProps {
   modal: React.ReactNode;
 }
 
-export function UsersLayout({ children, modal }: UsersLayoutProps) {
+export default function Layout({ children, modal }: UsersLayoutProps) {
   return (
     <>
       <div className="flex-1 space-y-4">
-        
         <div>
           <Suspense 
             fallback={
