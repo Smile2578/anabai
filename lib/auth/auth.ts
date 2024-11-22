@@ -59,6 +59,8 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
       }
       console.log('JWT token generated:', token);
+      console.log('JWT callback secret:', process.env.NEXTAUTH_SECRET);
+
       return token;
     },
     async session({ session, token }) {
@@ -68,6 +70,7 @@ export const authOptions: NextAuthOptions = {
         role: token.role as string,
       };
       console.log('Session data:', session);
+      console.log('JWT callback secret:', process.env.NEXTAUTH_SECRET);
       return session;
     },
   },
