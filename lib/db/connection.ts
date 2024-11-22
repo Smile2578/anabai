@@ -9,7 +9,7 @@ declare global {
   } | null;
 }
 
-const MONGODB_URI = process.env.MONGODB_URI!;
+const MONGODB_URI = process.env.MONGODB_URI as string;
 
 if (!MONGODB_URI) {
   throw new Error(
@@ -36,6 +36,7 @@ async function connectDB() {
     cached!.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
       return mongoose;
     });
+    console.log('Connected to MongoDB');
   }
   try {
     cached!.conn = await cached!.promise;

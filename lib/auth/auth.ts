@@ -13,36 +13,53 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
     CredentialsProvider({
-      name: 'Credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email', placeholder: 'email@example.com' },
-        password: { label: 'Password', type: 'password' },
-      },
-      async authorize(credentials) {
-        await connectDB();
-
-        const user = await User.findOne({ email: credentials?.email })
-          .select('+password') as IUser | null;
-
-        if (!user) {
-          throw new Error('Aucun utilisateur trouvé avec cet email');
-        }
-
-        const isValid = await bcrypt.compare(credentials!.password, user.password);
-
-        if (!isValid) {
-          throw new Error('Mot de passe incorrect');
-        }
-
-        return {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        };
-      },
-    }),
-  ],
+        name: 'Credentials',
+        credentials: {
+          email: { label: 'Email', type: 'email', placeholder: 'email@example.com' },
+          password: { label: 'Password', type: 'password' },
+        },
+        async authorize(credentials) {
+          console.log('Authorize function called with email:', credentials?.email);
+  
+          try {
+            const dbConnectionStart = Date.now();
+            await connectDB();
+            console.log('Database connected in', Date.now() - dbConnectionStart, 'ms');
+  
+            const userLookupStart = Date.now();
+            const user = await User.findOne({ email: credentials?.email })
+              .select('+password') as IUser | null;
+            console.log('User lookup completed in', Date.now() - userLookupStart, 'ms');
+  
+            if (!user) {
+              console.log('No user found with this email');
+              throw new Error('Aucun utilisateur trouvé avec cet email');
+            }
+  
+            const passwordCompareStart = Date.now();
+            const isValid = await bcrypt.compare(credentials!.password, user.password);
+            console.log('Password comparison completed in', Date.now() - passwordCompareStart, 'ms');
+  
+            if (!isValid) {
+              console.log('Invalid password');
+              throw new Error('Mot de passe incorrect');
+            }
+  
+            console.log('User authenticated successfully');
+  
+            return {
+              id: user._id.toString(),
+              name: user.name,
+              email: user.email,
+              role: user.role,
+            };
+          } catch (error) {
+            console.error('Error in authorize function:', error);
+            throw new Error('Erreur lors de la connexion. Veuillez réessayer plus tard.');
+          }
+        },
+      }),
+    ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
