@@ -38,7 +38,7 @@ export default function UsersManagement() {
       if (!response.ok) throw new Error('Erreur lors du chargement des utilisateurs');
       const data = await response.json();
       setUsers(data);
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Erreur",
@@ -74,7 +74,7 @@ export default function UsersManagement() {
         title: "Utilisateur supprimé",
         description: "L'utilisateur a été supprimé avec succès",
       });
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Erreur",
