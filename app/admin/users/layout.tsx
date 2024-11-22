@@ -8,12 +8,7 @@ export const metadata: Metadata = {
   description: 'Gestion des utilisateurs de la plateforme AnabAI',
 };
 
-interface UsersLayoutProps {
-  children: React.ReactNode;
-  modal: React.ReactNode;
-}
-
-export default function UsersLayout({ children, modal }: UsersLayoutProps) {
+export default function UsersLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode; }) {
   return (
     <>
       <div className="flex-1 space-y-4">
