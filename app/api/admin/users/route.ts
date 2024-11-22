@@ -72,12 +72,15 @@ export async function POST(req: NextRequest) {
 }
 
 // PUT /api/admin/users/[userId] - Modifier un utilisateur
-export async function PUT(req: NextRequest, { params }: { params: { userId: string } }) {
+export async function PUT(
+  req: NextRequest,
+  context: { params: { userId: string } }
+) {
   try {
     await connectDB();
     const body = await req.json();
     const { email, name, role, status } = body;
-    const { userId } = params;
+    const { userId } = context.params;
 
     // Vérifier si l'email existe déjà pour un autre utilisateur
     const existingUser = await User.findOne({
@@ -113,10 +116,13 @@ export async function PUT(req: NextRequest, { params }: { params: { userId: stri
 }
 
 // DELETE /api/admin/users/[userId] - Supprimer un utilisateur
-export async function DELETE(req: NextRequest, { params }: { params: { userId: string } }) {
+export async function DELETE(
+  req: NextRequest,
+  context: { params: { userId: string } }
+) {
   try {
     await connectDB();
-    const { userId } = params;
+    const { userId } = context.params;
 
     await User.findByIdAndDelete(userId);
 

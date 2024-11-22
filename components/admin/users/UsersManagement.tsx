@@ -1,7 +1,7 @@
 // components/admin/users/UsersManagement.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { UsersTable } from "./users-table";
 import { UserFilters } from "./users-filters";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ export default function UsersManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch('/api/admin/users');
@@ -42,12 +42,12 @@ export default function UsersManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   // Charger les utilisateurs au montage du composant
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]); // Add fetchUsers to dependency array
+  }, [fetchUsers]);
 
   const handleCreateUser = () => {
     setEditingUser(null);
