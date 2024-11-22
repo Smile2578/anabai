@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { UsersTable } from "./users-table";
 import { UserFilters } from "./users-filters";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle } from 'lucide-react';
 import { UserDialog } from "./user-dialog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,13 +23,13 @@ export default function UsersManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [,setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   // Charger les utilisateurs au montage du composant
   useEffect(() => {
     fetchUsers();
-  });
+  }, []); // Empty dependency array to run only once on mount
 
   const fetchUsers = async () => {
     try {
@@ -38,7 +38,7 @@ export default function UsersManagement() {
       if (!response.ok) throw new Error('Erreur lors du chargement des utilisateurs');
       const data = await response.json();
       setUsers(data);
-    } catch {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
@@ -74,7 +74,7 @@ export default function UsersManagement() {
         title: "Utilisateur supprimé",
         description: "L'utilisateur a été supprimé avec succès",
       });
-    } catch {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
@@ -142,11 +142,15 @@ export default function UsersManagement() {
 
       <UserFilters />
 
-      <UsersTable
-        users={users}
-        onEdit={handleEditUser}
-        onDelete={handleDeleteUser}
-      />
+      {isLoading ? (
+        <div>Chargement...</div>
+      ) : (
+        <UsersTable
+          users={users}
+          onEdit={handleEditUser}
+          onDelete={handleDeleteUser}
+        />
+      )}
 
       <UserDialog
         user={editingUser}
@@ -157,3 +161,4 @@ export default function UsersManagement() {
     </div>
   );
 }
+

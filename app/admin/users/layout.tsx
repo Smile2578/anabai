@@ -7,33 +7,28 @@ export const metadata: Metadata = {
   description: 'Gestion des utilisateurs de la plateforme AnabAI',
 };
 
-interface UsersLayoutProps {
-  children: React.ReactNode;
-  modal: React.ReactNode;
-}
-
-export default function Layout({ children, modal }: UsersLayoutProps) {
+export default function Layout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <>
-      <div className="flex-1 space-y-4">
-        <div>
-          <Suspense 
-            fallback={
-              <Card className="p-8">
-                <div className="flex space-x-4">
-                  <div className="space-y-2 flex-1">
-                    <div className="h-6 bg-muted animate-pulse rounded" />
-                    <div className="h-4 bg-muted animate-pulse rounded w-4/5" />
-                  </div>
-                </div>
-              </Card>
-            }
-          >
-            {children}
-          </Suspense>
-        </div>
-      </div>
-      {modal}
-    </>
+    <div className="flex-1 space-y-4">
+      <Suspense 
+        fallback={
+          <Card className="p-8">
+            <div className="flex space-x-4">
+              <div className="space-y-2 flex-1">
+                <div className="h-6 bg-muted animate-pulse rounded" />
+                <div className="h-4 bg-muted animate-pulse rounded w-4/5" />
+              </div>
+            </div>
+          </Card>
+        }
+      >
+        {children}
+      </Suspense>
+    </div>
   );
 }
+
