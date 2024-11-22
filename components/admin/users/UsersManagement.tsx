@@ -26,11 +26,6 @@ export default function UsersManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Charger les utilisateurs au montage du composant
-  useEffect(() => {
-    fetchUsers();
-  }, []); // Empty dependency array to run only once on mount
-
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
@@ -48,6 +43,11 @@ export default function UsersManagement() {
       setIsLoading(false);
     }
   };
+
+  // Charger les utilisateurs au montage du composant
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]); // Add fetchUsers to dependency array
 
   const handleCreateUser = () => {
     setEditingUser(null);
@@ -161,4 +161,3 @@ export default function UsersManagement() {
     </div>
   );
 }
-
