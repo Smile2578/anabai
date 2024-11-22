@@ -16,7 +16,7 @@ export function validateJapanCoordinates(location: { lat: number; lng: number })
     );
   }
 
-  export function validatePlaceResult(place: any): boolean {
+  export function validatePlaceResult(place: Record<string, any>): boolean {
     const requiredFields = [
       'name.fr',
       'location.coordinates',

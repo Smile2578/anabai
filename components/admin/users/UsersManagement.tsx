@@ -23,13 +23,13 @@ export default function UsersManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [, setIsLoading] = useState(true);
+  const [,setIsLoading] = useState(true);
   const { toast } = useToast();
 
   // Charger les utilisateurs au montage du composant
   useEffect(() => {
     fetchUsers();
-  }, []);
+  });
 
   const fetchUsers = async () => {
     try {
