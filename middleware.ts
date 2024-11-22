@@ -1,23 +1,30 @@
+// middleware.ts
+
 import { getToken } from 'next-auth/jwt';
 import { NextRequest, NextResponse } from 'next/server';
 
-const secret = process.env.NEXTAUTH_SECRET;
-console.log('NEXTAUTH_SECRET in middleware:', secret);
-
 export async function middleware(req: NextRequest) {
-  const secret = process.env.NEXTAUTH_SECRET;
-  const token = await getToken({ req, secret });
+  console.log('Middleware started for URL:', req.url);
+  console.log('NEXTAUTH_SECRET:', process.env.NEXTAUTH_SECRET);
 
-  console.log('Decoded token using getToken:', token);
+  const token = await getToken({ req });
+
+  console.log('Decoded token:', token);
 
   if (req.nextUrl.pathname.startsWith('/admin')) {
-    if (!token || token.role !== 'admin') {
-      console.log('Access denied or user not authenticated.');
+    console.log('Accessing admin route');
+    if (!token) {
+      console.log('No token found, redirecting to signin');
+      return NextResponse.redirect(new URL('/auth/signin', req.url));
+    }
+    if (token.role !== 'admin') {
+      console.log('User is not an admin, redirecting to signin');
       return NextResponse.redirect(new URL('/auth/signin', req.url));
     }
     console.log('Access granted. Role:', token.role);
   }
 
+  console.log('Middleware completed');
   return NextResponse.next();
 }
 

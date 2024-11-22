@@ -1,3 +1,5 @@
+// lib/auth/auth.ts
+
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import connectDB from '@/lib/db/connection';
@@ -13,38 +15,57 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials: { email: string; password: string } | undefined) {
-        if (!credentials) throw new Error('Identifiants requis');
+        console.log('Authorize function called with credentials:', credentials);
+        if (!credentials) {
+          console.log('No credentials provided');
+          throw new Error('Identifiants requis');
+        }
         await connectDB();
+        console.log('Connected to database');
         const user = await User.findOne({ email: credentials.email })
           .select('+password') as IUser | null;
-        if (!user) throw new Error('Aucun utilisateur trouvé');
+        if (!user) {
+          console.log('No user found with email:', credentials.email);
+          throw new Error('Aucun utilisateur trouvé');
+        }
+        console.log('User found:', user.email);
         const isValid = await bcrypt.compare(credentials.password, user.password);
-        if (!isValid) throw new Error('Mot de passe incorrect');
+        if (!isValid) {
+          console.log('Invalid password for user:', user.email);
+          throw new Error('Mot de passe incorrect');
+        }
+        console.log('Password valid for user:', user.email);
         return { id: user.id, name: user.name, email: user.email, role: user.role };
       },
     }),
   ],
   session: {
-    strategy: 'jwt', // Désactive le chiffrement, utilise des JWT signés
+    strategy: 'jwt',
   },
   jwt: {
-    secret: process.env.NEXTAUTH_SECRET, // Clé utilisée pour signer les JWT
-    maxAge: 30 * 24 * 60 * 60, // Durée de vie des JWT
+    secret: process.env.NEXTAUTH_SECRET,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
     async jwt({ token, user }) {
+      console.log('JWT callback called. Current token:', token);
+      console.log('User data:', user);
       if (user) {
         token.id = user.id;
         token.role = user.role;
       }
+      console.log('Updated token:', token);
       return token;
     },
     async session({ session, token }) {
+      console.log('Session callback called. Current session:', session);
+      console.log('Token data:', token);
       session.user = {
         ...session.user,
         id: token.id,
         role: token.role,
       };
+      console.log('Updated session:', session);
       return session;
     },
   },
@@ -64,3 +85,6 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
+
+console.log('AuthOptions configured with secret:', process.env.NEXTAUTH_SECRET ? 'Secret is set' : 'Secret is not set');
+
