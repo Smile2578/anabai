@@ -1,5 +1,3 @@
-// lib/auth/auth.ts
-
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import connectDB from '@/lib/db/connection';
@@ -71,12 +69,12 @@ export const authOptions: NextAuthOptions = {
   },
   cookies: {
     sessionToken: {
-      name: '__Secure-next-auth.session-token',
+      name: `__Secure-next-auth.session-token`,
       options: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
+        secure: process.env.NODE_ENV === 'production',
       },
     },
   },
