@@ -1,11 +1,9 @@
 import { getToken } from 'next-auth/jwt';
-import { jwtVerify } from 'jose';
 import { NextRequest, NextResponse } from 'next/server';
 
 const secret = process.env.NEXTAUTH_SECRET;
 
 export async function middleware(req: NextRequest) {
-  const secret = process.env.NEXTAUTH_SECRET;
   const token = await getToken({ req, secret });
 
   console.log('Decoded token using getToken:', token);
