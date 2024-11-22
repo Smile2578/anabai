@@ -58,7 +58,7 @@ export function ProcessingStatus({
       {/* Étapes avec icônes */}
       <div className="relative">
         <div className="relative flex justify-around max-w-md mx-auto">
-          {STEPS.map((step, index) => {
+          {STEPS.map((step) => {
             const Icon = step.icon;
             const stepState = getStepState(step.step);
             const isActive = stepState === 'active';

@@ -14,23 +14,36 @@ export function validateJapanCoordinates(location: { lat: number; lng: number })
       location.lng >= JAPAN_BOUNDS.west &&
       location.lng <= JAPAN_BOUNDS.east
     );
-  }
+}
 
-  export function validatePlaceResult(place: Record<string, any>): boolean {
+interface Place {
+    name: {
+        fr: string;
+    };
+    location: {
+        coordinates: number[];
+        address: {
+            fr: string;
+        };
+    };
+    category: string;
+}
+
+export function validatePlaceResult(place: Place): boolean {
     const requiredFields = [
-      'name.fr',
-      'location.coordinates',
-      'location.address.fr',
-      'category'
+        'name.fr',
+        'location.coordinates',
+        'location.address.fr',
+        'category'
     ];
   
     return requiredFields.every(field => {
-      const parts = field.split('.');
-      let value = place;
-      for (const part of parts) {
-        value = value?.[part];
-        if (value === undefined) return false;
-      }
-      return true;
-    });
-  }
+        const parts = field.split('.');
+        let value: any = place;
+        for (const part of parts) {
+            value = value[part as keyof Place];
+            if (value === undefined) return false;
+        }
+        return true;
+      })
+}

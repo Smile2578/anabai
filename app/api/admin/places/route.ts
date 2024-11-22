@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
 
     // Calculer les stats pour les lieux actuels
     const statsResults = await placeRepository.getStats();
-    const totalPages = Math.ceil(placesData.total / limit);
+
     
     return NextResponse.json({
       places: placesData.places,

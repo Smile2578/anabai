@@ -31,8 +31,6 @@ export default function PlacesPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategories] = useState<Category[]>([]);
-  const [selectedStatus] = useState<Status>();
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<PlaceFilters>({
     categories: [],
