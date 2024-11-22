@@ -15,6 +15,7 @@ export default withAuth(
 
       // Si l'utilisateur n'est pas admin, rediriger vers la page d'accueil
       if (token.role !== 'admin') {
+        console.log('Middleware token role:', token.role);
         return NextResponse.redirect(new URL('/', req.url));
       }
       console.log('Middleware token role:', token.role);
@@ -22,8 +23,8 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: () => true,
-    },
+      authorized: ({ token }) => token?.role === 'admin',
+    },    
   }
 );
 
