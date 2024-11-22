@@ -45,27 +45,22 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async jwt({ token, user }) {
-      console.log('JWT callback called. Current token:', token);
-      console.log('User data:', user);
+    async jwt({ token, user, account }) {
       if (user) {
-        token.id = user.id;
         token.role = user.role;
+        token.id = user.id;
+        token.email = user.email; // Si vous voulez garder l'email dans le token
       }
-      console.log('Updated token:', token);
       return token;
     },
     async session({ session, token }) {
-      console.log('Session callback called. Current session:', session);
-      console.log('Token data:', token);
-      session.user = {
-        ...session.user,
-        id: token.id,
-        role: token.role,
-      };
-      console.log('Updated session:', session);
+      if (session.user && token) {
+        session.user.role = token.role as string;
+        session.user.id = token.id as string;
+        session.user.email = token.email as string;
+      }
       return session;
-    },
+    }
   },
   cookies: {
     sessionToken: {
@@ -75,14 +70,17 @@ export const authOptions: NextAuthOptions = {
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === 'production',
-      },
-    },
-  },
+        domain: process.env.NODE_ENV === 'production' ? '.anaba.io' : undefined
+      }
+    }
+  },  
   pages: {
     signIn: '/auth/signin',
+    error: '/auth/error',
   },
+  
   secret: process.env.NEXTAUTH_SECRET,
-};
+}
 
 console.log('AuthOptions configured with secret:', process.env.NEXTAUTH_SECRET ? 'Secret is set' : 'Secret is not set');
 
