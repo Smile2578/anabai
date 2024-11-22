@@ -118,13 +118,13 @@ authOptions.providers.push(
           const passwordCompareStart = Date.now();
           const isValid = await bcrypt.compare(credentials!.password, user.password);
           console.log('Password comparison completed in', Date.now() - passwordCompareStart, 'ms');
-  
+          console.log('User authenticated successfully at', new Date().toISOString(), 'with email:', credentials?.email, 'and role:', user.role);
           if (!isValid) {
             console.log('Invalid password');
             throw new Error('Mot de passe incorrect');
           }
   
-          console.log('User authenticated successfully at', new Date().toISOString(), 'with email:', credentials?.email, 'and role:', user.role);
+          
           console.log('Authorize function completed at', new Date().toISOString());
           return {
             id: user._id.toString(),
