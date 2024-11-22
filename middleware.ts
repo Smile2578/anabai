@@ -7,14 +7,17 @@ export async function middleware(req: NextRequest) {
   console.log('Request URL:', req.nextUrl.href);
   console.log('Request Pathname:', req.nextUrl.pathname);
 
-  // Vérifions les cookies pour débogage
+  // Vérifiez les cookies
   const cookies = req.cookies.getAll();
   console.log('Request cookies:', cookies);
 
-  // Essayez de récupérer le token via `getToken`
-  const token = await getToken({ req, secret });
+  // Test de récupération brute du cookie
+  const rawToken = req.cookies.get('__Secure-next-auth.session-token')?.value;
+  console.log('Raw session token cookie:', rawToken);
 
-  console.log('Middleware token:', token);
+  // Essayez de décoder le token avec getToken
+  const token = await getToken({ req, secret });
+  console.log('Decoded token using getToken:', token);
 
   if (req.nextUrl.pathname.startsWith('/admin')) {
     if (!token) {
