@@ -8,7 +8,7 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'editor' | 'user';
   image?: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
@@ -19,13 +19,28 @@ const UserSchema: Schema<IUser> = new Schema(
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true, select: false },
-    role: { type: String, enum: ['admin', 'user'], default: 'user' },
+    role: { 
+      type: String, 
+      enum: ['admin', 'editor', 'user'],
+      default: 'user' 
+    },
     image: { type: String },
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
   },
-  { timestamps: true }
+  { timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+   }
 );
+
+// Relation virtuelle avec les lieux (en tant qu'auteur)
+UserSchema.virtual('places', {
+  ref: 'Place',
+  localField: '_id',
+  foreignField: 'metadata.authors.id',
+  justOne: false
+});
 
 // Hachage du mot de passe avant l'enregistrement
 UserSchema.pre<IUser>('save', async function (next) {

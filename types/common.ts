@@ -68,11 +68,12 @@ export type Subcategory =
   | 'Bar à cocktails'
   | 'Bar à vin'
   | 'Bar de Jazz'
-  | 'Bar à saké';
+  | 'Bar à saké'
+  | 'Hotel de luxe';
 
 export const SUBCATEGORIES: SubcategoriesByCategory = {
   Restaurant: ['Ramen', 'Sushi', 'Izakaya', 'Italien', 'Pizza', 'Soba', 'Yakitori', 'Okonomiyaki', 'Tempura', 'Teppanyaki'],
-  Hôtel: ['Hôtel traditionnel', 'Ryokan', 'Business Hotel', 'Love Hotel'],
+  Hôtel: ['Hôtel traditionnel', 'Ryokan', 'Business Hotel', 'Love Hotel', 'Hotel de luxe'],
   Visite: ['Temple', 'Sanctuaire', 'Musée', 'Parc', 'Point de vue', 'Jardin', 'Château', 'Monument'],
   Shopping: [
     'Centre commercial',

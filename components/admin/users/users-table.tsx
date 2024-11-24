@@ -60,8 +60,10 @@ export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
         return <Badge variant="default">Admin</Badge>;
       case 'user':
         return <Badge variant="default">Utilisateur</Badge>;
+      case 'editor':
+        return <Badge variant="default">Editeur</Badge>;
       default:
-        return null;
+        return <Badge variant="default">{role}</Badge>;
     }
   };
 

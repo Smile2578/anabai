@@ -1,6 +1,5 @@
 // components/admin/places/create/PlaceCreate.tsx
 import { useRouter } from 'next/navigation';
-
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { usePlaceCreate } from '@/hooks/usePlaceCreate';
@@ -8,7 +7,14 @@ import { GooglePlaceSearch } from './GooglePlaceSearch';
 import { PlacePreview } from './PlacePreview';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
-export function PlaceCreate() {
+interface PlaceCreateProps {
+  authorId: string;
+  authorName: string;
+  authorRole: 'admin' | 'editor';
+  onSuccess: (placeId: string) => void;
+}
+
+export function PlaceCreate({ authorId, authorName, authorRole, onSuccess }: PlaceCreateProps) {
   const router = useRouter();
 
   const {
@@ -24,10 +30,18 @@ export function PlaceCreate() {
     clearSelection,
   } = usePlaceCreate({
     onSuccess: (placeId) => {
+      onSuccess(placeId);
       router.push(`/admin/places/${placeId}`);
+    },
+    metadata: {
+      authors: [{
+        id: authorId,
+        name: authorName,
+        role: authorRole,
+        addedAt: new Date()
+      }]
     }
   });
-
 
   return (
     <div className="container mx-auto py-8 space-y-6">
@@ -38,7 +52,6 @@ export function PlaceCreate() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Messages d'erreur */}
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -46,7 +59,6 @@ export function PlaceCreate() {
             </Alert>
           )}
 
-          {/* Barre de recherche ou détails du lieu */}
           {!selectedPlace ? (
             <GooglePlaceSearch
               value={searchTerm}
@@ -65,7 +77,6 @@ export function PlaceCreate() {
             />
           )}
           
-          {/* Loader pendant la création */}
           {isCreating && (
             <div className="flex flex-col items-center gap-4 py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />

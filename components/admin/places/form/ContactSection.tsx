@@ -34,13 +34,6 @@ export const ContactSection = ({ data, onChange, isSubmitting }: ContactSectionP
     }
   };
 
-  const validatePhone = (phone: string): boolean => {
-    if (!phone) return true;
-    // Format japonais: +81 XX-XXXX-XXXX ou 0X-XXXX-XXXX
-    const phoneRegex = /^(\+81|0)\d{1,4}-\d{1,4}-\d{4}$/;
-    return phoneRegex.test(phone);
-  };
-
   return (
     <Card className="hover-card">
       <CardHeader>
@@ -66,13 +59,7 @@ export const ContactSection = ({ data, onChange, isSubmitting }: ContactSectionP
             onChange={(e) => handleChange('phone', e.target.value)}
             placeholder="Ex: +81 3-XXXX-XXXX"
             disabled={isSubmitting}
-            className={!validatePhone(contact.phone || '') ? 'border-destructive' : ''}
           />
-          {!validatePhone(contact.phone || '') && (
-            <p className="text-sm text-destructive">
-              Format invalide. Utilisez : +81 XX-XXXX-XXXX ou 0X-XXXX-XXXX
-            </p>
-          )}
         </div>
 
         {/* Site web */}

@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
     
-    const { placeId } = await req.json();
+    const { placeId, metadata: initialMetadata } = await req.json();
 
     if (!placeId) {
       return NextResponse.json(
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Utiliser la structure existante d'ImportPreview
+    // Créer l'aperçu
     const preview: ImportPreview = {
       original: {
         Title: `Place ${placeId}`,
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       }
     };
 
-    // Utiliser l'enrichisseur existant qui fonctionne bien
+    // Enrichir la preview
     const enriched = await enrichmentService.enrichPreview(preview);
     
     if (!enriched.preview.enriched?.success || !enriched.preview.enriched.place) {
@@ -47,8 +47,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Sauvegarder le lieu enrichi
-    const savedPlace = await placeRepository.create(enriched.preview.enriched.place);
+    // Fusionner les métadonnées initiales avec celles enrichies
+    const place = {
+      ...enriched.preview.enriched.place,
+      metadata: {
+        ...enriched.preview.enriched.place.metadata,
+        ...initialMetadata,
+      }
+    };
+
+    // Sauvegarder le lieu
+    const savedPlace = await placeRepository.create(place);
     
     if (!savedPlace) {
       return NextResponse.json(

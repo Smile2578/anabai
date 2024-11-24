@@ -8,6 +8,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Settings, Tag } from 'lucide-react';
 import { Status } from '@/types/common';
+import { AuthorsSection } from './AuthorsSection';
+import { usePlaceAuthors } from '@/hooks/usePlaceAuthors';
+
 interface MetadataSectionProps {
   data: Place;
   onChange: (value: Partial<Place>) => void;
@@ -22,6 +25,7 @@ const STATUS_OPTIONS = [
 
 export const MetadataSection = ({ data, onChange, isSubmitting }: MetadataSectionProps) => {
   const metadata = data.metadata;
+  const { updateAuthors, isUpdating } = usePlaceAuthors();
 
   const handleMetadataChange = (updates: Partial<Place['metadata']>) => {
     onChange({
@@ -54,6 +58,23 @@ export const MetadataSection = ({ data, onChange, isSubmitting }: MetadataSectio
     }
   };
 
+  const handleAuthorsChange = async (authors: Place['metadata']['authors']) => {
+    try {
+       updateAuthors({
+        placeId: data._id,
+        authors: authors || []
+      });
+      
+      // Mise à jour locale
+      handleMetadataChange({ authors });
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour des auteurs:', error);
+    }
+  };
+
+  // Désactiver les contrôles si le formulaire est en cours de soumission ou si les auteurs sont en cours de mise à jour
+  const isDisabled = isSubmitting || isUpdating;
+
   return (
     <Card className="hover-card">
       <CardHeader>
@@ -74,7 +95,7 @@ export const MetadataSection = ({ data, onChange, isSubmitting }: MetadataSectio
             value={metadata.status}
             onValueChange={(value: Status) => handleMetadataChange({ status: value })}
             className="grid grid-cols-1 md:grid-cols-3 gap-4"
-            disabled={isSubmitting}
+            disabled={isDisabled}
           >
             {STATUS_OPTIONS.map((status) => (
               <div key={status.value} className="relative">
@@ -105,7 +126,7 @@ export const MetadataSection = ({ data, onChange, isSubmitting }: MetadataSectio
               value={metadata.source}
               onChange={(e) => handleMetadataChange({ source: e.target.value })}
               placeholder="Ex: Google Places"
-              disabled={isSubmitting}
+              disabled={isDisabled}
             />
           </div>
           <div className="space-y-2">
@@ -114,7 +135,7 @@ export const MetadataSection = ({ data, onChange, isSubmitting }: MetadataSectio
               value={metadata.placeId || ''}
               onChange={(e) => handleMetadataChange({ placeId: e.target.value })}
               placeholder="ID unique du lieu"
-              disabled={isSubmitting}
+              disabled={isDisabled}
             />
           </div>
         </div>
@@ -129,7 +150,7 @@ export const MetadataSection = ({ data, onChange, isSubmitting }: MetadataSectio
             <Input
               placeholder="Ajouter un tag (Entrée pour valider)"
               onKeyPress={handleTagKeyPress}
-              disabled={isSubmitting}
+              disabled={isDisabled}
             />
             <ScrollArea className="h-[100px]">
               <div className="flex flex-wrap gap-2">
@@ -138,16 +159,24 @@ export const MetadataSection = ({ data, onChange, isSubmitting }: MetadataSectio
                     key={tag}
                     variant="secondary"
                     className="px-3 py-1 cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
-                    onClick={() => !isSubmitting && handleTagRemove(tag)}
+                    onClick={() => !isDisabled && handleTagRemove(tag)}
                   >
                     {tag}
-                    {!isSubmitting && <span className="ml-2">×</span>}
+                    {!isDisabled && <span className="ml-2">×</span>}
                   </Badge>
                 ))}
               </div>
             </ScrollArea>
           </div>
         </div>
+
+        {/* Auteurs */}
+        <AuthorsSection
+          placeId={data._id}
+          authors={metadata.authors || []}
+          onAuthorsChange={handleAuthorsChange}
+          disabled={isDisabled}
+        />
 
         {/* Informations de vérification */}
         <div className="rounded-lg bg-muted p-4 space-y-2">

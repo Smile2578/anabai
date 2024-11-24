@@ -31,6 +31,7 @@ export function UserFilters() {
               <SelectItem value="all">Tous les rôles</SelectItem>
               <SelectItem value="admin">Admin</SelectItem>
               <SelectItem value="user">Utilisateur</SelectItem>
+              <SelectItem value="editor">Editeur</SelectItem>
             </SelectContent>
           </Select>
 

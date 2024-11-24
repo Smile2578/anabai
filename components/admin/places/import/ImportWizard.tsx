@@ -11,11 +11,20 @@ import { ImportPreview } from '@/types/import';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface ImportWizardProps {
+  authorId: string;
+  authorName: string;
+  authorRole: 'admin' | 'editor';
   onComplete: () => void;
   onCancel: () => void;
 }
 
-export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
+export function ImportWizard({ 
+  authorId, 
+  authorName, 
+  authorRole, 
+  onComplete, 
+  onCancel 
+}: ImportWizardProps) {
   const [currentStep, setCurrentStep] = React.useState<'upload' | 'processing' | 'enriching' | 'preview' | 'saving'>('upload');
   const [previews, setPreviews] = React.useState<ImportPreview[]>([]);
   const [selectedPreviews, setSelectedPreviews] = React.useState<string[]>([]);
@@ -55,8 +64,8 @@ export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
       }
 
       const importData = await importResponse.json();
-      
-      // Enrichissement
+
+      // Enrichissement avec auteur
       setCurrentStep('enriching');
       setProgress({
         label: 'Enrichissement des données',
@@ -64,10 +73,29 @@ export function ImportWizard({ onComplete, onCancel }: ImportWizardProps) {
         status: 'processing'
       });
 
+      const previews = importData.previews.map((preview: ImportPreview) => ({
+        ...preview,
+        enriched: {
+          ...preview.enriched,
+          place: preview.enriched?.place ? {
+            ...preview.enriched.place,
+            metadata: {
+              ...preview.enriched.place.metadata,
+              authors: [{
+                id: authorId,
+                name: authorName,
+                role: authorRole,
+                addedAt: new Date()
+              }]
+            }
+          } : undefined
+        }
+      }));
+
       const enrichResponse = await fetch('/api/admin/places/enrich', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ previews: importData.previews })
+        body: JSON.stringify({ previews })
       });
 
       if (!enrichResponse.ok) {

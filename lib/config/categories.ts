@@ -27,7 +27,8 @@ export const PLACE_CATEGORIES = {
       'Business Hotel',
       'Resort',
       'Love Hotel',
-      'Auberge de jeunesse'
+      'Auberge de jeunesse',
+      'Hotel de luxe'
     ]
   },
   'Visite': {

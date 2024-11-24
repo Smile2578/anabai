@@ -103,7 +103,7 @@ export const PlaceEditForm = ({ place, onSubmit }: PlaceEditFormProps) => {
     <form onSubmit={handleSubmit} className="space-y-6">
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
-        <TabsList className="w-full h-auto flex-wrap gap-2 p-2 bg-muted/50">
+        <TabsList className="w-full h-auto flex-wrap gap-2 p-2">
           {TABS.map((tab) => (
             <TabsTrigger
               key={tab.value}
@@ -207,7 +207,7 @@ export const PlaceEditForm = ({ place, onSubmit }: PlaceEditFormProps) => {
         </div>
       </Tabs>
 
-      <div className="sticky bottom-0 z-10">
+      <div className="bottom-0 z-10">
         <div className="flex items-center justify-end gap-4 py-4">
           <Button
             type="button"

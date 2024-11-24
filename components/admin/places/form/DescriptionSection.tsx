@@ -4,7 +4,7 @@ import { Place } from '@/types/places/main';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Editor } from '@tinymce/tinymce-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -84,7 +84,7 @@ export const DescriptionSection = ({ data, onChange, isSubmitting }: Description
           </Badge>
         </div>
         <CardDescription>
-          Description détaillée du lieu en plusieurs langues
+          Description détaillée du lieu
         </CardDescription>
       </CardHeader>
 
@@ -93,14 +93,6 @@ export const DescriptionSection = ({ data, onChange, isSubmitting }: Description
           value={activeLanguage} 
           onValueChange={handleTabChange}
         >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="fr" disabled={isSubmitting}>
-              Français
-            </TabsTrigger>
-            <TabsTrigger value="ja" disabled={isSubmitting}>
-              日本語
-            </TabsTrigger>
-          </TabsList>
 
           <TabsContent value="fr" className="mt-4">
             {apiKey && (
@@ -109,25 +101,6 @@ export const DescriptionSection = ({ data, onChange, isSubmitting }: Description
                 initialValue={data.description.fr}
                 init={editorConfig}
                 onEditorChange={(content) => handleEditorChange('fr', content)}
-                disabled={isSubmitting}
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="ja" className="mt-4">
-            {apiKey && (
-              <Editor
-                apiKey={apiKey}
-                initialValue={data.description.ja || ''}
-                init={{
-                  ...editorConfig,
-                  language: 'ja',
-                  content_style: `
-                    ${editorConfig.content_style}
-                    body { font-family: 'Noto Sans JP', sans-serif; }
-                  `
-                }}
-                onEditorChange={(content) => handleEditorChange('ja', content)}
                 disabled={isSubmitting}
               />
             )}

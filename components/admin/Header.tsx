@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { signOut } from 'next-auth/react';
 import { useTheme } from 'next-themes';
 import { User } from 'next-auth';
-
+import AnabaLogo from '../brand/AnabaLogo';
 interface HeaderProps {
   user?: User;
 }
@@ -50,6 +50,7 @@ export default function Header({ user }: HeaderProps) {
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
+            <AnabaLogo />
             <DropdownMenuContent className="w-56" align="end">
               <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
               <DropdownMenuItem>

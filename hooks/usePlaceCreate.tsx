@@ -5,10 +5,12 @@ import { toast } from './use-toast';
 import { useDebounce } from './useDebounce';
 import { PlaceSearchState } from '@/types/places/base';
 import { GooglePlace } from '@/types/google/place';
+import { PlaceMetadata } from '@/types/places/metadata';
 
 export interface UsePlaceCreateOptions {
   onSuccess?: (placeId: string) => void;
   onError?: (error: Error) => void;
+  metadata?: Partial<PlaceMetadata>;
 }
 
 export function usePlaceCreate(options: UsePlaceCreateOptions = {}) {
@@ -48,7 +50,7 @@ export function usePlaceCreate(options: UsePlaceCreateOptions = {}) {
       const response = await fetch('/api/admin/places/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ placeId })
+        body: JSON.stringify({ placeId, metadata: options.metadata })
       });
 
       if (!response.ok) {

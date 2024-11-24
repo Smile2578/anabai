@@ -71,8 +71,8 @@ export function UserDialog({
     defaultValues: {
       name: user?.name || "",
       email: user?.email || "",
-      role: user?.role || "user",
-      status: user?.status || "active",
+      role: (user?.role as "admin" | "user") || "user",
+      status: user?.status || "active", 
       password: "",
     },
   });
@@ -152,6 +152,7 @@ export function UserDialog({
                     <SelectContent>
                       <SelectItem value="user">Utilisateur</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="editor">Editeur</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

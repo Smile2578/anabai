@@ -3,6 +3,12 @@ import { Status } from '../common';
 
 export interface PlaceMetadata {
   source: string;
+  authors?: {
+    id: string;
+    name: string;
+    role: 'admin' | 'editor';
+    addedAt: Date;
+  }[];
   placeId?: string;
   lastEnriched?: Date;
   lastVerified?: Date;

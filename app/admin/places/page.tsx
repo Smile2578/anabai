@@ -197,8 +197,7 @@ export default function PlacesPage() {
         <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
           <ImportWizard
             onComplete={handleImportComplete}
-            onCancel={() => setIsImportModalOpen(false)}
-          />
+            onCancel={() => setIsImportModalOpen(false)} authorId={''} authorName={''} authorRole={'admin'}          />
         </DialogContent>
       </Dialog>
     </div>

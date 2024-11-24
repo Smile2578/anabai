@@ -12,6 +12,7 @@ import type {
   PlaceContact,
   PlaceRating
 } from '@/types/places/base';
+import type { PlaceMetadata } from '@/types/places/metadata';
 
 // Mettre à jour l'interface PlaceDocument pour inclure tous les champs
 export interface PlaceDocument extends Document {
@@ -50,16 +51,9 @@ export interface PlaceDocument extends Document {
   rating?: PlaceRating;
   planningInfo?: PlanningInfo;
   practicalInfo?: PracticalInfo;
-  metadata: {
-    source: string;
-    placeId?: string;
-    lastEnriched?: Date;
-    lastVerified?: Date;
-    verifiedBy?: string;
-    status: 'brouillon' | 'publié' | 'archivé';
-    tags?: string[];
-    businessStatus?: string;
-  };
+  metadata: PlaceMetadata;
+  tags?: string[];
+  businessStatus?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -313,6 +307,16 @@ const placeSchema = new Schema<PlaceDocument>(
       },
       tags: [String],
       businessStatus: String,
+      authors: [{
+        id: { type: String, required: true },
+        name: { type: String, required: true },
+        role: { 
+          type: String,
+          enum: ['admin', 'editor'],
+          required: true
+        },
+        addedAt: { type: Date, default: Date.now }
+      }],
     },
     
     isActive: {
