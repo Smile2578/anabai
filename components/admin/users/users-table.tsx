@@ -59,9 +59,13 @@ export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
       case 'admin':
         return <Badge variant="default">Admin</Badge>;
       case 'user':
-        return <Badge variant="default">Utilisateur</Badge>;
+        return <Badge variant="secondary">Utilisateur</Badge>;
       case 'editor':
         return <Badge variant="default">Editeur</Badge>;
+      case 'premium':
+        return <Badge variant="outline">Premium</Badge>;
+      case 'luxury':
+        return <Badge variant="outline">Luxury</Badge>;
       default:
         return <Badge variant="default">{role}</Badge>;
     }
@@ -87,8 +91,8 @@ export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
                 <TableCell>{user.email}</TableCell>
                 <TableCell>{getRoleBadge(user.role)}</TableCell>
                 <TableCell>
-                  {format(new Date(user.createdAt), 'dd MMM yyyy', { locale: fr })}
-                </TableCell>
+                    {user.createdAt ? format(new Date(user.createdAt), 'dd MMMM yyyy', { locale: fr }) : 'Date invalide'}
+                  </TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

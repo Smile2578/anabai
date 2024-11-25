@@ -1,8 +1,10 @@
-import AnabaLogo from "@/components/brand/AnabaLogo"
+// app/page.tsx
+
+import { Header } from "@/components/layout/Header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Bot, MapPin, Compass, Calendar, Coffee, Hotel, Utensils, ShoppingBag, Navigation, Menu } from 'lucide-react'
+import { Bot, MapPin, Compass, Calendar, Coffee, Hotel, Utensils, ShoppingBag, Navigation } from 'lucide-react'
 import Image from "next/image"
 import Link from "next/link"
 
@@ -10,28 +12,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 h-12 flex items-center justify-between">
-          <AnabaLogo />
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/trip-planner" className="text-sm hover:text-primary">AnabAI - Planificateur IA</Link>
-            <Link href="/spots" className="text-sm hover:text-primary">Spots Secrets</Link>
-            <Link href="/blog" className="text-sm hover:text-primary">Blog</Link>
-            <Link href="/about" className="text-sm hover:text-primary">À propos</Link>
-          </nav>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" className="hidden md:flex">
-              Se connecter
-            </Button>
-            <Button className="hidden md:flex bg-primary hover:bg-primary/90">
-              Planifier mon voyage
-            </Button>
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <Menu className="h-6 w-6" />
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center">
@@ -60,12 +41,16 @@ export default function LandingPage() {
               Explorez les trésors cachés du Japon grâce à notre IA et nos recommandations d&apos;experts locaux
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
+            <Link href="/trip-planner">
               <Button size="lg" className="bg-primary hover:bg-primary/90">
                 Créer mon itinéraire
               </Button>
+            </Link>
+            <Link href="/spots">
               <Button size="lg" variant="outline">
                 Découvrir les spots secrets
               </Button>
+            </Link>
             </div>
           </div>
         </div>

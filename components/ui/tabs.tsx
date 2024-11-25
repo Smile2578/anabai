@@ -44,12 +44,13 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "mt-2 ring-offset-background tabs-content focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:shadow-none hover:translate-y-0 transition-none transform-none",
       className
     )}
     {...props}
   />
-))
-TabsContent.displayName = TabsPrimitive.Content.displayName
+));
+TabsContent.displayName = TabsPrimitive.Content.displayName;
+
 
 export { Tabs, TabsList, TabsTrigger, TabsContent }

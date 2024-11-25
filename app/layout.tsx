@@ -1,9 +1,9 @@
+// app/layout.tsx
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import '../styles/globals.css'
-import { ThemeProvider } from 'next-themes'
 import { Analytics } from "@vercel/analytics/react"
-
+import { Providers } from '@/providers/providers'
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'] })
 
@@ -20,15 +20,10 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <body className={plusJakartaSans.className}>
-        <Analytics />
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <Providers>
           {children}
-        </ThemeProvider>
+          <Analytics />
+        </Providers>
       </body>
     </html>
   )

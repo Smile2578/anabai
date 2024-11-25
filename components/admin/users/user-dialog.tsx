@@ -40,7 +40,7 @@ const userFormSchema = z.object({
     .min(2, "Le nom doit contenir au moins 2 caractères")
     .max(50, "Le nom ne peut pas dépasser 50 caractères"),
   email: z.string().email("Email invalide"),
-  role: z.enum(["admin", "user"], {
+  role: z.enum(["admin", "user", "editor", "premium", "luxury"], {
     required_error: "Veuillez sélectionner un rôle",
   }),
   status: z.enum(["active", "inactive"], {
@@ -71,7 +71,7 @@ export function UserDialog({
     defaultValues: {
       name: user?.name || "",
       email: user?.email || "",
-      role: (user?.role as "admin" | "user") || "user",
+      role: (user?.role as "admin" | "user" | "editor" | "premium" | "luxury") || "user",
       status: user?.status || "active", 
       password: "",
     },
@@ -153,6 +153,8 @@ export function UserDialog({
                       <SelectItem value="user">Utilisateur</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="editor">Editeur</SelectItem>
+                      <SelectItem value="premium">Premium</SelectItem>
+                      <SelectItem value="luxury">Luxury</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

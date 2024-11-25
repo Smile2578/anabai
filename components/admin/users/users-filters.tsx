@@ -32,6 +32,8 @@ export function UserFilters() {
               <SelectItem value="admin">Admin</SelectItem>
               <SelectItem value="user">Utilisateur</SelectItem>
               <SelectItem value="editor">Editeur</SelectItem>
+              <SelectItem value="premium">Premium</SelectItem>
+              <SelectItem value="luxury">Luxury</SelectItem>
             </SelectContent>
           </Select>
 

@@ -73,16 +73,15 @@ export const authOptions: NextAuthOptions = {
   },
   cookies: {
     sessionToken: {
-      name: `__Secure-next-auth.session-token`,
+      name: 'next-auth.session-token',
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' ? '.anaba.io' : undefined
+        secure: process.env.NODE_ENV === 'production'
       }
     }
-  },  
+  },
   pages: {
     signIn: '/auth/signin',
     error: '/auth/error',

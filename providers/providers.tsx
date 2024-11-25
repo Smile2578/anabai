@@ -4,10 +4,14 @@
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { type ThemeProviderProps } from "next-themes";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SessionProvider } from 'next-auth/react';
 import { useState } from 'react';
 
+type ProvidersProps = ThemeProviderProps & {
+  children: React.ReactNode;
+};
 
-export function Providers({ children, ...props }: ThemeProviderProps) {
+export function Providers({ children, ...props }: ProvidersProps) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
@@ -20,14 +24,16 @@ export function Providers({ children, ...props }: ThemeProviderProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <NextThemesProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        {...props}
-      >
-        {children}
-      </NextThemesProvider>
+      <SessionProvider>
+        <NextThemesProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          {...props}
+        >
+          {children}
+        </NextThemesProvider>
+      </SessionProvider>
     </QueryClientProvider>
   );
 }

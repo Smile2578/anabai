@@ -13,7 +13,7 @@ export type User = {
   id: string;
   name: string;
   email: string;
-  role: "user" | "admin" | "editor";
+  role: "user" | "admin" | "editor" | "premium" | "luxury";
   status: "active" | "inactive";
   createdAt: string;
   lastLogin?: string;

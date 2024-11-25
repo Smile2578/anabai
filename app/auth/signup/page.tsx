@@ -12,6 +12,8 @@ import { useForm } from 'react-hook-form';
 import Image from 'next/image';
 import Link from 'next/link';
 import AnabaLogo from '@/components/brand/AnabaLogo';
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrenghtIndicator';
+
 
 const signupSchema = z.object({
   name: z.string().min(1, 'Le nom est requis'),
@@ -42,10 +44,13 @@ export default function SignUpPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
   });
+
+  const passwordValue = watch('password', '');
 
   const onSubmit = async (data: SignupFormData) => {
     setLoading(true);
@@ -80,9 +85,11 @@ export default function SignUpPage() {
     <div className="auth-container flex items-center justify-center">
       <div className="auth-card w-full max-w-md">
         <div className="auth-form-container">
-          <div className="text-center mb-8">
-            <AnabaLogo />
-            <h1 className="auth-title">Créer un compte AnabAI</h1>
+        <div className="text-center mb-8">
+            <div className="flex justify-center">
+              <AnabaLogo />
+            </div>
+            <h1 className="auth-title">Inscription</h1>
             <p className="auth-subtitle">Commencez votre voyage au Japon</p>
           </div>
           
@@ -125,6 +132,7 @@ export default function SignUpPage() {
                 className="auth-input"
                 aria-invalid={errors.password ? 'true' : 'false'}
               />
+              <PasswordStrengthIndicator password={passwordValue} />
               {errors.password && (
                 <p className="mt-1 text-sm text-red-400">{errors.password.message}</p>
               )}
@@ -165,8 +173,8 @@ export default function SignUpPage() {
           
           <div className="mt-6 text-center">
             <p className="text-white/60">
-              Vous avez déjà un compte ?{' '}
-              <Link href="/auth/signin" className="auth-link">
+              Vous avez déjà un compte ?{' '} <br></br>
+              <Link href="/auth/signin" className="auth-link text-primary-light text-xl">
                 Connectez-vous
               </Link>
             </p>

@@ -96,7 +96,7 @@
 @layer components {
   /* Auth specific components */
   .auth-container {
-    @apply min-h-screen bg-primary-light;
+    @apply min-h-screen bg-background;
   }
 
   .auth-card {
@@ -108,7 +108,7 @@
   }
 
   .auth-title {
-    @apply text-3xl font-semibold text-white mb-2;
+    @apply text-3xl font-semibold text-secondary-light mb-2;
   }
 
   .auth-subtitle {
@@ -168,7 +168,7 @@
   }
   
   .anaba-title {
-    @apply text-accent-sakura font-bold;
+    @apply text-primary font-bold;
   }
 }
 
@@ -180,6 +180,25 @@
 .glass-hover {
   @apply hover:bg-white/20 transition-colors duration-200;
 }
+
+.no-hover-effect {
+  transition: none !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.tabs-content {
+  transition: none !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.tabs-content:hover {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+
 
 /* Custom animations */
 @keyframes float {

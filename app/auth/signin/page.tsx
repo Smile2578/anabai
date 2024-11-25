@@ -49,7 +49,7 @@ export default function SignInPage() {
             <div className="flex justify-center">
               <AnabaLogo />
             </div>
-            <h1 className="auth-title">Connexion à AnabAI</h1>
+            
             <p className="auth-subtitle">Découvrez le Japon authentique</p>
           </div>
           
@@ -87,6 +87,9 @@ export default function SignInPage() {
                 'Se connecter'
               )}
             </Button>
+            <Link href="/auth/forgot-password" className="auth-link block mt-2 text-secondary-light">
+              Mot de passe oublié ?
+            </Link>
           </form>
           
           <div className="auth-divider">
@@ -102,14 +105,11 @@ export default function SignInPage() {
           
           <div className="mt-6 text-center">
             <p className="text-white/60">
-              Pas de compte ?{' '}
-              <Link href="/auth/signup" className="auth-link">
+              Pas de compte ? {' '} <br></br>
+              <Link href="/auth/signup" className="auth-link text-primary-light text-xl">
                 Inscrivez-vous
               </Link>
             </p>
-            <Link href="/auth/forgot-password" className="auth-link block mt-2">
-              Mot de passe oublié ?
-            </Link>
           </div>
         </div>
       </div>
