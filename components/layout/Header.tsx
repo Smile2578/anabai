@@ -1,7 +1,7 @@
 // components/layout/Header.tsx
 "use client"
 
-import { useSession, signOut } from "next-auth/react"
+import { signOut } from "next-auth/react"
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 import { Loader, Menu } from "lucide-react"
@@ -20,38 +20,66 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { Settings, LayoutDashboard, MapPinHouse, UserIcon, LogOut } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useAuthStatus } from "@/hooks/useAuthStatus"
+
 interface HeaderProps {
   className?: string
 }
 
 export function Header({ className }: HeaderProps) {
-  const { data: session, status } = useSession();
-  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const { 
+    session, 
+    status, 
+    isReady, 
+    isAuthenticated, 
+    isLoading: authLoading
+  } = useAuthStatus(); // Retirez update de la déstructuration
 
+  const [mounted, setMounted] = useState(false);
+
+  // Effet simplifié pour le montage
   useEffect(() => {
-    if (status !== 'loading') {
-      setIsLoading(false);
-    }
-  }, [status]);
+    setMounted(true);
+  }, []);
+
+  // Log pour le débogage
+  useEffect(() => {
+    console.log('Header state:', { 
+      status,
+      isReady,
+      isAuthenticated,
+      authLoading,
+      session,
+      mounted 
+    });
+  }, [status, isReady, isAuthenticated, authLoading, session, mounted]);
 
   const handleSignOut = useCallback(async () => {
     try {
-      setIsLoading(true);
       await signOut({
         redirect: false,
-        callbackUrl: '/'
       });
       
-      // Forcer un rafraîchissement complet
+      // Nettoyer le localStorage
+      localStorage.removeItem('next-auth.session-token');
+      localStorage.removeItem('next-auth.callback-url');
+      localStorage.removeItem('next-auth.csrf-token');
+
+      // Force refresh et redirection
+      router.refresh();
       window.location.href = '/';
     } catch (error) {
       console.error('Signout error:', error);
-      setIsLoading(false);
     }
-  }, []);
+  }, [router]);
 
-  // Afficher un loader pendant le chargement initial
-  if (isLoading) {
+  // N'afficher rien jusqu'au montage initial
+  if (!mounted) return null;
+
+  // Afficher un loader pendant le chargement
+  if (!isReady || authLoading) {
     return (
       <header className={cn("fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b", className)}>
         <div className="container mx-auto px-4 h-12 flex items-center justify-center">
@@ -60,8 +88,6 @@ export function Header({ className }: HeaderProps) {
       </header>
     );
   }
-
-  console.log('Header rendering:', { status, session });
   
   // Fonction pour obtenir les initiales de l'utilisateur
   const getInitials = (name: string) => {
@@ -92,7 +118,7 @@ export function Header({ className }: HeaderProps) {
 
   // Composant pour le menu utilisateur
   const UserMenu = () => {
-    if (!session?.user) return null
+    if (!isAuthenticated || !session?.user) return null;
     
     const isPremium = session.user.role === "premium"
     const isLuxury = session.user.role === "luxury"
@@ -194,7 +220,7 @@ export function Header({ className }: HeaderProps) {
         
         {/* Actions desktop */}
         <div className="flex items-center gap-4">
-          {session ? (
+          {isAuthenticated && session ? (
             <>
               <UserMenu />
               <Link href="/dashboard">
@@ -210,8 +236,7 @@ export function Header({ className }: HeaderProps) {
                   Se connecter
                 </Button>
               </Link>
-
-             <Link href="/dashboard">
+              <Link href="/dashboard">
                 <Button className="hidden md:flex bg-primary hover:bg-primary/90">
                   Planifier mon voyage
                 </Button>
@@ -220,41 +245,50 @@ export function Header({ className }: HeaderProps) {
           )}
 
           {/* Menu mobile */}
-            <Sheet>
+          <Sheet>
             <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
+              <Button variant="ghost" size="icon" className="md:hidden">
                 <Menu className="h-6 w-6" />
-                </Button>
+              </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <SheetHeader>
+              <SheetHeader>
                 <SheetTitle className="text-secondary-main">Menu</SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col space-y-4 mt-6">
+              </SheetHeader>
+              <nav className="flex flex-col space-y-4 mt-6">
                 <NavLinks />
                 <hr className="border-border" />
-                {!session ? (
-                    <>
+                {!isAuthenticated ? (
+                  <>
                     <Link href="/auth/signin">
-                        <Button className="w-full">Se connecter</Button>
+                      <Button className="w-full">Se connecter</Button>
                     </Link>
                     <Link href="/auth/signup">
-                        <Button variant="outline" className="w-full">
+                      <Button variant="outline" className="w-full">
                         S&apos;inscrire
-                        </Button>
+                      </Button>
                     </Link>
-                    </>
-                ) : (
-                    <div className="space-y-4">
+                  </>
+                ) : session && (
+                  <div className="space-y-4">
                     <div className="flex items-center space-x-4 py-2">
-                        <Avatar className="h-10 w-10 border-2 border-primary">
-                        <AvatarImage src={session.user.image || undefined} alt={session.user.name || "Avatar"} />
-                        <AvatarFallback>{getInitials(session.user.name || "User")}</AvatarFallback>
-                        </Avatar>
-                        <div className="space-y-1">
-                        <p className="text-sm font-medium leading-none">{session.user.name}</p>
-                        <p className="text-xs text-muted-foreground">{session.user.email}</p>
-                        </div>
+                      <Avatar className="h-10 w-10 border-2 border-primary">
+                        <AvatarImage 
+                          src={session.user.image || undefined} 
+                          alt={session.user.name || "Avatar"} 
+                        />
+                        <AvatarFallback>
+                          {getInitials(session.user.name || "User")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {session.user.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {session.user.email}
+                        </p>
+                      </div>
                     </div>
                     
                     <Link href="/dashboard">

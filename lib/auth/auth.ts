@@ -72,49 +72,47 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      console.log('🔑 [JWT] Callback triggered:', { trigger, user, token });
-
       if (user) {
         token.id = user.id;
         token.role = user.role;
         token.name = user.name;
         token.email = user.email;
-        console.log('✅ [JWT] Token updated with user data:', token);
+        token.image = user.image;
       }
 
-      if (trigger === "update" && session) {
-        token = { ...token, ...session };
-        console.log('✅ [JWT] Token updated from session:', token);
+      // Important : gérer la mise à jour du token
+      if (trigger === "update") {
+        return { ...token, ...session };
       }
 
       return token;
     },
 
     async session({ session, token }) {
-      console.log('👤 [Session] Creating session from token:', token);
-
       if (session?.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as "admin" | "editor" | "user" | "premium" | "luxury";
         session.user.name = token.name as string;
         session.user.email = token.email as string;
-        session.user.image = token.picture as string | undefined;
+        session.user.image = token.image as string | undefined;
       }
 
-      console.log('✅ [Session] Final session:', session);
+      // Ajouter un timestamp pour forcer le rafraîchissement
+      (session as unknown as { timestamp: number }).timestamp = Date.now();
+        
       return session;
     }
   },
 
   events: {
-    async signIn(message) {
-      console.log('🔑 [Event] SignIn:', message);
+    async signIn({ user, account }) {
+      console.log('🔑 [Event] SignIn:', { user, account });
     },
-    async signOut(message) {
-      console.log('🔑 [Event] SignOut:', message);
+    async signOut({ token }) {
+      console.log('🔑 [Event] SignOut:', { token });
     },
-    async session(message) {
-      console.log('🔑 [Event] Session:', message);
+    async session({ session, token }) {
+      console.log('🔑 [Event] Session update:', { session, token });
     }
   },
 
