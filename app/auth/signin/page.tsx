@@ -23,13 +23,13 @@ export default function SignInPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { setSession, setIsAuthenticated } = useAuthStore();
-
+  const { setAuth, setLoadingState } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setLoadingState('loading');
 
     try {
       const res = await signIn('credentials', {
@@ -44,19 +44,19 @@ export default function SignInPage() {
 
       if (res.error) {
         setError(res.error);
+        setLoadingState('error');
         return;
       }
 
-      // Si la connexion réussit, nous mettons à jour notre store immédiatement
-      setIsAuthenticated(true);
-      
+      // Récupération des données de session
       const sessionResponse = await fetch('/api/auth/session');
       const sessionData = await sessionResponse.json();
       
       if (sessionData) {
-        setSession(sessionData);
+        // Mise à jour de l'état avec setAuth qui gère à la fois la session et l'authentification
+        setAuth(sessionData, true);
         
-        // Nous utilisons un petit délai pour laisser le temps à l'état de se propager
+        // Navigation après un court délai pour laisser le temps à l'état de se propager
         setTimeout(() => {
           router.refresh();
           router.push(callbackUrl);
@@ -66,8 +66,8 @@ export default function SignInPage() {
     } catch (error) {
       console.error('Erreur de connexion:', error);
       setError('Une erreur est survenue lors de la connexion');
-      setIsAuthenticated(false);
-      setSession(null);
+      setAuth(null, false);
+      setLoadingState('error');
     } finally {
       setLoading(false);
     }

@@ -5,19 +5,10 @@ import { signIn, signOut } from 'next-auth/react';
 
 export function useAuth() {
   const router = useRouter();
-  const { 
-    session, 
-    isAuthenticated, 
-    loadingState,
-    error,
-    startLoading,
-    finishLoading,
-    setSession,
-    setIsAuthenticated 
-  } = useAuthStore();
+  const store = useAuthStore();
 
   const login = async (email: string, password: string) => {
-    startLoading();
+    store.setLoadingState('loading');
     
     try {
       const res = await signIn('credentials', {
@@ -30,47 +21,36 @@ export function useAuth() {
         throw new Error(res.error);
       }
 
-      setIsAuthenticated(true);
       const sessionData = await fetch('/api/auth/session').then(res => res.json());
-      setSession(sessionData);
-      
-      finishLoading(true);
+      store.setAuth(sessionData, true);
       return { success: true };
     } catch (error) {
-      finishLoading(false, error instanceof Error ? error.message : 'Erreur de connexion');
+      store.setError(error instanceof Error ? error.message : 'Erreur de connexion');
+      store.setLoadingState('error');
       return { success: false, error };
     }
   };
 
   const logout = async () => {
-    startLoading();
+    store.setLoadingState('loading');
     try {
-      setIsAuthenticated(false);
-      setSession(null);
+      store.setAuth(null, false);
       await signOut({ redirect: false });
       router.refresh();
       router.push('/');
-      finishLoading(true);
     } catch (error) {
       console.error('Signout error:', error);
-      finishLoading(false, 'Erreur lors de la déconnexion');
-      setIsAuthenticated(true);
+      store.setError('Erreur lors de la déconnexion');
+      store.setLoadingState('error');
     }
   };
 
-  const checkAuth = () => {
-    return {
-      isAuthenticated,
-      isLoading: loadingState === 'loading',
-      isError: loadingState === 'error',
-      error,
-    };
-  };
-
   return {
-    session,
+    session: store.session,
+    isAuthenticated: store.isAuthenticated,
+    isLoading: store.loadingState === 'loading',
+    error: store.error,
     login,
     logout,
-    checkAuth,
   };
 }

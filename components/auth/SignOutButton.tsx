@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils';
 interface SignOutButtonProps {
   className?: string;
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
-  // Permettre la personnalisation de l'apparence pour différents contextes
   fullWidth?: boolean;
   showIcon?: boolean;
 }
@@ -23,13 +22,13 @@ export function SignOutButton({
   showIcon = true
 }: SignOutButtonProps) {
   const router = useRouter();
-  const { setSession, setIsAuthenticated } = useAuthStore();
+  const { setAuth, setLoadingState } = useAuthStore();
 
   const handleSignOut = async () => {
     try {
-      // Mise à jour immédiate de l'UI
-      setIsAuthenticated(false);
-      setSession(null);
+      setLoadingState('loading');
+      // Mise à jour immédiate de l'UI avec setAuth qui gère à la fois la session et l'authentification
+      setAuth(null, false);
 
       // Déconnexion effective
       await signOut({
@@ -39,10 +38,12 @@ export function SignOutButton({
       // Rafraîchissement et redirection
       router.refresh();
       router.push('/');
+      setLoadingState('success');
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
       // Restauration de l'état en cas d'erreur
-      setIsAuthenticated(true);
+      setAuth(null, true);
+      setLoadingState('error');
     }
   };
 

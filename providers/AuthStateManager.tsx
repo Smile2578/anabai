@@ -1,4 +1,4 @@
-// components/providers/AuthStateManager.tsx
+// providers/AuthStateManager.tsx
 'use client';
 
 import { useEffect } from 'react';
@@ -10,13 +10,11 @@ interface AuthStateManagerProps {
 }
 
 export function AuthStateManager({ session }: AuthStateManagerProps) {
-  const store = useAuthStore();
+  const { setAuth } = useAuthStore();
 
   useEffect(() => {
-    store.setLoadingState('idle');
-    store.setIsAuthenticated(!!session);
-    store.setSession(session);
-  }, [session, store]);
+    setAuth(session, !!session);
+  }, [session, setAuth]);
 
   return null;
 }
