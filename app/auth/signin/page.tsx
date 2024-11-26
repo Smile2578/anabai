@@ -30,39 +30,48 @@ export default function SignInPage() {
     setLoading(true);
     setError('');
     setLoadingState('loading');
-
+  
     try {
+      // 1. Authentification avec NextAuth
       const res = await signIn('credentials', {
         redirect: false,
         email,
         password,
       });
-
+  
       if (!res) {
         throw new Error('Erreur de connexion inattendue');
       }
-
+  
       if (res.error) {
         setError(res.error);
         setLoadingState('error');
+        setLoading(false);
         return;
       }
-
-      // Récupération des données de session
+  
+      // 2. Attendre un peu pour que NextAuth établisse la session
+      await new Promise(resolve => setTimeout(resolve, 500));
+  
+      // 3. Récupérer la session établie
       const sessionResponse = await fetch('/api/auth/session');
       const sessionData = await sessionResponse.json();
       
       if (sessionData) {
-        // Mise à jour de l'état avec setAuth qui gère à la fois la session et l'authentification
+        // 4. Mise à jour du store
         setAuth(sessionData, true);
         
-        // Navigation après un court délai pour laisser le temps à l'état de se propager
-        setTimeout(() => {
-          router.refresh();
-          router.push(callbackUrl);
-        }, 100);
+        // 5. Forcer un refresh du routeur avant la redirection
+        router.refresh();
+        
+        // 6. Attendre que le refresh soit effectif
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // 7. Rediriger
+        router.push(callbackUrl);
+        setLoadingState('success');
       }
-
+  
     } catch (error) {
       console.error('Erreur de connexion:', error);
       setError('Une erreur est survenue lors de la connexion');

@@ -8,13 +8,17 @@ export function useAuthStatus() {
   const store = useAuthStore();
 
   useEffect(() => {
-    if (status === 'loading') {
-      store.setLoadingState('loading');
-    } else if (status === 'authenticated') {
-      store.setAuth(sessionData, true);
-    } else {
-      store.setAuth(null, false);
+    // Ne mettre à jour que si le status n'est pas "loading"
+    if (status !== 'loading') {
+      if (status === 'authenticated' && sessionData) {
+        store.setAuth(sessionData, true);
+      } else {
+        store.setAuth(null, false);
+      }
     }
+
+    // Mettre à jour l'état de chargement
+    store.setLoadingState(status === 'loading' ? 'loading' : 'idle');
   }, [status, sessionData, store]);
 
   return {
