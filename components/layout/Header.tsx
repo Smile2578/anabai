@@ -3,9 +3,9 @@
 
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Loader, Menu } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import AnabaLogo from "@/components/brand/AnabaLogo"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,44 +21,60 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { Settings, LayoutDashboard, MapPinHouse, UserIcon, LogOut } from "lucide-react"
+
+
 interface HeaderProps {
   className?: string
 }
 
 export function Header({ className }: HeaderProps) {
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
-  console.log('🔑 [Header] Session Status:', status);
-  console.log('🔑 [Header] Session Data:', session);
+  console.log('🔄 [Header] Render:', { status, session: session?.user, path: pathname });
 
-
-  // S'assurer que le composant est monté côté client
+  // Mise à jour forcée de la session lors du montage
   useEffect(() => {
-    const handleSessionChange = () => {
-      console.log('🔄 [Header] Session change detected');
-      router.refresh();
-    };
-  
-    window.addEventListener('session-change', handleSessionChange);
-    return () => window.removeEventListener('session-change', handleSessionChange);
-  }, [router]);
-  
-  // Pour le handleSignOut dans les deux headers
+    if (status === 'authenticated') {
+      updateSession();
+    }
+  }, [status, updateSession]);
+
+  // Gérer les transitions
+  useEffect(() => {
+    if (isTransitioning) {
+      const timer = setTimeout(() => setIsTransitioning(false), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isTransitioning]);
+
+  // Gérer la déconnexion
   const handleSignOut = useCallback(async () => {
     try {
-      await signOut({ 
-        redirect: true,
-        callbackUrl: '/'
+      setIsTransitioning(true);
+      console.log('👋 [Header] Starting signout');
+      
+      await signOut({
+        redirect: false,
       });
+
+      // Force refresh et redirection
+      router.refresh();
+      router.push('/');
+      
+      // Reset transition state
+      setTimeout(() => setIsTransitioning(false), 500);
+      
     } catch (error) {
       console.error('❌ [Header] Signout error:', error);
-      router.push('/');
+      setIsTransitioning(false);
     }
   }, [router]);
 
-  // Si le statut est "loading", affichez un loader
-  if (status === "loading") {
+  // Montrer le loader pendant les transitions
+  if (status === "loading" || isTransitioning) {
     return (
       <header className={cn("fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b", className)}>
         <div className="container mx-auto px-4 h-12 flex items-center justify-center">
@@ -97,7 +113,15 @@ export function Header({ className }: HeaderProps) {
 
   // Composant pour le menu utilisateur
   const UserMenu = () => {
-    if (!session?.user) return null
+    if (!session?.user) {
+      console.log('❌ [Header] No user in session');
+      return null;
+    }
+
+    console.log('✅ [Header] Rendering user menu:', { 
+      name: session.user.name,
+      role: session.user.role 
+    });
     
     const isPremium = session.user.role === "premium"
     const isLuxury = session.user.role === "luxury"
