@@ -28,9 +28,18 @@ interface HeaderProps {
 
 
 export function Header({ className }: HeaderProps) {
-  const session = useAuthStore((state) => state.session);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const loadingState = useAuthStore((state) => state.loadingState);
+  const session = useAuthStore((state) => {
+    console.log('📦 [Header] État de la session:', state.session);
+    return state.session;
+  });
+  const isAuthenticated = useAuthStore((state) => {
+    console.log('🔐 [Header] État d\'authentification:', state.isAuthenticated);
+    return state.isAuthenticated;
+  });
+  const loadingState = useAuthStore((state) => {
+    console.log('🔄 [Header] État de chargement:', state.loadingState);
+    return state.loadingState;
+  });
   
 
   const isLoading = loadingState === 'loading';

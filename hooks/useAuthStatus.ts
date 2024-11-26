@@ -8,17 +8,21 @@ export function useAuthStatus() {
   const store = useAuthStore();
 
   useEffect(() => {
-    // Ne mettre à jour que si le status n'est pas "loading"
+    console.log('🔄 [AuthStatus] Changement de status:', status);
+    console.log('📦 [AuthStatus] Données de session:', sessionData);
+
     if (status !== 'loading') {
       if (status === 'authenticated' && sessionData) {
+        console.log('✅ [AuthStatus] Utilisateur authentifié, mise à jour du store');
         store.setAuth(sessionData, true);
       } else {
+        console.log('❌ [AuthStatus] Utilisateur non authentifié, réinitialisation du store');
         store.setAuth(null, false);
       }
     }
 
-    // Mettre à jour l'état de chargement
     store.setLoadingState(status === 'loading' ? 'loading' : 'idle');
+    console.log('🔄 [AuthStatus] Nouvel état de chargement:', store.loadingState);
   }, [status, sessionData, store]);
 
   return {

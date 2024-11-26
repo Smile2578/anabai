@@ -27,12 +27,13 @@ export default function SignInPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🚀 [SignIn] Début de la soumission du formulaire');
     setLoading(true);
     setError('');
     setLoadingState('loading');
   
     try {
-      // 1. Authentification avec NextAuth
+      console.log('🚀 [SignIn] Tentative de connexion avec NextAuth');
       const res = await signIn('credentials', {
         redirect: false,
         email,
@@ -40,40 +41,49 @@ export default function SignInPage() {
       });
   
       if (!res) {
+        console.error('❌ [SignIn] Pas de réponse de NextAuth');
         throw new Error('Erreur de connexion inattendue');
       }
   
       if (res.error) {
+        console.error('❌ [SignIn] Erreur NextAuth:', res.error);
         setError(res.error);
         setLoadingState('error');
         setLoading(false);
         return;
       }
   
-      // 2. Attendre un peu pour que NextAuth établisse la session
+      console.log('✅ [SignIn] Connexion NextAuth réussie, attente de la session');
+      // Attendre que NextAuth établisse la session
       await new Promise(resolve => setTimeout(resolve, 500));
   
-      // 3. Récupérer la session établie
+      console.log('🚀 [SignIn] Récupération de la session');
       const sessionResponse = await fetch('/api/auth/session');
       const sessionData = await sessionResponse.json();
+      console.log('📦 [SignIn] Données de session reçues:', sessionData);
       
       if (sessionData) {
-        // 4. Mise à jour du store
+        console.log('🚀 [SignIn] Mise à jour du store Zustand');
         setAuth(sessionData, true);
+        console.log('✅ [SignIn] Store mis à jour');
         
-        // 5. Forcer un refresh du routeur avant la redirection
+        console.log('🚀 [SignIn] Rafraîchissement du routeur');
         router.refresh();
         
-        // 6. Attendre que le refresh soit effectif
+        console.log('🚀 [SignIn] Attente avant redirection');
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        // 7. Rediriger
+        console.log('🚀 [SignIn] Redirection vers:', callbackUrl);
         router.push(callbackUrl);
         setLoadingState('success');
+        console.log('✅ [SignIn] Processus de connexion terminé');
+      } else {
+        console.error('❌ [SignIn] Pas de données de session après connexion');
+        throw new Error('Session non établie');
       }
   
     } catch (error) {
-      console.error('Erreur de connexion:', error);
+      console.error('❌ [SignIn] Erreur lors de la connexion:', error);
       setError('Une erreur est survenue lors de la connexion');
       setAuth(null, false);
       setLoadingState('error');
