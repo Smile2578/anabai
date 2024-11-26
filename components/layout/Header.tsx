@@ -3,7 +3,7 @@
 
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect } from "react"
 import { Loader, Menu } from "lucide-react"
 import { useRouter } from "next/navigation"
 import AnabaLogo from "@/components/brand/AnabaLogo"
@@ -21,7 +21,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { Settings, LayoutDashboard, MapPinHouse, UserIcon, LogOut } from "lucide-react"
-
 interface HeaderProps {
   className?: string
 }
@@ -29,48 +28,43 @@ interface HeaderProps {
 export function Header({ className }: HeaderProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
 
-  // Écouteur d'événements pour la session
-  useEffect(() => {
-    const handleStorageChange = () => {
-      router.refresh();
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [router]);
 
   // S'assurer que le composant est monté côté client
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Gérer la déconnexion
+    const handleSessionChange = () => {
+      console.log('🔄 [Header] Session change detected');
+      router.refresh();
+    };
+  
+    window.addEventListener('session-change', handleSessionChange);
+    return () => window.removeEventListener('session-change', handleSessionChange);
+  }, [router]);
+  
+  // Pour le handleSignOut dans les deux headers
   const handleSignOut = useCallback(async () => {
+    console.log('👋 [Header] Starting signout...');
     try {
       await signOut({ 
         redirect: false,
         callbackUrl: '/' 
       });
-
-      // Force un rafraîchissement de la page
-      window.dispatchEvent(new Event('storage'));
       
-      // Attendre avant la redirection
-      await new Promise(resolve => setTimeout(resolve, 500));
-      router.push('/');
+      // Force un rafraîchissement immédiat
+      window.dispatchEvent(new Event('session-change'));
       router.refresh();
+  
+      // Attendre que la session soit mise à jour
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Rediriger
+      router.push('/');
     } catch (error) {
-      console.error('Signout error:', error);
+      console.error('❌ [Header] Signout error:', error);
     }
   }, [router]);
 
-  console.log('Header rendering with session status:', status, 'session:', session);
 
-  // N'afficher rien jusqu'à ce que le composant soit monté
-  if (!mounted) {
-    return null;
-  }
 
   // Afficher un loader pendant la vérification de la session
   if (status === "loading") {
@@ -125,7 +119,7 @@ export function Header({ className }: HeaderProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-8 w-8">
+            <Avatar className="h-8 w-8 border-2 border-primary">
               <AvatarImage src={session.user.image || undefined} alt={session.user.name || "Avatar"} />
               <AvatarFallback>{getInitials(session.user.name || "User")}</AvatarFallback>
             </Avatar>
@@ -218,23 +212,23 @@ export function Header({ className }: HeaderProps) {
         <div className="flex items-center gap-4">
           {session ? (
             <>
+              <UserMenu />
               <Link href="/trip-planner">
                 <Button className="hidden md:flex bg-primary hover:bg-primary/90">
                   Planifier mon voyage
                 </Button>
               </Link>
-              <UserMenu />
             </>
           ) : (
             <>
+              <Link href="/auth/signin">
+                <Button variant="outline" className="hidden md:flex">
+                  Se connecter
+                </Button>
+              </Link>
               <Link href="/trip-planner">
                 <Button className="hidden md:flex bg-primary hover:bg-primary/90">
                   Planifier mon voyage
-                </Button>
-              </Link>
-              <Link href="/auth/signin">
-                <Button variant="outline" className="hidden md:flex ml-3">
-                  Se connecter
                 </Button>
               </Link>
             </>
@@ -268,16 +262,6 @@ export function Header({ className }: HeaderProps) {
                 ) : (
                     <div className="space-y-4">
                     <h1 className="text-lg font-semibold text-secondary-main">Bonjour, {session.user.name}</h1>
-                    <div className="flex items-center space-x-4 py-2">
-                        <Avatar className="h-10 w-10">
-                        <AvatarImage src={session.user.image || undefined} alt={session.user.name || "Avatar"} />
-                        <AvatarFallback>{getInitials(session.user.name || "User")}</AvatarFallback>
-                        </Avatar>
-                        <div className="space-y-1">
-                        <p className="text-sm font-medium leading-none">{session.user.name}</p>
-                        <p className="text-xs text-muted-foreground">{session.user.email}</p>
-                        </div>
-                    </div>
                     
                     <Link href="/dashboard">
                         <Button variant="ghost" className="w-full justify-start">
@@ -285,11 +269,12 @@ export function Header({ className }: HeaderProps) {
                         </Button>
                     </Link>
                     <Link href="/account">
-                    <Settings className="mr-2 h-4 w-4" />
+                    
                         <Button variant="ghost" className="w-full justify-start">
                         Paramètres du compte
                         </Button>
                     </Link>
+                    <hr className="border-border" />
                     {(session.user.role === "admin" || session.user.role === "editor") && (
                         <>
                         <div className="text-sm font-medium text-muted-foreground pt-2">

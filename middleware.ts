@@ -3,7 +3,7 @@ import { getToken } from 'next-auth/jwt';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function middleware(req: NextRequest) {
-  console.log('🛡️ [Middleware] Checking route:', req.nextUrl.pathname);
+  console.log('🛡️ [Middleware] Start -', req.nextUrl.pathname);
 
   // Ajouter un délai pour éviter les conditions de course
   await new Promise(resolve => setTimeout(resolve, 100));
@@ -13,10 +13,12 @@ export async function middleware(req: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   });
 
-  console.log('🛡️ [Middleware] Token:', token ? 'Present' : 'Missing', {
-    role: token?.role,
+  console.log('🛡️ [Middleware] Token:', token ? {
+    name: token.name,
+    email: token.email,
+    role: token.role,
     path: req.nextUrl.pathname
-  });
+  } : 'Missing');
 
   // Gestion des routes protégées
   const protectedRoutes = ['/admin', '/dashboard', '/account', '/api/admin'];

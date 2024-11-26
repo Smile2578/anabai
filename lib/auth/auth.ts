@@ -63,32 +63,46 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, trigger }) {
-      console.log('🔑 [JWT] Callback triggered:', trigger);
-      console.log('🔑 [JWT] Current token:', token);
-      console.log('🔑 [JWT] User data:', user);
+      console.log('🔑 [JWT] Callback triggered:', { trigger, user, token });
 
       if (user) {
-        token = { ...token, ...user };
-        console.log('✅ [JWT] Token updated with user data:', token);
+        // Assurez-vous que toutes les propriétés nécessaires sont présentes
+        token = {
+          ...token,
+          id: user.id,
+          role: user.role,
+          name: user.name,
+          email: user.email,
+          image: user.image
+        };
+        console.log('✅ [JWT] Token updated:', token);
       }
 
       return token;
     },
     async session({ session, token }) {
-      console.log('👤 [Session] Creating session from token');
-      console.log('👤 [Session] Token data:', token);
+      console.log('👤 [Session] Creating session from token:', token);
 
       if (session?.user) {
+        // Synchroniser toutes les propriétés
         session.user = {
           ...session.user,
           id: token.id as string,
           role: token.role as "admin" | "editor" | "user" | "premium" | "luxury",
+          name: token.name as string,
+          email: token.email as string,
+          image: token.image as string | undefined
         };
         console.log('✅ [Session] Session updated:', session);
       }
 
       return session;
     }
+  },
+  events: {
+    async signIn(message) { console.log('🔑 [Event] SignIn:', message); },
+    async signOut(message) { console.log('🔑 [Event] SignOut:', message); },
+    async session(message) { console.log('🔑 [Event] Session:', message); }
   },
   session: {
     strategy: 'jwt',
