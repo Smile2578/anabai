@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connection';
 import User from '@/models/User';
 
-
 export async function POST(req: Request) {
   try {
     await connectDB();

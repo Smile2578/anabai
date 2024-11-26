@@ -15,6 +15,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import AnabaLogo from '@/components/brand/AnabaLogo';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrenghtIndicator';
+import { signIn } from 'next-auth/react';
 
 
 const signupSchema = z.object({
@@ -83,11 +84,19 @@ export default function SignUpPage() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      await signIn('google');
+    } catch (error) {
+      console.error('Erreur lors de la connexion avec Google:', error);
+    }
+  };
+
   return (
     <div className="auth-container flex items-center justify-center">
       <div className="auth-card w-full max-w-md">
         <div className="auth-form-container">
-        <div className="text-center mb-8">
+          <div className="text-center mb-8">
             <div className="flex justify-center">
               <AnabaLogo />
             </div>
@@ -167,7 +176,7 @@ export default function SignUpPage() {
           </div>
           
           <div className="space-y-3">
-            <button className="auth-social-button">
+            <button className="auth-social-button" onClick={handleGoogleSignIn}>
               <Image src="/google-icon.png" alt="Google" width={20} height={20} />
               Continuer avec Google
             </button>
@@ -175,7 +184,7 @@ export default function SignUpPage() {
           
           <div className="mt-6 text-center">
             <p className="text-white/60">
-              Vous avez déjà un compte ?{' '} <br></br>
+              Vous avez déjà un compte ?<br />
               <Link href="/auth/signin" className="auth-link text-primary-light text-xl">
                 Connectez-vous
               </Link>

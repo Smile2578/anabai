@@ -3,6 +3,17 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+interface User {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+  email: string;
+  password: string;
+  role: 'admin' | 'editor' | 'user' | 'premium' | 'luxury';
+  image?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
+}
+
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
