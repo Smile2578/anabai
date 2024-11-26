@@ -19,21 +19,34 @@ export function Providers({ children, ...props }: ProvidersProps) {
         retry: 1,
         refetchOnWindowFocus: false,
       },
+      mutations: {
+        // Configuration pour les mutations
+        onError: (error) => {
+          console.error('🔴 [Mutation Error]:', error);
+        },
+        onSuccess: (data) => {
+          console.log('✅ [Mutation Success]:', { data });
+        },
+      },
     },
   }));
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SessionProvider>
+    <SessionProvider 
+      refetchInterval={0} 
+      refetchOnWindowFocus={false}
+    >
+      <QueryClientProvider client={queryClient}>
         <NextThemesProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
+          disableTransitionOnChange
           {...props}
         >
           {children}
         </NextThemesProvider>
-      </SessionProvider>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </SessionProvider>
   );
 }

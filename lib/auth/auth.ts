@@ -14,70 +14,79 @@ export const authOptions: NextAuthOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials: { email: string; password: string } | undefined) {
-        console.log('Authorize function called with credentials:', credentials);
+      async authorize(credentials) {
+        console.log('🚀 [Auth] Starting authorization process');
+        
         if (!credentials) {
-          console.log('No credentials provided');
+          console.log('❌ [Auth] No credentials provided');
           throw new Error('Identifiants requis');
         }
-        await connectDB();
-        console.log('Connected to database');
-        const user = await User.findOne({ email: credentials.email })
-          .select('+password') as IUser | null;
-        if (!user) {
-          console.log('No user found with email:', credentials.email);
-          throw new Error('Aucun utilisateur trouvé');
+
+        try {
+          await connectDB();
+          console.log('✅ [Auth] Connected to database');
+          
+          const user = await User.findOne({ email: credentials.email })
+            .select('+password') as IUser | null;
+          
+          if (!user) {
+            console.log('❌ [Auth] No user found:', credentials.email);
+            throw new Error('Utilisateur non trouvé');
+          }
+
+          console.log('✅ [Auth] User found:', { id: user.id, email: user.email, role: user.role });
+          
+          const isValid = await bcrypt.compare(credentials.password, user.password);
+          if (!isValid) {
+            console.log('❌ [Auth] Invalid password');
+            throw new Error('Mot de passe incorrect');
+          }
+
+          console.log('✅ [Auth] Password validated');
+          
+          const userSession = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            image: user.image
+          };
+
+          console.log('✅ [Auth] Returning user session:', userSession);
+          return userSession;
+        } catch (error) {
+          console.error('❌ [Auth] Error during authorization:', error);
+          throw error;
         }
-        console.log('User found:', user.email);
-        const isValid = await bcrypt.compare(credentials.password, user.password);
-        if (!isValid) {
-          console.log('Invalid password for user:', user.email);
-          throw new Error('Mot de passe incorrect');
-        }
-        console.log('Password valid for user:', user.email);
-        return { id: user.id, name: user.name, email: user.email, role: user.role };
       },
     }),
   ],
-  jwt: {
-    secret: process.env.NEXTAUTH_SECRET,
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  cookies: {
-    sessionToken: {
-      name: `__Secure-next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: true
-      }
-    }
-  },
   callbacks: {
-    async jwt({ token, user, session }) {
-      // Mise à jour lors de la connexion
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
-        token.email = user.email;
-        token.name = user.name;
-      }
+    async jwt({ token, user, trigger }) {
+      console.log('🔑 [JWT] Callback triggered:', trigger);
+      console.log('🔑 [JWT] Current token:', token);
+      console.log('🔑 [JWT] User data:', user);
 
-      // Mise à jour lors de la modification de session
-      if (session) {
-        token = { ...token, ...session.user };
+      if (user) {
+        token = { ...token, ...user };
+        console.log('✅ [JWT] Token updated with user data:', token);
       }
 
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id;
-        session.user.role = token.role;
-        session.user.email = token.email;
-        session.user.name = token.name;
+      console.log('👤 [Session] Creating session from token');
+      console.log('👤 [Session] Token data:', token);
+
+      if (session?.user) {
+        session.user = {
+          ...session.user,
+          id: token.id as string,
+          role: token.role as "admin" | "editor" | "user" | "premium" | "luxury",
+        };
+        console.log('✅ [Session] Session updated:', session);
       }
+
       return session;
     }
   },
@@ -90,9 +99,6 @@ export const authOptions: NextAuthOptions = {
     signOut: '/auth/signout',
     error: '/auth/error',
   },
-  
   secret: process.env.NEXTAUTH_SECRET,
-}
-
-console.log('AuthOptions configured with secret:', process.env.NEXTAUTH_SECRET ? 'Secret is set' : 'Secret is not set');
-
+  debug: process.env.NODE_ENV !== 'production',
+};
