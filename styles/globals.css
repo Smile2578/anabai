@@ -85,11 +85,15 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply tracking-tight;
+  }
+  html {
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
   }
 }
 
@@ -179,10 +183,6 @@
 
 .glass-hover {
   @apply hover:bg-white/20 transition-colors duration-200;
-}
-
-html {
-  scrollbar-gutter: stable;
 }
 
 

@@ -26,20 +26,35 @@ export default function SignInPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-
-    const res = await signIn('credentials', {
-      redirect: false,
-      email,
-      password,
-      callbackUrl,
-    });
-
-    setLoading(false);
-
-    if (res && !res.error) {
-      router.push(callbackUrl);
-    } else {
-      setError(res?.error || 'Email ou mot de passe incorrect.');
+  
+    try {
+      const res = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
+      });
+  
+      if (res?.error) {
+        setError(res.error);
+        return;
+      }
+  
+      // Attendre un court instant pour que la session soit mise à jour
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Rediriger vers la page demandée ou la page d'accueil
+      if (callbackUrl) {
+        router.push(callbackUrl);
+      } else {
+        router.push('/');
+      }
+      router.refresh();
+  
+    } catch (error) {
+      console.error('Signin error:', error);
+      setError('Une erreur est survenue lors de la connexion');
+    } finally {
+      setLoading(false);
     }
   };
 

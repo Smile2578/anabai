@@ -39,42 +39,9 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  session: {
-    strategy: 'jwt',
-    maxAge: 24 * 60 * 60,
-  },
   jwt: {
     secret: process.env.NEXTAUTH_SECRET,
     maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  callbacks: {
-    async jwt({ token, user, trigger }) {
-      console.log('JWT Callback - Trigger:', trigger);
-      if (trigger === "signIn" && user) {
-        console.log('JWT Callback - User data:', { 
-          id: user.id,
-          role: user.role,
-          email: user.email,
-          name: user.name,
-        });
-        token.role = user.role;
-        token.id = user.id;
-        token.email = user.email;
-        token.name = user.name;
-      }
-      return token;
-    },
-    async session({ session, token, trigger }) {
-      console.log('Session Callback - Trigger:', trigger);
-      if (session.user) {
-        session.user.role = token.role as "admin" | "editor" | "user" | "premium" | "luxury";
-        session.user.id = token.id as string;
-        session.user.email = token.email as string;
-        session.user.name = token.name as string;
-      }
-      console.log('Session Callback - Updated session:', { ...session });
-      return session;
-    }
   },
   cookies: {
     sessionToken: {
@@ -87,8 +54,40 @@ export const authOptions: NextAuthOptions = {
       }
     }
   },
+  callbacks: {
+    async jwt({ token, user, session }) {
+      // Mise à jour lors de la connexion
+      if (user) {
+        token.id = user.id;
+        token.role = user.role;
+        token.email = user.email;
+        token.name = user.name;
+      }
+
+      // Mise à jour lors de la modification de session
+      if (session) {
+        token = { ...token, ...session.user };
+      }
+
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id;
+        session.user.role = token.role;
+        session.user.email = token.email;
+        session.user.name = token.name;
+      }
+      return session;
+    }
+  },
+  session: {
+    strategy: 'jwt',
+    maxAge: 24 * 60 * 60, // 24 heures
+  },
   pages: {
     signIn: '/auth/signin',
+    signOut: '/auth/signout',
     error: '/auth/error',
   },
   

@@ -3,8 +3,8 @@
 
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
-import { useCallback } from "react"
-import { Menu } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import { Loader, Menu } from "lucide-react"
 import { useRouter } from "next/navigation"
 import AnabaLogo from "@/components/brand/AnabaLogo"
 import { Button } from "@/components/ui/button"
@@ -26,22 +26,46 @@ interface HeaderProps {
 }
 
 export function Header({ className }: HeaderProps) {
-  const { data: session, status } = useSession()
-  const router = useRouter()
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
+  // État de chargement personnalisé
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Gérer la déconnexion
   const handleSignOut = useCallback(async () => {
-    await signOut({ 
-      redirect: false 
-    })
-    router.push('/')
-    router.refresh()
-  }, [router])
+    setIsLoading(true);
+    try {
+      await signOut({ 
+        redirect: false 
+      });
+      router.push('/');
+      router.refresh();
+    } catch (error) {
+      console.error('Signout error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [router]);
 
-  // Gestion de l'état de chargement
-  if (status === "loading") {
-    return <div>Chargement...</div>
+  // Gérer l'état de chargement initial
+  useEffect(() => {
+    if (status !== 'loading') {
+      setIsLoading(false);
+    }
+  }, [status]);
+
+  // Afficher un état de chargement
+  if (isLoading) {
+    return (
+      <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b h-12">
+        <div className="container mx-auto px-4 h-full flex items-center justify-center">
+          <Loader className="animate-spin h-5 w-5" />
+        </div>
+      </header>
+    );
   }
-
+  
   // Fonction pour obtenir les initiales de l'utilisateur
   const getInitials = (name: string) => {
     return name
