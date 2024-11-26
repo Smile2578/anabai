@@ -10,11 +10,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <SessionProvider 
-      refetchInterval={0} 
-      refetchOnWindowFocus={true}
-      refetchWhenOffline={false}
-    >
+    <SessionProvider>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
           attribute="class"

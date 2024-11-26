@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { Settings, LayoutDashboard, MapPinHouse, UserIcon, LogOut } from "lucide-react"
-import { useRouter } from "next/navigation"
+
 import { useAuthStatus } from "@/hooks/useAuthStatus"
 
 interface HeaderProps {
@@ -28,58 +28,34 @@ interface HeaderProps {
 }
 
 export function Header({ className }: HeaderProps) {
-  const router = useRouter();
   const { 
     session, 
-    status, 
-    isReady, 
     isAuthenticated, 
-    isLoading: authLoading
-  } = useAuthStatus(); // Retirez update de la déstructuration
+    isLoading 
+  } = useAuthStatus();
 
   const [mounted, setMounted] = useState(false);
 
-  // Effet simplifié pour le montage
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Log pour le débogage
-  useEffect(() => {
-    console.log('Header state:', { 
-      status,
-      isReady,
-      isAuthenticated,
-      authLoading,
-      session,
-      mounted 
-    });
-  }, [status, isReady, isAuthenticated, authLoading, session, mounted]);
-
   const handleSignOut = useCallback(async () => {
     try {
       await signOut({
-        redirect: false,
+        redirect: true,
+        callbackUrl: '/'
       });
-      
-      // Nettoyer le localStorage
-      localStorage.removeItem('next-auth.session-token');
-      localStorage.removeItem('next-auth.callback-url');
-      localStorage.removeItem('next-auth.csrf-token');
-
-      // Force refresh et redirection
-      router.refresh();
-      window.location.href = '/';
     } catch (error) {
       console.error('Signout error:', error);
     }
-  }, [router]);
+  }, []);
 
   // N'afficher rien jusqu'au montage initial
   if (!mounted) return null;
 
-  // Afficher un loader pendant le chargement
-  if (!isReady || authLoading) {
+  // Afficher un loader pendant le chargement initial
+  if (isLoading) {
     return (
       <header className={cn("fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b", className)}>
         <div className="container mx-auto px-4 h-12 flex items-center justify-center">
@@ -292,46 +268,51 @@ export function Header({ className }: HeaderProps) {
                     </div>
                     
                     <Link href="/dashboard">
-                        <Button variant="ghost" className="w-full justify-start">
+                      <Button variant="ghost" className="w-full justify-start">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
                         Tableau de bord
-                        </Button>
+                      </Button>
                     </Link>
                     <Link href="/account">
-                        <Button variant="ghost" className="w-full justify-start">
+                      <Button variant="ghost" className="w-full justify-start">
+                        <Settings className="mr-2 h-4 w-4" />
                         Paramètres du compte
-                        </Button>
+                      </Button>
                     </Link>
                     {(session.user.role === "admin" || session.user.role === "editor") && (
-                        <>
+                      <>
                         <div className="text-sm font-medium text-muted-foreground pt-2">
-                            Administration
+                          Administration
                         </div>
                         <Link href="/admin/places">
-                            <Button variant="ghost" className="w-full justify-start">
+                          <Button variant="ghost" className="w-full justify-start">
+                            <MapPinHouse className="mr-2 h-4 w-4" />
                             Gestion des lieux
-                            </Button>
+                          </Button>
                         </Link>
                         {session.user.role === "admin" && (
-                            <Link href="/admin/users">
+                          <Link href="/admin/users">
                             <Button variant="ghost" className="w-full justify-start">
-                                Gestion des utilisateurs
+                              <UserIcon className="mr-2 h-4 w-4" />
+                              Gestion des utilisateurs
                             </Button>
-                            </Link>
+                          </Link>
                         )}
-                        </>
+                      </>
                     )}
                     <Button
-                        variant="destructive"
-                        className="w-full mt-4"
-                        onClick={handleSignOut}
+                      variant="destructive"
+                      className="w-full mt-4"
+                      onClick={handleSignOut}
                     >
-                        Se déconnecter
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Se déconnecter
                     </Button>
-                    </div>
+                  </div>
                 )}
-                </nav>
+              </nav>
             </SheetContent>
-            </Sheet>
+          </Sheet>
         </div>
       </div>
     </header>

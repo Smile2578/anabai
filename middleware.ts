@@ -66,7 +66,8 @@ export const config = {
     '/admin/:path*',
     '/dashboard/:path*',
     '/account/:path*',
-    '/api/admin/:path*'
+    '/api/admin/:path*',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ]
 };
 

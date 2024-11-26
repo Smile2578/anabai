@@ -71,36 +71,46 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
         token.name = user.name;
         token.email = user.email;
-        token.image = user.image;
       }
-
-      // Important : gérer la mise à jour du token
-      if (trigger === "update") {
-        return { ...token, ...session };
-      }
-
       return token;
     },
-
+  
     async session({ session, token }) {
       if (session?.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as "admin" | "editor" | "user" | "premium" | "luxury";
         session.user.name = token.name as string;
         session.user.email = token.email as string;
-        session.user.image = token.image as string | undefined;
       }
-
-      // Ajouter un timestamp pour forcer le rafraîchissement
-      (session as unknown as { timestamp: number }).timestamp = Date.now();
-        
       return session;
+    }
+  }, 
+
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 jours
+  },
+
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production'
+        ? '__Secure-next-auth.session-token'
+        : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        domain: process.env.NODE_ENV === 'production' 
+          ? 'anaba.io'  // Ajustez selon votre domaine
+          : undefined
+      }
     }
   },
 
@@ -116,59 +126,8 @@ export const authOptions: NextAuthOptions = {
     }
   },
 
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 jours
-    updateAge: 24 * 60 * 60, // 24 heures
-  },
-
   jwt: {
     maxAge: 30 * 24 * 60 * 60, // 30 jours
-  },
-
-  cookies: {
-    sessionToken: {
-      name: process.env.NODE_ENV === 'production'
-        ? '__Secure-next-auth.session-token'
-        : 'next-auth.session-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' 
-          ? '.anaba.io' 
-          : undefined
-      }
-    },
-    callbackUrl: {
-      name: process.env.NODE_ENV === 'production'
-        ? '__Secure-next-auth.callback-url'
-        : 'next-auth.callback-url',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' 
-          ? '.anaba.io' 
-          : undefined
-      }
-    },
-    csrfToken: {
-      name: process.env.NODE_ENV === 'production'
-        ? '__Host-next-auth.csrf-token'
-        : 'next-auth.csrf-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' 
-          ? '.anaba.io' 
-          : undefined
-      }
-    }
   },
 
   secret: process.env.NEXTAUTH_SECRET,
