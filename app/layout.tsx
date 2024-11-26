@@ -4,6 +4,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google'
 import '../styles/globals.css'
 import { Analytics } from "@vercel/analytics/react"
 import { Providers } from '@/providers/providers'
+import SessionCheck from '@/components/auth/SessionCheck'
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'] })
 
@@ -21,8 +22,10 @@ export default function RootLayout({
     <html lang="fr" suppressHydrationWarning>
       <body className={plusJakartaSans.className}>
         <Providers>
-          {children}
-          <Analytics />
+          <SessionCheck>
+            {children}
+            <Analytics />
+          </SessionCheck>
         </Providers>
       </body>
     </html>

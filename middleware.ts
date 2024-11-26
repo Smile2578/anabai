@@ -3,19 +3,16 @@ import { getToken } from 'next-auth/jwt';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function middleware(req: NextRequest) {
-  console.log('🛡️ [Middleware] Start -', req.nextUrl.pathname);
-
-  // Ajouter un délai pour éviter les conditions de course
-  await new Promise(resolve => setTimeout(resolve, 100));
+  const sessionToken = req.cookies.get('next-auth.session-token');
+  console.log('🔑 [Middleware] Cookie Session Token:', sessionToken ? 'Present' : 'Missing');
 
   const token = await getToken({ 
     req,
     secret: process.env.NEXTAUTH_SECRET,
   });
 
-  console.log('🛡️ [Middleware] Token:', token ? {
+  console.log('🔑 [Middleware] JWT Token:', token ? {
     name: token.name,
-    email: token.email,
     role: token.role,
     path: req.nextUrl.pathname
   } : 'Missing');

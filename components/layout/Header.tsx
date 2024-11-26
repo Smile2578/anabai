@@ -29,6 +29,9 @@ export function Header({ className }: HeaderProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
 
+  console.log('🔑 [Header] Session Status:', status);
+  console.log('🔑 [Header] Session Data:', session);
+
 
   // S'assurer que le composant est monté côté client
   useEffect(() => {
@@ -43,30 +46,18 @@ export function Header({ className }: HeaderProps) {
   
   // Pour le handleSignOut dans les deux headers
   const handleSignOut = useCallback(async () => {
-    console.log('👋 [Header] Starting signout...');
     try {
       await signOut({ 
-        redirect: false,
-        callbackUrl: '/' 
+        redirect: true,
+        callbackUrl: '/'
       });
-      
-      // Force un rafraîchissement immédiat
-      window.dispatchEvent(new Event('session-change'));
-      router.refresh();
-  
-      // Attendre que la session soit mise à jour
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Rediriger
-      router.push('/');
     } catch (error) {
       console.error('❌ [Header] Signout error:', error);
+      router.push('/');
     }
   }, [router]);
 
-
-
-  // Afficher un loader pendant la vérification de la session
+  // Si le statut est "loading", affichez un loader
   if (status === "loading") {
     return (
       <header className={cn("fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b", className)}>
@@ -76,8 +67,6 @@ export function Header({ className }: HeaderProps) {
       </header>
     );
   }
-
-  console.log('Header rendering with session:', session);
   
   // Fonction pour obtenir les initiales de l'utilisateur
   const getInitials = (name: string) => {

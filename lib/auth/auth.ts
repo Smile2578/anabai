@@ -105,13 +105,28 @@ export const authOptions: NextAuthOptions = {
     async session(message) { console.log('🔑 [Event] Session:', message); }
   },
   session: {
-    strategy: 'jwt',
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 heures
+    updateAge: 60 * 60, // Mettre à jour la session toutes les heures
+  },
+  jwt: {
     maxAge: 24 * 60 * 60, // 24 heures
   },
   pages: {
     signIn: '/auth/signin',
     signOut: '/auth/signout',
     error: '/auth/error',
+  },
+  cookies: {
+    sessionToken: {
+      name: `__Secure-next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    }
   },
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV !== 'production',
