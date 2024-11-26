@@ -5,42 +5,44 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function middleware(req: NextRequest) {
   console.log('🛡️ [Middleware] Checking route:', req.nextUrl.pathname);
 
+  // Ajouter un délai pour éviter les conditions de course
+  await new Promise(resolve => setTimeout(resolve, 100));
+
   const token = await getToken({ 
     req,
-    secret: process.env.NEXTAUTH_SECRET 
+    secret: process.env.NEXTAUTH_SECRET,
   });
 
-  console.log('🛡️ [Middleware] Token:', token ? 'Present' : 'Missing', token?.role);
+  console.log('🛡️ [Middleware] Token:', token ? 'Present' : 'Missing', {
+    role: token?.role,
+    path: req.nextUrl.pathname
+  });
 
-  // Protection des routes admin
-  if (req.nextUrl.pathname.startsWith('/admin') || req.nextUrl.pathname.startsWith('/api/admin')) {
-    if (!token) {
-      console.log('❌ [Middleware] No token for admin route');
-      const signInUrl = new URL('/auth/signin', req.url);
-      signInUrl.searchParams.set('callbackUrl', req.url);
-      return NextResponse.redirect(signInUrl);
-    }
+  // Gestion des routes protégées
+  const protectedRoutes = ['/admin', '/dashboard', '/account', '/api/admin'];
+  const isProtectedRoute = protectedRoutes.some(route => 
+    req.nextUrl.pathname.startsWith(route)
+  );
 
-    if (!['admin', 'editor'].includes(token.role as string)) {
-      console.log('❌ [Middleware] Invalid role for admin route:', token.role);
-      return NextResponse.redirect(new URL('/', req.url));
-    }
-
-    console.log('✅ [Middleware] Admin access granted');
-  }
-
-  // Protection des routes authentifiées
-  if (
-    req.nextUrl.pathname.startsWith('/dashboard') ||
-    req.nextUrl.pathname.startsWith('/account')
-  ) {
+  if (isProtectedRoute) {
     if (!token) {
       console.log('❌ [Middleware] No token for protected route');
-      const signInUrl = new URL('/auth/signin', req.url);
-      signInUrl.searchParams.set('callbackUrl', req.url);
-      return NextResponse.redirect(signInUrl);
+      const callbackUrl = encodeURIComponent(req.url);
+      return NextResponse.redirect(
+        new URL(`/auth/signin?callbackUrl=${callbackUrl}`, req.url)
+      );
     }
-    console.log('✅ [Middleware] Access granted to protected route');
+
+    // Vérification spécifique pour les routes admin
+    if (req.nextUrl.pathname.startsWith('/admin') || req.nextUrl.pathname.startsWith('/api/admin')) {
+      if (!['admin', 'editor'].includes(token.role as string)) {
+        console.log('❌ [Middleware] Invalid role for admin route:', token.role);
+        return NextResponse.redirect(new URL('/', req.url));
+      }
+      console.log('✅ [Middleware] Admin access granted');
+    }
+
+    console.log('✅ [Middleware] Protected route access granted');
   }
 
   return NextResponse.next();
@@ -50,6 +52,7 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/dashboard/:path*',
+    '/account/:path*',
     '/api/admin/:path*'
   ]
 };

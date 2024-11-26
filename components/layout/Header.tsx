@@ -28,43 +28,46 @@ interface HeaderProps {
 export function Header({ className }: HeaderProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
-  // État de chargement personnalisé
-  const [isLoading, setIsLoading] = useState(true);
+  // S'assurer que le composant est monté côté client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  // Gérer la déconnexion
+  // Gérer la déconnexion de manière plus robuste
   const handleSignOut = useCallback(async () => {
-    setIsLoading(true);
     try {
       await signOut({ 
         redirect: false 
       });
-      router.push('/');
+      // Force le refresh de la session
       router.refresh();
+      // Attendre un peu avant la redirection
+      await new Promise(resolve => setTimeout(resolve, 500));
+      router.push('/');
     } catch (error) {
       console.error('Signout error:', error);
-    } finally {
-      setIsLoading(false);
     }
   }, [router]);
 
-  // Gérer l'état de chargement initial
-  useEffect(() => {
-    if (status !== 'loading') {
-      setIsLoading(false);
-    }
-  }, [status]);
+  // N'afficher rien jusqu'à ce que le composant soit monté
+  if (!mounted) {
+    return null;
+  }
 
-  // Afficher un état de chargement
-  if (isLoading) {
+  // Afficher un loader pendant la vérification de la session
+  if (status === "loading") {
     return (
-      <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b h-12">
-        <div className="container mx-auto px-4 h-full flex items-center justify-center">
+      <header className={cn("fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b", className)}>
+        <div className="container mx-auto px-4 h-12 flex items-center justify-center">
           <Loader className="animate-spin h-5 w-5" />
         </div>
       </header>
     );
   }
+
+  console.log('Header rendering with session:', session);
   
   // Fonction pour obtenir les initiales de l'utilisateur
   const getInitials = (name: string) => {
@@ -184,6 +187,7 @@ export function Header({ className }: HeaderProps) {
     <header className={cn(
       "fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b",
       "before:content-[''] before:fixed before:inset-0 before:z-[-1]",
+      "overflow-visible",
       className
     )}>
       <div className="container mx-auto px-4 h-12 flex items-center justify-between">

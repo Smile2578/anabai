@@ -85,7 +85,8 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground overflow-x-hidden;
+    @apply bg-background text-foreground;
+    width: 100vw;
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
@@ -94,6 +95,7 @@
   html {
     overflow-y: scroll;
     scrollbar-gutter: stable;
+    overflow-x: hidden;
   }
 }
 

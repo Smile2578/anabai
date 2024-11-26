@@ -39,16 +39,16 @@ export default function SignInPage() {
         return;
       }
   
-      // Attendre un court instant pour que la session soit mise à jour
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Attendre que la session soit établie
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Rediriger vers la page demandée ou la page d'accueil
-      if (callbackUrl) {
-        router.push(callbackUrl);
-      } else {
-        router.push('/');
-      }
+      // Forcer un refresh du routeur
       router.refresh();
+  
+      // Redirection avec un délai
+      setTimeout(() => {
+        router.push(callbackUrl);
+      }, 500);
   
     } catch (error) {
       console.error('Signin error:', error);

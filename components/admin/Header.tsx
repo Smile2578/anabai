@@ -1,7 +1,10 @@
 // components/admin/Header.tsx
 'use client';
 
-import { Bell, Settings, LogOut, User as UserIcon } from 'lucide-react';
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
+import { Bell, Settings, LogOut, User as UserIcon, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,24 +15,58 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { signOut } from 'next-auth/react';
 import { useTheme } from 'next-themes';
-import { User } from 'next-auth';
-import AnabaLogo from '../brand/AnabaLogo';
-interface HeaderProps {
-  user?: User;
-}
+import { cn } from "@/lib/utils";
 
-export default function Header({ user }: HeaderProps) {
+export default function Header() {
+  const { data: session, status } = useSession();
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      await signOut({ 
+        redirect: false 
+      });
+      router.refresh();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      router.push('/');
+    } catch (error) {
+      console.error('Signout error:', error);
+    }
+  }, [router]);
+
+  if (!mounted || status === "loading") {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95">
+        <div className="flex h-16 items-center justify-center">
+          <Loader className="animate-spin h-5 w-5" />
+        </div>
+      </header>
+    );
+  }
+
+  const getInitials = (name?: string) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
+  };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur overflow-visible">
       <div className="flex h-16 items-center justify-between px-6">
         <div>
           <h2 className="text-lg font-semibold">Administration AnabAI</h2>
           <p className="text-sm text-muted-foreground">
-            Bienvenue, {user?.name}
+            Bienvenue, {session?.user?.name}
           </p>
         </div>
 
@@ -43,34 +80,38 @@ export default function Header({ user }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src={user?.image || ''} alt={user?.name || ''} />
+                  <AvatarImage 
+                    src={session?.user?.image || undefined} 
+                    alt={session?.user?.name || "Avatar"} 
+                  />
                   <AvatarFallback>
-                    {user?.name?.charAt(0).toUpperCase()}
+                    {getInitials(session?.user?.name || "")}
                   </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <AnabaLogo />
-            <DropdownMenuContent className="w-56" align="end">
-              <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
-              <DropdownMenuItem>
-                <UserIcon className="mr-2 h-4 w-4" />
-                <span>Profil</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Paramètres</span>
-              </DropdownMenuItem>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {session?.user?.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {session?.user?.email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              >
+              <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
                 Thème: {theme === 'dark' ? 'Clair' : 'Sombre'}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => signOut()}>
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-600"
+                onClick={handleSignOut}
+              >
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Déconnexion</span>
+                Se déconnecter
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
