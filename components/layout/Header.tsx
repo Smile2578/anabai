@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { Settings, LayoutDashboard, MapPinHouse, UserIcon, LogOut } from "lucide-react"
+
 interface HeaderProps {
   className?: string
 }
@@ -30,26 +31,41 @@ export function Header({ className }: HeaderProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
+  // Écouteur d'événements pour la session
+  useEffect(() => {
+    const handleStorageChange = () => {
+      router.refresh();
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [router]);
+
   // S'assurer que le composant est monté côté client
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Gérer la déconnexion de manière plus robuste
+  // Gérer la déconnexion
   const handleSignOut = useCallback(async () => {
     try {
       await signOut({ 
-        redirect: false 
+        redirect: false,
+        callbackUrl: '/' 
       });
-      // Force le refresh de la session
-      router.refresh();
-      // Attendre un peu avant la redirection
+
+      // Force un rafraîchissement de la page
+      window.dispatchEvent(new Event('storage'));
+      
+      // Attendre avant la redirection
       await new Promise(resolve => setTimeout(resolve, 500));
       router.push('/');
+      router.refresh();
     } catch (error) {
       console.error('Signout error:', error);
     }
   }, [router]);
+
+  console.log('Header rendering with session status:', status, 'session:', session);
 
   // N'afficher rien jusqu'à ce que le composant soit monté
   if (!mounted) {

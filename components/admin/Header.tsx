@@ -4,7 +4,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, Settings, LogOut, User as UserIcon, Loader } from 'lucide-react';
+import { Bell, LogOut, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useTheme } from 'next-themes';
-import { cn } from "@/lib/utils";
 
 export default function Header() {
   const { data: session, status } = useSession();

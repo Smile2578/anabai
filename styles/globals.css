@@ -95,7 +95,7 @@
   html {
     overflow-y: scroll;
     scrollbar-gutter: stable;
-    overflow-x: hidden;
+    overflow-x: hidden !important;
   }
 }
 
