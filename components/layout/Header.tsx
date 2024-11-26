@@ -5,7 +5,7 @@ import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import { useCallback } from "react"
 import { Menu } from "lucide-react"
-
+import { useRouter } from "next/navigation"
 import AnabaLogo from "@/components/brand/AnabaLogo"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,11 +26,21 @@ interface HeaderProps {
 }
 
 export function Header({ className }: HeaderProps) {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
+  const router = useRouter()
 
   const handleSignOut = useCallback(async () => {
-    await signOut({ callbackUrl: "/" })
-  }, [])
+    await signOut({ 
+      redirect: false 
+    })
+    router.push('/')
+    router.refresh()
+  }, [router])
+
+  // Gestion de l'état de chargement
+  if (status === "loading") {
+    return <div>Chargement...</div>
+  }
 
   // Fonction pour obtenir les initiales de l'utilisateur
   const getInitials = (name: string) => {
@@ -147,7 +157,11 @@ export function Header({ className }: HeaderProps) {
   }
 
   return (
-    <header className={cn("fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b", className)}>
+    <header className={cn(
+      "fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b",
+      "before:content-[''] before:fixed before:inset-0 before:z-[-1]",
+      className
+    )}>
       <div className="container mx-auto px-4 h-12 flex items-center justify-between">
         <AnabaLogo />
         

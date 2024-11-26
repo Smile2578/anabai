@@ -181,23 +181,9 @@
   @apply hover:bg-white/20 transition-colors duration-200;
 }
 
-.no-hover-effect {
-  transition: none !important;
-  transform: none !important;
-  box-shadow: none !important;
+html {
+  scrollbar-gutter: stable;
 }
-
-.tabs-content {
-  transition: none !important;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-.tabs-content:hover {
-  box-shadow: none !important;
-  transform: none !important;
-}
-
 
 
 /* Custom animations */

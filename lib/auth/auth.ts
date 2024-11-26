@@ -1,3 +1,5 @@
+// lib/auth/auth.ts
+
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import connectDB from '@/lib/db/connection';
@@ -39,46 +41,49 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: 'jwt',
+    maxAge: 24 * 60 * 60,
   },
   jwt: {
     secret: process.env.NEXTAUTH_SECRET,
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async jwt({ token, user }) {
-      console.log('JWT Callback - Token before:', { ...token });
-      if (user) {
+    async jwt({ token, user, trigger }) {
+      console.log('JWT Callback - Trigger:', trigger);
+      if (trigger === "signIn" && user) {
         console.log('JWT Callback - User data:', { 
           id: user.id,
           role: user.role,
-          email: user.email 
+          email: user.email,
+          name: user.name,
         });
         token.role = user.role;
         token.id = user.id;
         token.email = user.email;
+        token.name = user.name;
       }
-      console.log('JWT Callback - Token after:', { ...token });
       return token;
     },
-    async session({ session, token }) {
-      console.log('Session Callback - Initial session:', { ...session });
-      if (session.user && token) {
-        session.user.role = token.role as "admin" | "editor" | "user";
+    async session({ session, token, trigger }) {
+      console.log('Session Callback - Trigger:', trigger);
+      if (session.user) {
+        session.user.role = token.role as "admin" | "editor" | "user" | "premium" | "luxury";
         session.user.id = token.id as string;
         session.user.email = token.email as string;
-        console.log('Session Callback - Updated session:', { ...session });
+        session.user.name = token.name as string;
       }
+      console.log('Session Callback - Updated session:', { ...session });
       return session;
     }
   },
   cookies: {
     sessionToken: {
-      name: 'next-auth.session-token',
+      name: `__Secure-next-auth.session-token`,
       options: {
         httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production'
+        sameSite: "lax",
+        path: "/",
+        secure: true
       }
     }
   },
