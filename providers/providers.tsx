@@ -2,19 +2,42 @@
 'use client';
 
 import { SessionProvider } from 'next-auth/react';
-import { ThemeProvider } from 'next-themes';
+import { Attribute, ThemeProvider } from 'next-themes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-interface ProvidersProps extends React.PropsWithChildren {
-  [key: string]: unknown;
+function AuthWrapper({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Force un refresh au montage
+    router.refresh();
+
+    // Écouter les changements de session
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key?.includes('next-auth')) {
+        router.refresh();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [router]);
+
+  return children;
 }
 
-export function Providers({ children, ...props }: ProvidersProps) {
+export function Providers({ children, ...props }: React.PropsWithChildren<{
+  attribute?: Attribute | Attribute[];
+  defaultTheme?: string;
+  enableSystem?: boolean;
+  disableTransitionOnChange?: boolean;
+}>) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <SessionProvider refetchInterval={0}>
+    <SessionProvider>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
           attribute="class"
@@ -23,7 +46,7 @@ export function Providers({ children, ...props }: ProvidersProps) {
           disableTransitionOnChange
           {...props}
         >
-          {children}
+          <AuthWrapper>{children}</AuthWrapper>
         </ThemeProvider>
       </QueryClientProvider>
     </SessionProvider>
