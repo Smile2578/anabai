@@ -1,10 +1,9 @@
 // components/admin/Header.tsx
 'use client';
 
-import { useSession, signOut } from "next-auth/react";
-import { useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback } from 'react';
-import { Bell, LogOut, Loader } from 'lucide-react';
+import { useSession} from "next-auth/react";
+import { useState, useEffect } from 'react';
+import { Bell, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,29 +20,19 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { LayoutDashboard, Settings, MapPinHouse, UserIcon } from 'lucide-react';
 import AnabaLogo from "../brand/AnabaLogo";
+import { SignOutButton } from '@/components/auth/SignOutButton';
 
 export default function AdminHeader() {
   const { data: session, status } = useSession();
   const { theme, setTheme } = useTheme();
-  const router = useRouter();
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const handleSignOut = useCallback(async () => {
-    try {
-      await signOut({ 
-        redirect: false 
-      });
-      router.refresh();
-      await new Promise(resolve => setTimeout(resolve, 500));
-      router.push('/');
-    } catch (error) {
-      console.error('Signout error:', error);
-    }
-  }, [router]);
+
 
   if (!mounted || status === "loading") {
     return (
@@ -159,12 +148,8 @@ export default function AdminHeader() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-600 focus:text-red-600"
-                onClick={handleSignOut}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Se déconnecter
+              <DropdownMenuItem asChild>
+                <SignOutButton variant="ghost" showIcon={true} className="w-full justify-start" />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -1,9 +1,8 @@
 // components/layout/Header.tsx
 "use client"
 
-import { signOut } from "next-auth/react"
 import Link from "next/link"
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { Loader, Menu } from "lucide-react"
 import AnabaLogo from "@/components/brand/AnabaLogo"
 import { Button } from "@/components/ui/button"
@@ -19,21 +18,22 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
-import { Settings, LayoutDashboard, MapPinHouse, UserIcon, LogOut } from "lucide-react"
-
-import { useAuthStatus } from "@/hooks/useAuthStatus"
+import { Settings, LayoutDashboard, MapPinHouse, UserIcon } from "lucide-react"
 import { useAuthStore } from "@/store/useAuthStore"
+import { SignOutButton } from '@/components/auth/SignOutButton';
 
 interface HeaderProps {
   className?: string
 }
 
+
 export function Header({ className }: HeaderProps) {
-  const { 
-    session, 
-    isAuthenticated, 
-    isLoading 
-  } = useAuthStatus();
+  const session = useAuthStore((state) => state.session);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const loadingState = useAuthStore((state) => state.loadingState);
+  
+
+  const isLoading = loadingState === 'loading';
 
   const [mounted, setMounted] = useState(false);
 
@@ -41,25 +41,8 @@ export function Header({ className }: HeaderProps) {
     setMounted(true);
   }, []);
 
-  const handleSignOut = useCallback(async () => {
-    try {
-      // Mettre à jour le store avant la déconnexion
-      useAuthStore.getState().setIsAuthenticated(false)
-      useAuthStore.getState().setSession(null)
-      
-      await signOut({
-        redirect: true,
-        callbackUrl: '/'
-      })
-    } catch (error) {
-      console.error('Signout error:', error)
-    }
-  }, [])
-
-  // N'afficher rien jusqu'au montage initial
   if (!mounted) return null;
 
-  // Afficher un loader pendant le chargement initial
   if (isLoading) {
     return (
       <header className={cn("fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b", className)}>
@@ -172,12 +155,8 @@ export function Header({ className }: HeaderProps) {
             )}
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="text-red-600 focus:text-red-600"
-            onClick={handleSignOut}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Se déconnecter
+          <DropdownMenuItem asChild>
+            <SignOutButton variant="ghost" showIcon={true} className="w-full justify-start" />
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -305,14 +284,7 @@ export function Header({ className }: HeaderProps) {
                         )}
                       </>
                     )}
-                    <Button
-                      variant="destructive"
-                      className="w-full mt-4"
-                      onClick={handleSignOut}
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Se déconnecter
-                    </Button>
+                    <SignOutButton fullWidth variant="destructive" className="mt-4" />
                   </div>
                 )}
               </nav>

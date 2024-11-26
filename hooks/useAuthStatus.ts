@@ -1,30 +1,28 @@
 // hooks/useAuthStatus.ts
-import { useSession } from 'next-auth/react'
-import { useEffect } from 'react'
-import { AuthState, useAuthStore } from '@/store/useAuthStore'
-import { Session } from 'next-auth'
+import { useSession } from 'next-auth/react';
+import { useEffect } from 'react';
+import { useAuthStore } from '@/store/useAuthStore';
+import type { Session } from 'next-auth';
 
-// D'abord, définissons le type de retour de notre hook
 interface AuthStatusReturn {
-  session: Session | null
-  isAuthenticated: boolean
-  isLoading: boolean
+  session: Session | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 export function useAuthStatus(): AuthStatusReturn {
-  const { data: sessionData, status } = useSession()
-  const { setSession, setIsAuthenticated, setIsLoading } = useAuthStore()
+  const { data: sessionData, status } = useSession();
+  const store = useAuthStore();
   
   useEffect(() => {
-    setIsLoading(status === 'loading')
-    setIsAuthenticated(status === 'authenticated')
-    setSession(sessionData)
-  }, [sessionData, status, setSession, setIsAuthenticated, setIsLoading])
+    store.setLoadingState(status === 'loading' ? 'loading' : 'idle');
+    store.setIsAuthenticated(status === 'authenticated');
+    store.setSession(sessionData);
+  }, [sessionData, status, store]);
 
-  // Ici, nous spécifions explicitement le type pour le selector
-  return useAuthStore((state: AuthState) => ({
-    session: state.session,
-    isAuthenticated: state.isAuthenticated,
-    isLoading: state.isLoading
-  }))
+  return {
+    session: store.session,
+    isAuthenticated: store.isAuthenticated,
+    isLoading: store.loadingState === 'loading',
+  };
 }
