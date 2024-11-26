@@ -62,23 +62,7 @@ export function Header({ className }: HeaderProps) {
       .toUpperCase()
   }
 
-  // Composant pour les liens de navigation
-  const NavLinks = () => (
-    <>
-      <Link href="/trip-planner" className="text-sm hover:text-primary">
-        AnabAI - Planificateur IA
-      </Link>
-      <Link href="/spots" className="text-sm hover:text-primary">
-        Spots Secrets
-      </Link>
-      <Link href="/blog" className="text-sm hover:text-primary">
-        Blog
-      </Link>
-      <Link href="/about" className="text-sm hover:text-primary">
-        À propos
-      </Link>
-    </>
-  )
+
 
   // Composant pour le menu utilisateur
   const UserMenu = () => {
@@ -173,10 +157,7 @@ export function Header({ className }: HeaderProps) {
       <div className="container mx-auto px-4 h-12 flex items-center justify-between">
         <AnabaLogo />
         
-        {/* Navigation desktop */}
-        <nav className="hidden md:flex items-center space-x-8">
-          <NavLinks />
-        </nav>
+        
         
         {/* Actions desktop */}
         <div className="flex items-center gap-4">
@@ -192,7 +173,7 @@ export function Header({ className }: HeaderProps) {
           ) : (
             <>
               <Link href="/auth/signin">
-                <Button variant="outline" className="hidden md:flex ml-3">
+                <Button variant="secondary" className="hidden md:flex ml-3">
                   Se connecter
                 </Button>
               </Link>
@@ -216,15 +197,15 @@ export function Header({ className }: HeaderProps) {
                 <SheetTitle className="text-secondary-main">Menu</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col space-y-4 mt-6">
-                <NavLinks />
+                
                 <hr className="border-border" />
                 {!isAuthenticated ? (
                   <>
                     <Link href="/auth/signin">
-                      <Button className="w-full">Se connecter</Button>
+                      <Button className="w-full" variant="secondary">Se connecter</Button>
                     </Link>
                     <Link href="/auth/signup">
-                      <Button variant="outline" className="w-full">
+                      <Button variant="default" className="w-full">
                         S&apos;inscrire
                       </Button>
                     </Link>
