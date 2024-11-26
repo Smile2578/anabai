@@ -1,22 +1,15 @@
 // hooks/useAuth.ts
 import { useSession } from 'next-auth/react';
-import { useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 
 export function useAuth() {
   const { data: session, status, update } = useSession();
-  const router = useRouter();
 
-  const refreshAuth = useCallback(() => {
+  const refreshAuth = useCallback(async () => {
     if (status === 'authenticated') {
-      update();
+      await update();
     }
-    router.refresh();
-  }, [status, update, router]);
-
-  useEffect(() => {
-    refreshAuth();
-  }, [refreshAuth]);
+  }, [status, update]);
 
   return {
     session,

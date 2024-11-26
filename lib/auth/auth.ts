@@ -1,5 +1,4 @@
 // lib/auth/auth.ts
-
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import connectDB from '@/lib/db/connection';
@@ -34,7 +33,11 @@ export const authOptions: NextAuthOptions = {
             throw new Error('Utilisateur non trouvé');
           }
 
-          console.log('✅ [Auth] User found:', { id: user.id, email: user.email, role: user.role });
+          console.log('✅ [Auth] User found:', {
+            id: user.id,
+            email: user.email,
+            role: user.role
+          });
           
           const isValid = await bcrypt.compare(credentials.password, user.password);
           if (!isValid) {
@@ -52,7 +55,7 @@ export const authOptions: NextAuthOptions = {
             image: user.image
           };
 
-          console.log('✅ [Auth] Returning user session:', userSession);
+          console.log('✅ [Auth] Created user session:', userSession);
           return userSession;
         } catch (error) {
           console.error('❌ [Auth] Error during authorization:', error);
@@ -61,65 +64,57 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+
+  pages: {
+    signIn: '/auth/signin',
+    error: '/auth/error',
+  },
+
   callbacks: {
-    async jwt({ token, user, trigger }) {
-      console.log('🔑 [JWT] Callback triggered:', { trigger, user, token });
-
+    async jwt({ token, user }) {
       if (user) {
-        // Assurez-vous que toutes les propriétés nécessaires sont présentes
-        token = {
-          ...token,
-          id: user.id,
-          role: user.role,
-          name: user.name,
-          email: user.email,
-          image: user.image
-        };
-        console.log('✅ [JWT] Token updated:', token);
+        token.id = user.id;
+        token.role = user.role;
       }
-
       return token;
     },
+  
     async session({ session, token }) {
-      console.log('👤 [Session] Creating session from token:', token);
-
       if (session?.user) {
-        // Synchroniser toutes les propriétés
-        session.user = {
-          ...session.user,
-          id: token.id as string,
-          role: token.role as "admin" | "editor" | "user" | "premium" | "luxury",
-          name: token.name as string,
-          email: token.email as string,
-          image: token.image as string | undefined
-        };
-        console.log('✅ [Session] Session updated:', session);
+        session.user.id = token.id as string;
+        session.user.role = token.role as "admin" | "editor" | "user" | "premium" | "luxury";
       }
-
       return session;
     }
   },
+
   events: {
-    async signIn(message) { console.log('🔑 [Event] SignIn:', message); },
-    async signOut(message) { console.log('🔑 [Event] SignOut:', message); },
-    async session(message) { console.log('🔑 [Event] Session:', message); }
+    async signIn(message) {
+      console.log('🔑 [Event] SignIn:', message);
+    },
+    async signOut(message) {
+      console.log('🔑 [Event] SignOut:', message);
+    },
+    async session(message) {
+      console.log('🔑 [Event] Session:', message);
+    }
   },
+
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 heures
-    updateAge: 60 * 60, // Mettre à jour la session toutes les heures
+    maxAge: 30 * 24 * 60 * 60, // 30 jours
+    updateAge: 24 * 60 * 60, // 24 heures
   },
+
   jwt: {
-    maxAge: 24 * 60 * 60, // 24 heures
+    maxAge: 30 * 24 * 60 * 60, // 30 jours
   },
-  pages: {
-    signIn: '/auth/signin',
-    signOut: '/auth/signout',
-    error: '/auth/error',
-  },
+
   cookies: {
     sessionToken: {
-      name: `__Secure-next-auth.session-token`,
+      name: process.env.NODE_ENV === 'production'
+        ? '__Secure-next-auth.session-token'
+        : 'next-auth.session-token',
       options: {
         httpOnly: true,
         sameSite: 'lax',
@@ -128,6 +123,7 @@ export const authOptions: NextAuthOptions = {
       }
     }
   },
+
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV !== 'production',
+  debug: true,
 };

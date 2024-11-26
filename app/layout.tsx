@@ -5,6 +5,7 @@ import '../styles/globals.css'
 import { Analytics } from "@vercel/analytics/react"
 import { Providers } from '@/providers/providers'
 import SessionCheck from '@/components/auth/SessionCheck'
+import { HeaderWrapper } from '@/components/layout/HeaderWrapper'
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'] })
 
@@ -23,7 +24,7 @@ export default function RootLayout({
       <body className={plusJakartaSans.className}>
         <Providers>
           <SessionCheck>
-            {children}
+            <HeaderWrapper>{children}</HeaderWrapper>
             <Analytics />
           </SessionCheck>
         </Providers>

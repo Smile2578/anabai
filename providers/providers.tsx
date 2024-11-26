@@ -1,29 +1,24 @@
 // providers/providers.tsx
 'use client';
 
-import { SessionProvider } from 'next-auth/react';
+import { SessionProvider, useSession } from 'next-auth/react';
 import { Attribute, ThemeProvider } from 'next-themes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 
 function AuthWrapper({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const { status } = useSession();
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    // Force un refresh au montage
-    router.refresh();
+    if (!initialized && status !== 'loading') {
+      setInitialized(true);
+    }
+  }, [status, initialized]);
 
-    // Écouter les changements de session
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key?.includes('next-auth')) {
-        router.refresh();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [router]);
+  if (!initialized) {
+    return null;
+  }
 
   return children;
 }

@@ -20,8 +20,9 @@ import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { LayoutDashboard, Settings, MapPinHouse, UserIcon } from 'lucide-react';
+import AnabaLogo from "../brand/AnabaLogo";
 
-export default function Header() {
+export default function AdminHeader() {
   const { data: session, status } = useSession();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
@@ -79,6 +80,8 @@ export default function Header() {
             Bienvenue, {session?.user?.name}
           </p>
         </div>
+
+        <AnabaLogo />
 
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" className="relative">
