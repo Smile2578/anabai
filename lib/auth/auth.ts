@@ -108,7 +108,7 @@ export const authOptions: NextAuthOptions = {
         path: '/',
         secure: process.env.NODE_ENV === 'production',
         domain: process.env.NODE_ENV === 'production' 
-          ? 'anaba.io'  // Ajustez selon votre domaine
+          ? '.anaba.io' 
           : undefined
       }
     }
