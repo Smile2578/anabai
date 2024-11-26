@@ -4,14 +4,13 @@ import { Plus_Jakarta_Sans } from 'next/font/google'
 import '../styles/globals.css'
 import { Analytics } from "@vercel/analytics/react"
 import { Providers } from '@/providers/providers'
-import SessionCheck from '@/components/auth/SessionCheck'
-import { HeaderWrapper } from '@/components/layout/HeaderWrapper'
+import { Header } from '@/components/layout/Header'
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'AnabAI - Votre assistant voyage intelligent pour le Japon',
-  description: 'Découvrez le Japon authentique avec AnabAI, votre assistant de voyage IA personnalisé. Planifiez votre itinéraire, trouvez des spots secrets et vivez des expériences uniques.',
+  description: 'Découvrez le Japon authentique avec AnabAI...',
 }
 
 export default function RootLayout({
@@ -23,10 +22,9 @@ export default function RootLayout({
     <html lang="fr" suppressHydrationWarning>
       <body className={plusJakartaSans.className}>
         <Providers>
-          <SessionCheck>
-            <HeaderWrapper>{children}</HeaderWrapper>
-            <Analytics />
-          </SessionCheck>
+          <Header />
+          {children}
+          <Analytics />
         </Providers>
       </body>
     </html>

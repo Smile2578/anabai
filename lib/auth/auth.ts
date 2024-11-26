@@ -71,19 +71,37 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      console.log('🔑 [JWT] Callback triggered:', { trigger, user, token });
+
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.name = user.name;
+        token.email = user.email;
+        console.log('✅ [JWT] Token updated with user data:', token);
       }
+
+      if (trigger === "update" && session) {
+        token = { ...token, ...session };
+        console.log('✅ [JWT] Token updated from session:', token);
+      }
+
       return token;
     },
-  
+
     async session({ session, token }) {
+      console.log('👤 [Session] Creating session from token:', token);
+
       if (session?.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as "admin" | "editor" | "user" | "premium" | "luxury";
+        session.user.name = token.name as string;
+        session.user.email = token.email as string;
+        session.user.image = token.picture as string | undefined;
       }
+
+      console.log('✅ [Session] Final session:', session);
       return session;
     }
   },
@@ -119,11 +137,42 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production'
+        secure: process.env.NODE_ENV === 'production',
+        domain: process.env.NODE_ENV === 'production' 
+          ? '.anaba.io' 
+          : undefined
+      }
+    },
+    callbackUrl: {
+      name: process.env.NODE_ENV === 'production'
+        ? '__Secure-next-auth.callback-url'
+        : 'next-auth.callback-url',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        domain: process.env.NODE_ENV === 'production' 
+          ? '.anaba.io' 
+          : undefined
+      }
+    },
+    csrfToken: {
+      name: process.env.NODE_ENV === 'production'
+        ? '__Host-next-auth.csrf-token'
+        : 'next-auth.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        domain: process.env.NODE_ENV === 'production' 
+          ? '.anaba.io' 
+          : undefined
       }
     }
   },
 
   secret: process.env.NEXTAUTH_SECRET,
-  debug: true,
+  debug: process.env.NODE_ENV === 'development',
 };
