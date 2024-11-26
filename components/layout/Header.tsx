@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 import { Settings, LayoutDashboard, MapPinHouse, UserIcon, LogOut } from "lucide-react"
 
 import { useAuthStatus } from "@/hooks/useAuthStatus"
+import { useAuthStore } from "@/store/useAuthStore"
 
 interface HeaderProps {
   className?: string
@@ -42,14 +43,18 @@ export function Header({ className }: HeaderProps) {
 
   const handleSignOut = useCallback(async () => {
     try {
+      // Mettre à jour le store avant la déconnexion
+      useAuthStore.getState().setIsAuthenticated(false)
+      useAuthStore.getState().setSession(null)
+      
       await signOut({
         redirect: true,
         callbackUrl: '/'
-      });
+      })
     } catch (error) {
-      console.error('Signout error:', error);
+      console.error('Signout error:', error)
     }
-  }, []);
+  }, [])
 
   // N'afficher rien jusqu'au montage initial
   if (!mounted) return null;

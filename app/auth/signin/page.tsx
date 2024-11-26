@@ -12,6 +12,7 @@ import { Loader } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import AnabaLogo from '@/components/brand/AnabaLogo';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -23,40 +24,36 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+    e.preventDefault()
+    setLoading(true)
+    setError('')
   
     try {
       const res = await signIn('credentials', {
         redirect: false,
         email,
         password,
-      });
+      })
   
       if (res?.error) {
-        setError(res.error);
-        return;
+        setError(res.error)
+        return
       }
   
-      // Attendre que la session soit établie
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Mettre à jour le store immédiatement
+      useAuthStore.getState().setIsAuthenticated(true)
       
-      // Forcer un refresh du routeur
-      router.refresh();
-  
-      // Redirection avec un délai
-      setTimeout(() => {
-        router.push(callbackUrl);
-      }, 500);
+      // Plus besoin d'attendre avec un setTimeout
+      router.refresh()
+      router.push(callbackUrl)
   
     } catch (error) {
-      console.error('Signin error:', error);
-      setError('Une erreur est survenue lors de la connexion');
+      console.error('Signin error:', error)
+      setError('Une erreur est survenue lors de la connexion')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="auth-container flex items-center justify-center">
