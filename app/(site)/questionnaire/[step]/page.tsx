@@ -16,7 +16,6 @@ interface PageProps {
 
 export default async function QuestionnaireStepPage({ 
   params,
-  searchParams,
 }: PageProps) {
   const step = await Promise.resolve(params.step);
   const stepNumber = parseInt(step);
