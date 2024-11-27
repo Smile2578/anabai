@@ -8,10 +8,8 @@ import { useQuestionnaireStore } from "@/store/useQuestionnaireStore";
 import { Button } from "@/components/ui/button";
 import {
   Form,
-  FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";

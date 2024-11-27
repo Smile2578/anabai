@@ -7,7 +7,7 @@ import connectDB from "@/lib/db/connection";
 import Questionnaire from "@/models/Questionnaire";
 import { revalidatePath } from "next/cache";
 
-export async function submitQuestionnaire(data: any) {
+export async function submitQuestionnaire(data: unknown) {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -58,9 +58,12 @@ export async function submitQuestionnaire(data: any) {
     revalidatePath('/questionnaire');
     return { success: true };
 
-  } catch (error: any) {
-    console.error("[Questionnaire Action Error]:", error);
-    throw new Error(error.message || "Erreur lors de la soumission");
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error("[Questionnaire Action Error]:", error);
+      throw new Error(error.message);
+    }
+    throw new Error("Erreur lors de la soumission");
   }
 }
 
@@ -91,7 +94,7 @@ export async function getQuestionnaire() {
 
 export async function updateQuestionnaireStep(
   step: number, 
-  data: any
+  data: unknown
 ) {
   try {
     const session = await auth();

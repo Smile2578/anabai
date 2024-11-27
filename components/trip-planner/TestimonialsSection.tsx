@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { User } from "lucide-react";
-import { testimonials } from "@/lib/config/trip-planner.config";
 
 
 interface Testimonial {

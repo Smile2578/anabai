@@ -11,21 +11,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ArrowRight,
   ArrowLeft,
   Calendar,
-  Users,
   Scale,
   Heart,
   Wallet,
-  Languages,
   Check,
   Loader2,
-  Utensils,
   Accessibility,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 

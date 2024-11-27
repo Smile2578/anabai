@@ -35,7 +35,6 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { z } from "zod";
-import { cn } from "@/lib/utils";
 
 const travelStyleSchema = z.object({
   pace: z.enum(['relaxed', 'moderate', 'intensive'], {

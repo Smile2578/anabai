@@ -3,7 +3,6 @@
 
 import { useQuestionnaireStore } from "@/store/useQuestionnaireStore";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 
 const steps = [
   { number: 1, title: "Informations de base" },
