@@ -5,18 +5,21 @@ import { BasicInfoStep } from "@/components/questionnaire/steps/BasicInfoStep";
 import { TravelStyleStep } from "@/components/questionnaire/steps/TravelStyleStep";
 import { InterestsStep } from "@/components/questionnaire/steps/InterestsStep";
 import { ConstraintsStep } from "@/components/questionnaire/steps/ConstraintsStep";
-import { SummaryStep } from "@/components/questionnaire/steps/SummaryStep ";
+import { SummaryStep } from "@/components/questionnaire/steps/SummaryStep";
+
+
+
+type Params = Promise<{ step: string }>;
 
 interface QuestionnairePageProps {
-  params: {
-    step: string;
-  };
+  params: Params;
 }
 
 export default async function QuestionnaireStepPage({ 
   params,
 }: QuestionnairePageProps) {
-  const stepNumber = parseInt(params.step);
+  const resolvedParams = await params;
+  const stepNumber = parseInt(resolvedParams.step);
 
   // Validation du numéro d'étape
   if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > 5) {
