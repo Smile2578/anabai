@@ -1,29 +1,33 @@
 // store/useAuthStore.ts
 import { create } from 'zustand'
+import type { User } from 'next-auth'
 
-// Définissons d'abord les types d'états de chargement possibles
+// Définition des types d'états de chargement
 type LoadingState = 'idle' | 'loading' | 'error'
 
 // Interface pour l'état UI
 interface UIState {
   loadingState: LoadingState
   error: string | null
+  user: User | null  // Ajout du type User
 }
 
-// Interface pour les actions que nous pouvons effectuer sur l'état
+// Interface pour les actions
 interface UIActions {
   setLoadingState: (state: LoadingState) => void
   setError: (error: string | null) => void
+  setUser: (user: User | null) => void  // Nouvelle action
   reset: () => void
 }
 
 // État initial
 const initialState: UIState = {
   loadingState: 'idle',
-  error: null
+  error: null,
+  user: null  // Initialisation de user
 }
 
-// Création du store avec les types combinés
+// Création du store
 export const useAuthStore = create<UIState & UIActions>((set) => ({
   // État initial
   ...initialState,
@@ -38,6 +42,11 @@ export const useAuthStore = create<UIState & UIActions>((set) => ({
     console.log('❌ [AuthStore] Setting error:', error)
     set({ error })
   },
+
+  setUser: (user) => {
+    console.log('👤 [AuthStore] Setting user:', user)
+    set({ user })
+  },
   
   reset: () => {
     console.log('🔄 [AuthStore] Resetting store to initial state')
@@ -45,6 +54,7 @@ export const useAuthStore = create<UIState & UIActions>((set) => ({
   }
 }))
 
-// Sélecteurs optionnels pour la performance
+// Sélecteurs
 export const selectLoadingState = (state: UIState) => state.loadingState
 export const selectError = (state: UIState) => state.error
+export const selectUser = (state: UIState) => state.user

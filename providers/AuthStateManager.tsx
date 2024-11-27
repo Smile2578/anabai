@@ -10,18 +10,23 @@ interface AuthStateManagerProps {
 }
 
 export function AuthStateManager({ session }: AuthStateManagerProps) {
-  // Sélection ciblée de ce dont nous avons besoin
   const setLoadingState = useAuthStore(state => state.setLoadingState)
+  const setUser = useAuthStore(state => state.setUser)
 
   useEffect(() => {
     console.log('🔄 [AuthStateManager] Session update:', { 
       present: !!session 
     })
     
-    // Mise à jour intelligente de l'état de chargement
     setLoadingState(session === null ? 'loading' : 'idle')
-  }, [session, setLoadingState])
+    
+    // Utiliser setUser au lieu de setState directement
+    if (session?.user) {
+      setUser(session.user)
+    } else {
+      setUser(null)
+    }
+  }, [session, setLoadingState, setUser])
 
-  // Ce composant ne rend rien visuellement
   return null
 }
