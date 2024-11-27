@@ -8,21 +8,21 @@ export function useAuthStatus() {
   const store = useAuthStore();
 
   useEffect(() => {
-    console.log('🔄 [AuthStatus] Changement de status:', status);
-    console.log('📦 [AuthStatus] Données de session:', sessionData);
+    console.log('🔄 [AuthStatus] Session update:', { status, sessionData });
 
-    if (status !== 'loading') {
-      if (status === 'authenticated' && sessionData) {
-        console.log('✅ [AuthStatus] Utilisateur authentifié, mise à jour du store');
-        store.setAuth(sessionData, true);
-      } else {
-        console.log('❌ [AuthStatus] Utilisateur non authentifié, réinitialisation du store');
-        store.setAuth(null, false);
-      }
+    // Si nous avons une session valide mais que le store indique non authentifié
+    if (status === 'authenticated' && sessionData && !store.isAuthenticated) {
+      console.log('🔄 [AuthStatus] Synchronizing store with session');
+      store.setAuth(sessionData, true);
+    }
+    
+    // Si nous n'avons pas de session mais que le store indique authentifié
+    if (status === 'unauthenticated' && store.isAuthenticated) {
+      console.log('🔄 [AuthStatus] Clearing invalid auth state');
+      store.setAuth(null, false);
     }
 
     store.setLoadingState(status === 'loading' ? 'loading' : 'idle');
-    console.log('🔄 [AuthStatus] Nouvel état de chargement:', store.loadingState);
   }, [status, sessionData, store]);
 
   return {

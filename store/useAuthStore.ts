@@ -29,21 +29,23 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       ...initialState,
-
-      setAuth: (session, isAuthenticated) => 
+      setAuth: (session, isAuthenticated) => {
+        console.log('📦 [Store] Setting auth state:', { session, isAuthenticated });
         set({ 
           session, 
           isAuthenticated,
-          loadingState: 'success'
-        }),
-
-      setLoadingState: (loadingState) => 
-        set({ loadingState }),
-
-      setError: (error) => 
-        set({ error }),
-
-      reset: () => set(initialState),
+          loadingState: 'idle'
+        });
+      },
+      setLoadingState: (loadingState) => {
+        console.log('🔄 [Store] Setting loading state:', loadingState);
+        set({ loadingState });
+      },
+      setError: (error) => set({ error }),
+      reset: () => {
+        console.log('🔄 [Store] Resetting store');
+        set(initialState);
+      }
     }),
     {
       name: 'auth-storage',
@@ -52,6 +54,12 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
         session: state.session,
       }),
+      // Ajout d'options de persistance plus robustes
+      version: 1,
+      migrate: (persistedState: any, version: number) => {
+        console.log('🔄 [Store] Migrating state version:', version);
+        return persistedState;
+      },
     }
   )
 );

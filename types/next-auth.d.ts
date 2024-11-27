@@ -1,24 +1,33 @@
 // types/next-auth.d.ts
-
-import { DefaultSession } from "next-auth";
+import { DefaultSession, DefaultUser } from "next-auth";
+import type { JWT as DefaultJWT } from "next-auth/jwt";
 
 declare module "next-auth" {
-  interface Session {
+  interface Session extends DefaultSession {
     user: {
       id: string;
       role: "admin" | "editor" | "user" | "premium" | "luxury";
-    } & DefaultSession["user"];
+      sessionCreated: number;
+    } & DefaultSession["user"]
   }
 
-  interface User {
+  interface User extends DefaultUser {
     id: string;
     role: "admin" | "editor" | "user" | "premium" | "luxury";
+    sessionCreated?: number;
+  }
+
+  // Assurons-nous que les événements sont correctement typés
+  interface Event {
+    token: JWT | null;
+    session: Session | null;
   }
 }
 
 declare module "next-auth/jwt" {
-  interface JWT {
+  interface JWT extends DefaultJWT {
     id: string;
     role: "admin" | "editor" | "user" | "premium" | "luxury";
+    sessionCreated?: number;
   }
 }
