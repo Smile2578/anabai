@@ -14,7 +14,7 @@ export async function middleware(req: NextRequest) {
       req,
       secret: process.env.NEXTAUTH_SECRET,
       secureCookie: process.env.NODE_ENV === 'production',
-      cookieName: 'next-auth.session-token', // Ajout explicite du nom du cookie
+      cookieName: 'next-auth.session-token',
     })
 
     console.log('🔑 [Middleware] Token check:', {

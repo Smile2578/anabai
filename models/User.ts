@@ -62,6 +62,14 @@ UserSchema.virtual('places', {
   justOne: false
 });
 
+// Relation virtuelle avec les questionnaires
+UserSchema.virtual('questionnaires', {
+  ref: 'Questionnaire',
+  localField: '_id',
+  foreignField: 'userId',
+  justOne: false
+});
+
 // Hachage du mot de passe avant l'enregistrement
 UserSchema.pre<IUser>('save', async function (next) {
   if (!this.isModified('password')) {

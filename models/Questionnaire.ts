@@ -1,12 +1,16 @@
 // models/Questionnaire.ts
-import { Schema, model, models } from 'mongoose';
-
+import { Schema, model, models, Types, CallbackError } from 'mongoose';
 
 const questionnaireSchema = new Schema({
   userId: {
-    type: String,
+    type: Types.ObjectId,
+    ref: 'User',
     required: true,
     index: true,
+  },
+  userName: {
+    type: String,
+    required: true,
   },
   status: {
     type: String,
@@ -74,6 +78,22 @@ questionnaireSchema.index({ userId: 1, createdAt: -1 });
 // Middleware pour mettre à jour la date de modification
 questionnaireSchema.pre('save', function(next) {
   this.updatedAt = new Date();
+  next();
+});
+
+// Middleware pour peupler automatiquement le userName
+questionnaireSchema.pre('save', async function(next) {
+  if (this.isNew || this.isModified('userId')) {
+    try {
+      const User = models.User;
+      const user = await User.findById(this.userId);
+      if (user) {
+        this.userName = user.name;
+      }
+    } catch (error) {
+      next(error as CallbackError);
+    }
+  }
   next();
 });
 

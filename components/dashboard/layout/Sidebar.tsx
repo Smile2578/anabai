@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
-  Map,
+  Brain,
   Calendar,
   Settings,
   User,
@@ -25,9 +25,9 @@ const navigation = [
     description: 'Tableau de bord principal',
   },
   {
-    name: 'Itinéraire',
+    name: 'Planification avec AnabAI',
     href: '/dashboard/planning',
-    icon: Map,
+    icon: Brain,
     description: 'Planification de voyage',
   },
   {

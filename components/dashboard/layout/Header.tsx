@@ -1,7 +1,7 @@
 // components/dashboard/layout/Header.tsx
 'use client';
 
-import { Bell, Search, Settings, LayoutDashboard, MapPinHouse, UserIcon } from 'lucide-react';
+import { Bell, Search, Settings, LayoutDashboard, MapPinHouse, UserIcon, Rocket, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -100,6 +100,18 @@ export function Header() {
                   <Link href="/dashboard">
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     Tableau de bord
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/planning">
+                    <Rocket className="mr-2 h-4 w-4" />
+                    Planification du voyage
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/questionnaire">
+                    <HelpCircle className="mr-2 h-4 w-4" />
+                    Questionnaire
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

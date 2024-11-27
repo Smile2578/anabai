@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { PreferencesCard } from "@/components/dashboard/cards/PreferencesCard";
 import { PlanningCard } from "@/components/dashboard/cards/PlanningCard";
 import { TimelineCard } from "@/components/dashboard/cards/TimelineCard";
@@ -8,6 +10,7 @@ import { StatsCard } from "@/components/dashboard/cards/StatsCard";
 import { ExpensesChartCard } from "@/components/dashboard/cards/ExpensesChartCard";
 import { Calendar, MapPin, Wallet } from "lucide-react";
 import { UserPreferences, TripPlanning } from "@/types/dashboard/cards";
+import { useSession } from "next-auth/react";
 
 // Types
 interface TimelineEvent {
@@ -109,6 +112,27 @@ const mockExpensesData = [
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
+  if (status === 'loading') {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <p className="text-muted-foreground">Chargement...</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
   return (
     <div className="space-y-6">
       <div>
