@@ -7,15 +7,17 @@ import { InterestsStep } from "@/components/questionnaire/steps/InterestsStep";
 import { ConstraintsStep } from "@/components/questionnaire/steps/ConstraintsStep";
 import { SummaryStep } from "@/components/questionnaire/steps/SummaryStep ";
 
-interface QuestionnaireStepPageProps {
+interface PageProps {
   params: {
     step: string;
   };
+  searchParams: { [key: string]: string | string[] | undefined };
 }
 
 export default async function QuestionnaireStepPage({ 
-  params 
-}: QuestionnaireStepPageProps) {
+  params,
+  searchParams,
+}: PageProps) {
   const step = await Promise.resolve(params.step);
   const stepNumber = parseInt(step);
 
