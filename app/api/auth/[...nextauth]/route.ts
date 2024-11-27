@@ -1,5 +1,4 @@
 // app/api/auth/[...nextauth]/route.ts
 
-import { handlers } from "@/auth"; // Importez depuis 'auth.ts' qui contient la configuration complète
-
+import { handlers } from "@/auth"; 
 export const { GET, POST } = handlers;

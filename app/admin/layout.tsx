@@ -1,35 +1,32 @@
+// app/admin/layout.tsx
 'use client';
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import Sidebar from '@/components/admin/Sidebar';
+import { useEffect } from 'react';
 import AdminHeader from '@/components/admin/Header';
+import Sidebar from '@/components/admin/Sidebar';
 import { Loader } from 'lucide-react';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (status === 'unauthenticated') {
       router.replace('/auth/signin');
-      return;
-    }
-
-    if (status === "authenticated") {
-      const hasAccess = session?.user?.role === 'admin' || session?.user?.role === 'editor';
-      setIsAuthorized(hasAccess);
-      
-      if (!hasAccess) {
-        router.replace('/');
-      }
+    } else if (status === 'authenticated' && 
+               session?.user?.role !== 'admin' && 
+               session?.user?.role !== 'editor') {
+      router.replace('/');
     }
   }, [status, session, router]);
 
-  // Afficher un loader pendant la vérification
-  if (status === "loading" || isAuthorized === null) {
+  if (status === 'loading') {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader className="h-8 w-8 animate-spin" />
@@ -37,8 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  // Ne pas afficher le contenu si non autorisé
-  if (!isAuthorized) {
+  if (!session || (session.user.role !== 'admin' && session.user.role !== 'editor')) {
     return null;
   }
 

@@ -28,14 +28,22 @@ export function Header({ className }: { className?: string }) {
   const { session, isLoading, isAuthenticated } = useSessionManager()
   const [mounted, setMounted] = useState(false)
 
+  // Effet unique pour le montage
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  if (!mounted) return null
+  // Effet pour le logging, avec une protection contre les logs excessifs
+  useEffect(() => {
+    if (mounted && !isLoading) {
+      console.log('🔄 [Header] Session update:', {
+        isAuthenticated,
+        sessionData: session
+      })
+    }
+  }, [mounted, session?.user?.id, isAuthenticated, isLoading, session]) // Dépendance plus précise
 
-  // Affichez un loader pendant le chargement initial
-  if (isLoading) {
+  if (!mounted || isLoading) {
     return (
       <header className={cn("fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b", className)}>
         <div className="container mx-auto px-4 h-12 flex items-center justify-center">
@@ -44,7 +52,7 @@ export function Header({ className }: { className?: string }) {
       </header>
     )
   }
-  
+
   // Fonction pour obtenir les initiales de l'utilisateur
   const getInitials = (name: string) => {
     return name
@@ -148,7 +156,6 @@ export function Header({ className }: { className?: string }) {
     )}>
       <div className="container mx-auto px-4 h-12 flex items-center justify-between">
         <AnabaLogo />
-        
         
         
         {/* Actions desktop */}

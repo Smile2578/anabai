@@ -8,6 +8,7 @@ declare module "next-auth" {
       id: string;
       role: "admin" | "editor" | "user" | "premium" | "luxury";
       sessionCreated: number;
+      expires?: string;
     } & DefaultSession["user"]
   }
 
@@ -29,5 +30,7 @@ declare module "next-auth/jwt" {
     id: string;
     role: "admin" | "editor" | "user" | "premium" | "luxury";
     sessionCreated?: number;
+    userIP?: string;
+    exp: number;
   }
 }

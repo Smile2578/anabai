@@ -2,79 +2,130 @@
 import type { NextAuthConfig } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
-import connectDB from "@/lib/db/connection"
 import type { AuthUser } from "@/types/auth"
+import connectDB from "@/lib/db/connection"
 import DbUser from "@/models/User"
 import bcrypt from "bcryptjs"
 
 export const authConfig: NextAuthConfig = {
-  // Configuration des pages personnalisées pour l'authentification
   pages: {
     signIn: '/auth/signin',
     error: '/auth/error',
   },
   
+  // Configuration complète des cookies - Crucial pour la persistance de session
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' 
+        ? '__Secure-next-auth.session-token'
+        : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 30 * 24 * 60 * 60 // 30 jours en secondes
+      }
+    },
+    callbackUrl: {
+      name: 'next-auth.callback-url',
+      options: {
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    }
+  },
+
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 jours
+    updateAge: 24 * 60 * 60 // 24 heures
+  },
+
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60, // 30 jours
+  },
+
   callbacks: {
-    // Gestion des autorisations et redirections
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user
       const isAuthPage = nextUrl.pathname.startsWith('/auth')
       
-      // Redirection depuis les pages d'authentification si déjà connecté
       if (isAuthPage) {
         if (isLoggedIn) {
           return Response.redirect(new URL('/dashboard', nextUrl))
         }
-        return true // Autorise l'accès aux pages d'auth si non connecté
+        return true
       }
       
-      // Protection des routes authentifiées
       if (!isLoggedIn && (
         nextUrl.pathname.startsWith('/dashboard') ||
         nextUrl.pathname.startsWith('/admin')
       )) {
-        // Construction de l'URL de callback
         let callbackUrl = nextUrl.pathname
         if (nextUrl.search) {
           callbackUrl += nextUrl.search
         }
         
-        // Redirection vers la page de connexion avec callback
         return Response.redirect(new URL(
           `/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`,
           nextUrl
         ))
       }
 
-      return true // Autorise l'accès aux autres pages
+      return true
     },
     
     // Gestion du JWT
-    jwt({ token, user, trigger, session }) {
-      // Ajout des informations utilisateur au token lors de la connexion
-      if (user) {
-        token.id = user.id as string
-        token.role = (user as AuthUser).role
+    async jwt({ token, user, trigger, session }) {
+      try {
+        console.log('🔑 [Auth/JWT] Processing token:', { 
+          hasUser: !!user, 
+          trigger,
+          currentToken: token 
+        })
+
+        if (user) {
+          // Ajout des informations utilisateur
+          token.id = user.id as string
+          token.role = user.role
+          
+          // Capture de l'IP via token.sub (identifiant unique)
+          token.userIP = token.sub || '0.0.0.0'
+        }
+
+        if (trigger === "update" && session) {
+          console.log('🔄 [Auth/JWT] Updating token with session:', session)
+          return { ...token, ...session }
+        }
+
+        // Ajout de l'expiration
+        token.exp = Math.floor(Date.now() / 1000) + (60 * 60) // 1 heure
+        
+        console.log('📤 [Auth/JWT] Final token:', token)
+        return token
+      } catch (error) {
+        console.error('❌ [Auth/JWT] Error processing token:', error)
+        return token
       }
-      
-      // Mise à jour du token lors d'une modification de session
-      if (trigger === "update" && session) {
-        return { ...token, ...session.user }
-      }
-      
-      return token
     },
 
-    // Configuration de la session utilisateur
-    session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id
-        session.user.role = token.role as AuthUser['role']
-        session.user.name = token.name || ''
-        session.user.email = token.email || ''
-        session.user.image = token.picture || null
+    async session({ session, token }) {
+      try {
+        if (token && session.user) {
+          session.user.id = token.id
+          session.user.role = token.role as AuthUser['role']
+          session.user.email = token.email || ''
+          
+          // Cast pour satisfaire le type Date & string
+          session.expires = new Date(token.exp ? token.exp * 1000 : Date.now()) as unknown as Date & string
+        }
+        return session
+      } catch (error) {
+        console.error('❌ [Auth/Session] Error creating session:', error)
+        return session
       }
-      return session
     }
   },
 
@@ -140,14 +191,22 @@ export const authConfig: NextAuthConfig = {
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       })
     ],
-  
-  // Configuration de la session
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 jours
-    updateAge: 24 * 60 * 60, // 24 heures
-  },
+
   
   // Activation du mode debug en développement
-  debug: process.env.NODE_ENV === 'development'
+  debug: process.env.NODE_ENV === 'development',
+
+  events: {
+    async signIn({ user, account, isNewUser }) {
+      try {
+        console.log('🎉 [Auth/Events] SignIn event:', {
+          user: user.email,
+          provider: account?.provider,
+          isNewUser
+        })
+      } catch (error) {
+        console.error('❌ [Auth/Events] Error in signIn event:', error)
+      }
+    }
+  }
 }

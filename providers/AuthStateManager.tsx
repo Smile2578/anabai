@@ -1,21 +1,27 @@
 // providers/AuthStateManager.tsx
-'use client';
+'use client'
 
-import { useEffect } from 'react';
-import { useAuthStore } from '@/store/useAuthStore';
-import type { Session } from 'next-auth';
+import { useEffect } from 'react'
+import { useAuthStore } from '@/store/useAuthStore'
+import type { Session } from 'next-auth'
 
 interface AuthStateManagerProps {
-  session: Session | null;
+  session: Session | null
 }
 
 export function AuthStateManager({ session }: AuthStateManagerProps) {
-  const { setLoadingState } = useAuthStore();
+  // Sélection ciblée de ce dont nous avons besoin
+  const setLoadingState = useAuthStore(state => state.setLoadingState)
 
   useEffect(() => {
-    // Mise à jour de l'état de chargement en fonction de la présence ou non de la session
-    setLoadingState(session === null ? 'loading' : 'idle');
-  }, [session, setLoadingState]);
+    console.log('🔄 [AuthStateManager] Session update:', { 
+      present: !!session 
+    })
+    
+    // Mise à jour intelligente de l'état de chargement
+    setLoadingState(session === null ? 'loading' : 'idle')
+  }, [session, setLoadingState])
 
-  return null;
+  // Ce composant ne rend rien visuellement
+  return null
 }

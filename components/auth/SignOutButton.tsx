@@ -1,12 +1,11 @@
 // components/auth/SignOutButton.tsx
 'use client';
 
-import { signOut } from 'next-auth/react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { signOut } from 'next-auth/react';
 
 interface SignOutButtonProps {
   className?: string;
@@ -21,28 +20,22 @@ export function SignOutButton({
   fullWidth = false,
   showIcon = true
 }: SignOutButtonProps) {
-  const router = useRouter();
-  const { setLoadingState, setError } = useAuthStore();
+  const setLoadingState = useAuthStore(state => state.setLoadingState)
+
 
   const handleSignOut = async () => {
+    console.log('🚀 [SignOut] Starting logout process')
+    setLoadingState('loading')
+    
     try {
-      setLoadingState('loading');
-
-      // Déconnexion via Next-Auth
-      await signOut({
-        redirect: false
-      });
-
-      // Rafraîchissement et redirection
-      router.refresh();
-      router.push('/');
-      setLoadingState('idle');
+      await signOut()
+      console.log('✅ [SignOut] Logout successful')
     } catch (error) {
-      console.error('Erreur lors de la déconnexion:', error);
-      setError('Erreur lors de la déconnexion');
-      setLoadingState('error');
+      console.error('❌ [SignOut] Logout error:', error)
+    } finally {
+      setLoadingState('idle')
     }
-  };
+  }
 
   return (
     <Button
@@ -50,7 +43,6 @@ export function SignOutButton({
       onClick={handleSignOut}
       className={cn(
         fullWidth && "w-full",
-        "text-red-600 focus:text-red-600",
         className
       )}
     >
