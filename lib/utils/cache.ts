@@ -1,7 +1,7 @@
 import { cache } from 'react';
 import { LRUCache } from 'lru-cache';
 
-const globalCache = new LRUCache<string, any>({
+const globalCache = new LRUCache<string, Record<string, unknown>>({
   max: 500,
   ttl: 1000 * 60 * 5,
 });
@@ -21,7 +21,7 @@ export const getCachedData = cache(async function<T>(
   if (cached) return cached;
 
   const data = await fetchFn();
-  globalCache.set(key, data, { ttl: options?.ttl });
+  globalCache.set(key, data as Record<string, unknown>, { ttl: options?.ttl });
   return data;
 });
 
@@ -34,13 +34,13 @@ export function invalidateCache(keyPattern: string) {
   });
 }
 
-export const withCache = <T extends (...args: any[]) => Promise<any>>(
-  fn: T,
+export const withCache = <TFunc extends (...args: unknown[]) => Promise<unknown>>(
+  fn: TFunc,
   keyPrefix: string,
   options?: { ttl?: number }
 ) => {
-  return async (...args: Parameters<T>): Promise<ReturnType<T>> => {
+  return async (...args: Parameters<TFunc>): Promise<Awaited<ReturnType<TFunc>>> => {
     const cacheKey = `${keyPrefix}:${createCacheKey(...args)}`;
-    return getCachedData(cacheKey, () => fn(...args), options);
+    return getCachedData(cacheKey, () => fn(...args), options) as Awaited<ReturnType<TFunc>>;
   };
 }; 

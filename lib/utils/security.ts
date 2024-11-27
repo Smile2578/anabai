@@ -65,16 +65,12 @@ interface RateLimitStore {
   set: (key: string, value: number[]) => void;
 }
 
-declare global {
-  var __rateLimit: RateLimitStore;
-}
+const rateLimitMap = new Map<string, number[]>();
 
-if (!globalThis.__rateLimit) {
-  globalThis.__rateLimit = {
-    get: (key: string) => [],
-    set: (key: string, value: number[]) => {},
-  };
-}
+const rateLimitStore: RateLimitStore = {
+  get: (key: string) => rateLimitMap.get(key) || [],
+  set: (key: string, value: number[]) => rateLimitMap.set(key, value),
+};
 
 export function rateLimit(
   key: string,
@@ -84,13 +80,13 @@ export function rateLimit(
   const now = Date.now();
   const windowStart = now - windowMs;
   
-  const requests = globalThis.__rateLimit.get(key) || [];
+  const requests = rateLimitStore.get(key);
   const recentRequests = requests.filter((time: number) => time > windowStart);
   
   if (recentRequests.length >= limit) {
     return false;
   }
   
-  globalThis.__rateLimit.set(key, [...recentRequests, now]);
+  rateLimitStore.set(key, [...recentRequests, now]);
   return true;
 } 
