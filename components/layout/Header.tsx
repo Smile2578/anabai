@@ -19,39 +19,22 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { Settings, LayoutDashboard, MapPinHouse, UserIcon } from "lucide-react"
-import { useAuthStore } from "@/store/useAuthStore"
 import { SignOutButton } from '@/components/auth/SignOutButton';
-
-interface HeaderProps {
-  className?: string
-}
+import { useSessionManager } from "@/hooks/useSessionManager"
 
 
-export function Header({ className }: HeaderProps) {
-  const session = useAuthStore((state) => {
-    console.log('📦 [Header] État de la session:', state.session);
-    return state.session;
-  });
-  const isAuthenticated = useAuthStore((state) => {
-    console.log('🔐 [Header] État d\'authentification:', state.isAuthenticated);
-    return state.isAuthenticated;
-  });
-  const loadingState = useAuthStore((state) => {
-    console.log('🔄 [Header] État de chargement:', state.loadingState);
-    return state.loadingState;
-  });
-  
 
-  const isLoading = loadingState === 'loading';
-
-  const [mounted, setMounted] = useState(false);
+export function Header({ className }: { className?: string }) {
+  const { session, isLoading, isAuthenticated } = useSessionManager()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    setMounted(true)
+  }, [])
 
-  if (!mounted) return null;
+  if (!mounted) return null
 
+  // Affichez un loader pendant le chargement initial
   if (isLoading) {
     return (
       <header className={cn("fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b", className)}>
@@ -59,7 +42,7 @@ export function Header({ className }: HeaderProps) {
           <Loader className="animate-spin h-5 w-5" />
         </div>
       </header>
-    );
+    )
   }
   
   // Fonction pour obtenir les initiales de l'utilisateur

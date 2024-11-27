@@ -1,6 +1,6 @@
 // auth.ts
 import NextAuth from "next-auth";
-import type { User, Account, DefaultSession, Session } from "next-auth";
+import type { User, DefaultSession, Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import connectDB from "@/lib/db/connection";
@@ -8,10 +8,7 @@ import DbUser, { IUser } from "@/models/User";
 import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
 
-interface AuthEvents {
-    signIn: (params: { user: CustomUser; account: Account | null }) => Promise<void>;
-    signOut: (params: { session: Session | null; token: ExtendedJWT | null }) => Promise<void>;
-  }
+
   
 // Extension des types pour notre application
 interface CustomUser extends User {
@@ -129,12 +126,12 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       };
     },
 
-    async authorized({ request, auth }): Promise<boolean> {
+    async authorized({ auth }): Promise<boolean> {
       return !!auth?.user;
     }
   },
   events: {
-    async signIn({ user, account }) {
+    async signIn({ user }) {
       console.log('🎉 [Auth] User signed in:', user.email);
     },
     async signOut(params) {

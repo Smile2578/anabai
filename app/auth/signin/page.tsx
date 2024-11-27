@@ -7,7 +7,6 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Alert } from '@/components/ui/alert';
 import { Loader } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -15,82 +14,45 @@ import AnabaLogo from '@/components/brand/AnabaLogo';
 import { useAuthStore } from '@/store/useAuthStore';
 
 export default function SignInPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const { setAuth, setLoadingState } = useAuthStore();
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const { setLoadingState, setError } = useAuthStore()
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('🚀 [SignIn] Début de la soumission du formulaire');
-    setLoading(true);
-    setError('');
-    setLoadingState('loading');
-  
+    e.preventDefault()
+    setIsLoading(true)
+    setLoadingState('loading')
+    setError(null)
+
     try {
-      console.log('🚀 [SignIn] Tentative de connexion avec NextAuth');
-      const res = await signIn('credentials', {
+      const result = await signIn('credentials', {
         redirect: false,
         email,
         password,
-      });
-  
-      if (!res) {
-        console.error('❌ [SignIn] Pas de réponse de NextAuth');
-        throw new Error('Erreur de connexion inattendue');
+      })
+
+      if (result?.error) {
+        throw new Error(result.error)
       }
-  
-      if (res.error) {
-        console.error('❌ [SignIn] Erreur NextAuth:', res.error);
-        setError(res.error);
-        setLoadingState('error');
-        setLoading(false);
-        return;
-      }
-  
-      console.log('✅ [SignIn] Connexion NextAuth réussie, attente de la session');
-      // Attendre que NextAuth établisse la session
-      await new Promise(resolve => setTimeout(resolve, 500));
-  
-      console.log('🚀 [SignIn] Récupération de la session');
-      const sessionResponse = await fetch('/api/auth/session');
-      const sessionData = await sessionResponse.json();
-      console.log('📦 [SignIn] Données de session reçues:', sessionData);
+
+      // Succès de la connexion
+      setLoadingState('idle')
+      router.push(callbackUrl)
+      router.refresh()
       
-      if (sessionData) {
-        console.log('🚀 [SignIn] Mise à jour du store Zustand');
-        setAuth(sessionData, true);
-        console.log('✅ [SignIn] Store mis à jour');
-        
-        console.log('🚀 [SignIn] Rafraîchissement du routeur');
-        router.refresh();
-        
-        console.log('🚀 [SignIn] Attente avant redirection');
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        console.log('🚀 [SignIn] Redirection vers:', callbackUrl);
-        router.push(callbackUrl);
-        setLoadingState('success');
-        console.log('✅ [SignIn] Processus de connexion terminé');
-      } else {
-        console.error('❌ [SignIn] Pas de données de session après connexion');
-        throw new Error('Session non établie');
-      }
-  
     } catch (error) {
-      console.error('❌ [SignIn] Erreur lors de la connexion:', error);
-      setError('Une erreur est survenue lors de la connexion');
-      setAuth(null, false);
-      setLoadingState('error');
+      console.error('Erreur de connexion:', error)
+      setError(error instanceof Error ? error.message : 'Erreur de connexion')
+      setLoadingState('error')
     } finally {
-      setLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
     <div className="auth-container flex items-center justify-center">
@@ -104,11 +66,6 @@ export default function SignInPage() {
             <p className="auth-subtitle">Découvrez le Japon authentique</p>
           </div>
           
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              {error}
-            </Alert>
-          )}
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -131,8 +88,8 @@ export default function SignInPage() {
                 className="auth-input"
               />
             </div>
-            <Button type="submit" className="auth-button" disabled={loading}>
-              {loading ? (
+            <Button type="submit" className="auth-button" disabled={isLoading}>
+              {isLoading ? (
                 <Loader className="w-5 h-5 animate-spin" />
               ) : (
                 'Se connecter'

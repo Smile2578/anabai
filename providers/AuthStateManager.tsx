@@ -10,11 +10,12 @@ interface AuthStateManagerProps {
 }
 
 export function AuthStateManager({ session }: AuthStateManagerProps) {
-  const { setAuth } = useAuthStore();
+  const { setLoadingState } = useAuthStore();
 
   useEffect(() => {
-    setAuth(session, !!session);
-  }, [session, setAuth]);
+    // Mise à jour de l'état de chargement en fonction de la présence ou non de la session
+    setLoadingState(session === null ? 'loading' : 'idle');
+  }, [session, setLoadingState]);
 
   return null;
 }

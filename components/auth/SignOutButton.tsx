@@ -22,15 +22,13 @@ export function SignOutButton({
   showIcon = true
 }: SignOutButtonProps) {
   const router = useRouter();
-  const { setAuth, setLoadingState } = useAuthStore();
+  const { setLoadingState, setError } = useAuthStore();
 
   const handleSignOut = async () => {
     try {
       setLoadingState('loading');
-      // Mise à jour immédiate de l'UI avec setAuth qui gère à la fois la session et l'authentification
-      setAuth(null, false);
 
-      // Déconnexion effective
+      // Déconnexion via Next-Auth
       await signOut({
         redirect: false
       });
@@ -38,11 +36,10 @@ export function SignOutButton({
       // Rafraîchissement et redirection
       router.refresh();
       router.push('/');
-      setLoadingState('success');
+      setLoadingState('idle');
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
-      // Restauration de l'état en cas d'erreur
-      setAuth(null, true);
+      setError('Erreur lors de la déconnexion');
       setLoadingState('error');
     }
   };

@@ -2,13 +2,15 @@
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 import { signIn, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 
 export function useAuth() {
   const router = useRouter();
-  const store = useAuthStore();
+  const { setLoadingState, setError } = useAuthStore();
+  const { data: session, status } = useSession();
 
   const login = async (email: string, password: string) => {
-    store.setLoadingState('loading');
+    setLoadingState('loading');
     
     try {
       const res = await signIn('credentials', {
@@ -21,35 +23,35 @@ export function useAuth() {
         throw new Error(res.error);
       }
 
-      const sessionData = await fetch('/api/auth/session').then(res => res.json());
-      store.setAuth(sessionData, true);
+      setLoadingState('idle');
+      router.refresh();
       return { success: true };
     } catch (error) {
-      store.setError(error instanceof Error ? error.message : 'Erreur de connexion');
-      store.setLoadingState('error');
+      setError(error instanceof Error ? error.message : 'Erreur de connexion');
+      setLoadingState('error');
       return { success: false, error };
     }
   };
 
   const logout = async () => {
-    store.setLoadingState('loading');
+    setLoadingState('loading');
     try {
-      store.setAuth(null, false);
       await signOut({ redirect: false });
+      setLoadingState('idle');
       router.refresh();
       router.push('/');
     } catch (error) {
       console.error('Signout error:', error);
-      store.setError('Erreur lors de la déconnexion');
-      store.setLoadingState('error');
+      setError('Erreur lors de la déconnexion');
+      setLoadingState('error');
     }
   };
 
   return {
-    session: store.session,
-    isAuthenticated: store.isAuthenticated,
-    isLoading: store.loadingState === 'loading',
-    error: store.error,
+    session,
+    isAuthenticated: status === 'authenticated',
+    isLoading: status === 'loading',
+    error: useAuthStore(state => state.error),
     login,
     logout,
   };
