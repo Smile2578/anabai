@@ -7,6 +7,10 @@ import connectDB from "@/lib/db/connection";
 import Questionnaire from "@/models/Questionnaire";
 import { revalidatePath } from "next/cache";
 
+interface QuestionnaireStepData {
+  [key: string]: unknown;
+}
+
 export async function submitQuestionnaire(data: unknown) {
   try {
     const session = await auth();
@@ -94,7 +98,7 @@ export async function getQuestionnaire() {
 
 export async function updateQuestionnaireStep(
   step: number, 
-  data: unknown
+  data: QuestionnaireStepData
 ) {
   try {
     const session = await auth();

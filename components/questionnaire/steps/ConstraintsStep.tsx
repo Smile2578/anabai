@@ -36,6 +36,9 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { z } from "zod";
 
+type BudgetTotal = "2500" | "5000" | "7500" | "undefined";
+type BudgetDaily = "100" | "200" | "300" | "undefined";
+
 const budgetOptions = [
   { value: 'undefined', label: 'Non défini' },
   { value: '2500', label: '2500 €' },
@@ -99,14 +102,6 @@ const itemVariants = {
   }
 };
 
-const cardVariants = {
-  hidden: { opacity: 0, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: { duration: 0.3 }
-  }
-};
 
 export function ConstraintsStep() {
   const router = useRouter();
@@ -116,8 +111,8 @@ export function ConstraintsStep() {
     resolver: zodResolver(constraintsSchema),
     defaultValues: {
       budget: {
-        total: answers.budget?.total?.toString() as any || 'undefined',
-        dailyLimit: answers.budget?.dailyLimit?.toString() as any || 'undefined',
+        total: (answers.budget?.total?.toString() || 'undefined') as BudgetTotal,
+        dailyLimit: (answers.budget?.dailyLimit?.toString() || 'undefined') as BudgetDaily,
         priority: answers.budget?.priority || 'undefined',
       },
       constraints: {
