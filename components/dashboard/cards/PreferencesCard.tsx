@@ -79,7 +79,7 @@ export function PreferencesCard({ preferences, onEdit }: PreferencesCardProps) {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-primary">
             <Heart className="h-4 w-4" />
-            <h4 className="font-medium">Centres d'intérêt</h4>
+            <h4 className="font-medium">Centres d&apos;intérêt</h4>
           </div>
           <div className="flex flex-wrap gap-2">
             {preferences.interests?.mainInterests?.map((interest) => (

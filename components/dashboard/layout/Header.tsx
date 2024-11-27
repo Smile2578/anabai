@@ -14,7 +14,6 @@ import {
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { HeaderProps } from '@/types/dashboard/layout';
 import { SignOutButton } from '@/components/auth/SignOutButton';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';

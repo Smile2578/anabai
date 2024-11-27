@@ -23,7 +23,7 @@ export default function Error({ error, reset }: ErrorProps) {
       </div>
       
       <p className="text-muted-foreground text-center max-w-[500px]">
-        Nous n'avons pas pu charger votre tableau de bord. Veuillez réessayer ultérieurement.
+        Nous n&apos;avons pas pu charger votre tableau de bord. Veuillez réessayer ultérieurement.
       </p>
 
       <button

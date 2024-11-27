@@ -8,7 +8,6 @@ import {
   MapPin, 
   Train, 
   Camera,
-  Coffee,
   Utensils
 } from "lucide-react";
 

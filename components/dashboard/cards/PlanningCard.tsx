@@ -30,7 +30,7 @@ const planningSteps = [
   }
 ];
 
-export function PlanningCard({ trip, status }: PlanningCardProps) {
+export function PlanningCard({ status }: PlanningCardProps) {
   const getProgress = () => {
     const completedSteps = planningSteps.filter(
       step => step.status === 'completed'
