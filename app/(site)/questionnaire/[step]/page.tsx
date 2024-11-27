@@ -7,18 +7,16 @@ import { InterestsStep } from "@/components/questionnaire/steps/InterestsStep";
 import { ConstraintsStep } from "@/components/questionnaire/steps/ConstraintsStep";
 import { SummaryStep } from "@/components/questionnaire/steps/SummaryStep ";
 
-interface PageProps {
+interface QuestionnairePageProps {
   params: {
     step: string;
   };
-  searchParams: { [key: string]: string | string[] | undefined };
 }
 
 export default async function QuestionnaireStepPage({ 
   params,
-}: PageProps) {
-  const step = await Promise.resolve(params.step);
-  const stepNumber = parseInt(step);
+}: QuestionnairePageProps) {
+  const stepNumber = parseInt(params.step);
 
   // Validation du numéro d'étape
   if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > 5) {
