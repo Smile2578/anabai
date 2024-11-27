@@ -1,10 +1,16 @@
 // app/api/admin/places/validate/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { ValidationService } from '@/lib/services/places/ValidationService';
 import { LocationService } from '@/lib/services/core/LocationService';
-import connectDB  from '@/lib/db/connection';
-export async function POST(req: NextRequest) {
+import connectDB from '@/lib/db/connection';
+import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
+
+async function handleValidatePlaces(req: Request, session: SessionWithUser) {
   try {
+    console.log('👤 [API/Places] POST request by:', {
+      user: session.user.email,
+      role: session.user.role
+    });
     await connectDB();
     const { previews } = await req.json();
     
@@ -39,3 +45,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = protectApiRoute(handleValidatePlaces, 'admin');

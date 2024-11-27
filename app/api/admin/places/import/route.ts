@@ -1,13 +1,19 @@
 // app/api/admin/places/import/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { ImportService } from '@/lib/services/places/ImportService';
 import { GooglePlacesService } from '@/lib/services/core/GooglePlacesService';
 import { GeocodingService } from '@/lib/services/core/GeocodingService';
-import connectDB  from '@/lib/db/connection';
+import connectDB from '@/lib/db/connection';
+import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
+
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-export async function POST(req: NextRequest) {
+async function handleImportPlaces(req: Request, session: SessionWithUser) {
   try {
+    console.log('👤 [API/Places] POST request by:', {
+      user: session.user.email,
+      role: session.user.role
+    });
     await connectDB();
     const formData = await req.formData();
     const file = formData.get('file');
@@ -68,3 +74,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = protectApiRoute(handleImportPlaces, 'admin');

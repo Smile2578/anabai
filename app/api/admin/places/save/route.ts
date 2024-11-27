@@ -1,5 +1,5 @@
 // app/api/admin/places/save/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connection';
 import { placeRepository } from '@/lib/repositories/place-repository';
 import { ValidationService } from '@/lib/services/places/ValidationService';
@@ -7,6 +7,7 @@ import { LocationService } from '@/lib/services/core/LocationService';
 import { StorageService } from '@/lib/services/places/StorageService';
 import { ImportPreview } from '@/types/import';
 import { Place } from '@/types/places/main';
+import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
 
 interface SaveStats {
   total: number;
@@ -16,8 +17,12 @@ interface SaveStats {
   duplicates: number;
 }
 
-export async function POST(req: NextRequest) {
+async function handleSavePlaces(req: Request, session: SessionWithUser) {
   try {
+    console.log('👤 [API/Places] POST request by:', {
+      user: session.user.email,
+      role: session.user.role
+    });
     await connectDB();
     
     const { previews } = await req.json();
@@ -99,21 +104,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Support CORS if needed
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Methods': 'POST',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Max-Age': '86400'
-    }
-  });
-}
-
-// Add support for PUT/PATCH for bulk updates if needed
-export async function PATCH(req: NextRequest) {
+async function handleBulkUpdate(req: Request, session: SessionWithUser) {
   try {
+    console.log('👤 [API/Places] PATCH request by:', {
+      user: session.user.email,
+      role: session.user.role
+    });
     await connectDB();
     
     const { ids, updates } = await req.json();
@@ -165,3 +161,18 @@ export async function PATCH(req: NextRequest) {
     );
   }
 }
+
+// Support CORS if needed
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Methods': 'POST',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400'
+    }
+  });
+}
+
+export const POST = protectApiRoute(handleSavePlaces, 'admin');
+export const PATCH = protectApiRoute(handleBulkUpdate, 'admin');

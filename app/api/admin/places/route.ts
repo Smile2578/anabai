@@ -1,8 +1,9 @@
 // app/api/admin/places/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connection';
 import { placeRepository } from '@/lib/repositories/place-repository';
 import { Category, Status } from '@/types/common';
+import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
 
 type SearchFilter = {
   $regex: string;
@@ -22,12 +23,18 @@ interface PlaceFilter {
 }
 
 
-export async function GET(req: NextRequest) {
+
+async function handleGetPlaces(req: Request, session: SessionWithUser) {
   try {
+    console.log('👤 [API/Places] GET request by:', {
+      user: session.user.email,
+      role: session.user.role
+    });
+
     await connectDB();
-    const searchParams = new URL(req.url).searchParams;
+    const url = new URL(req.url);
+    const searchParams = new URLSearchParams(url.search);
     
-    // Extraire les paramètres de requête
     const search = searchParams.get('search') || undefined;
     const categories = searchParams.getAll('categories') as Category[] | undefined;
     const status = searchParams.get('status') as Status | undefined;
@@ -35,10 +42,7 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    // Construire le filtre
-    const filter: PlaceFilter = {
-      isActive: true
-    };
+    const filter: PlaceFilter = { isActive: true };
 
     if (search) {
       filter.$or = [
@@ -60,7 +64,6 @@ export async function GET(req: NextRequest) {
       filter.isGem = true;
     }
 
-    // Récupérer les lieux avec le filtre
     const placesData = await placeRepository.find({
       filter,
       page,
@@ -68,9 +71,7 @@ export async function GET(req: NextRequest) {
       sort: { updatedAt: -1 }
     });
 
-    // Calculer les stats pour les lieux actuels
     const statsResults = await placeRepository.getStats();
-
     
     return NextResponse.json({
       places: placesData.places,
@@ -90,3 +91,35 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+async function handleCreatePlace(req: Request, session: SessionWithUser) {
+  try {
+    console.log('👤 [API/Places] POST request by:', {
+      user: session.user.email,
+      role: session.user.role
+    });
+
+    if (session.user.role !== 'admin') {
+      return NextResponse.json(
+        { error: "Seuls les administrateurs peuvent créer des lieux" },
+        { status: 403 }
+      );
+    }
+
+    const body = await req.json();
+    await connectDB();
+    
+    const place = await placeRepository.create(body);
+    
+    return NextResponse.json(place);
+  } catch (error) {
+    console.error('Error creating place:', error);
+    return NextResponse.json(
+      { error: "Erreur lors de la création du lieu" },
+      { status: 500 }
+    );
+  }
+}
+
+export const GET = protectApiRoute(handleGetPlaces, 'admin');
+export const POST = protectApiRoute(handleCreatePlace, 'admin');

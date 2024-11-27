@@ -1,8 +1,9 @@
 // app/api/admin/places/[id]/route.ts
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connection';
 import { placeRepository } from '@/lib/repositories/place-repository';
+import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
 
 interface RouteParams {
   params: Promise<{
@@ -10,8 +11,12 @@ interface RouteParams {
   }>;
 }
 
-export async function GET(req: NextRequest, { params }: RouteParams) {
+async function handleGetPlace(req: Request, session: SessionWithUser, { params }: RouteParams) {
   try {
+    console.log('👤 [API/Places] GET request by:', {
+      user: session.user.email,
+      role: session.user.role
+    });
     await connectDB();
     const { id } = await params;
     
@@ -34,8 +39,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: RouteParams) {
+async function handleUpdatePlace(req: Request, session: SessionWithUser, { params }: RouteParams) {
   try {
+    console.log('👤 [API/Places] PATCH request by:', {
+      user: session.user.email,
+      role: session.user.role
+    });
     await connectDB();
     const { id } = await params;
     const updates = await req.json();
@@ -59,8 +68,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
+async function handleDeletePlace(req: Request, session: SessionWithUser, { params }: RouteParams) {
   try {
+    console.log('👤 [API/Places] DELETE request by:', {
+      user: session.user.email,
+      role: session.user.role
+    });
     await connectDB();
     const { id } = await params;
     
@@ -82,3 +95,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     );
   }
 }
+
+export const GET = protectApiRoute((req: Request, session: SessionWithUser) => handleGetPlace(req, session, { params: Promise.resolve({ id: req.url.split('/').pop()! }) }), 'admin');
+export const PATCH = protectApiRoute((req: Request, session: SessionWithUser) => handleUpdatePlace(req, session, { params: Promise.resolve({ id: req.url.split('/').pop()! }) }), 'admin');
+export const DELETE = protectApiRoute((req: Request, session: SessionWithUser) => handleDeletePlace(req, session, { params: Promise.resolve({ id: req.url.split('/').pop()! }) }), 'admin');

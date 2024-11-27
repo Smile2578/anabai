@@ -16,20 +16,9 @@ export const authConfig: NextAuthConfig = {
   // Configuration complète des cookies - Crucial pour la persistance de session
   cookies: {
     sessionToken: {
-      name: process.env.NODE_ENV === 'production' 
-        ? '__Secure-next-auth.session-token'
-        : 'next-auth.session-token',
+      name: 'next-auth.session-token',
       options: {
         httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 30 * 24 * 60 * 60 // 30 jours en secondes
-      }
-    },
-    callbackUrl: {
-      name: 'next-auth.callback-url',
-      options: {
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === 'production'
@@ -60,8 +49,7 @@ export const authConfig: NextAuthConfig = {
       }
       
       if (!isLoggedIn && (
-        nextUrl.pathname.startsWith('/dashboard') ||
-        nextUrl.pathname.startsWith('/admin')
+        nextUrl.pathname.startsWith('/dashboard')
       )) {
         let callbackUrl = nextUrl.pathname
         if (nextUrl.search) {

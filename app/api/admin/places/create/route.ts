@@ -1,18 +1,23 @@
 // app/api/admin/places/create/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connection';
 import { placeRepository } from '@/lib/repositories/place-repository';
 import { EnrichmentService } from '@/lib/services/places/EnrichmentService';
 import { GooglePlacesService } from '@/lib/services/core/GooglePlacesService';
 import { ImageService } from '@/lib/services/core/ImageService';
 import { ImportPreview } from '@/types/import';
+import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
 
 const googlePlacesService = new GooglePlacesService();
 const imageService = new ImageService();
 const enrichmentService = new EnrichmentService(googlePlacesService, imageService);
 
-export async function POST(req: NextRequest) {
+async function handleCreatePlace(req: Request, session: SessionWithUser) {
   try {
+    console.log('👤 [API/Places] POST request by:', {
+      user: session.user.email,
+      role: session.user.role
+    });
     await connectDB();
     
     const { placeId, metadata: initialMetadata } = await req.json();
@@ -79,3 +84,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = protectApiRoute(handleCreatePlace, 'admin');

@@ -1,10 +1,15 @@
 // app/api/admin/places/search-google/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { GooglePlacesService } from '@/lib/services/core/GooglePlacesService';
 import { Language } from '@/lib/config/google-maps';
+import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
 
-export async function GET(req: NextRequest) {
+async function handleSearchGooglePlaces(req: Request, session: SessionWithUser) {
   try {
+    console.log('👤 [API/Places] GET request by:', {
+      user: session.user.email,
+      role: session.user.role
+    });
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('query');
     const language = (searchParams.get('language') || 'fr') as Language;
@@ -29,3 +34,5 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export const GET = protectApiRoute(handleSearchGooglePlaces, 'admin');

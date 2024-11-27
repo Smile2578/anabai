@@ -37,59 +37,43 @@ export default function SignInPage() {
     setIsLoading(true)
     setLoadingState('loading')
     setError(null)
-
+  
     try {
-      // Configuration de l'authentification
-      const signInOptions = {
+      const result = await signIn('credentials', {
         redirect: false,
         email,
         password,
-        callbackUrl: window.location.origin
-      }
-      console.log('📤 [SignIn] Signin configuration:', signInOptions)
-
-      const result = await signIn('credentials', signInOptions)
-      console.log('📦 [SignIn] SignIn result:', result)
-
+        callbackUrl
+      })
+  
       if (result?.error) {
         throw new Error(result.error)
       }
-
-      // Vérification explicite de la session
-      const sessionCheck = await fetch('/api/auth/session')
-      const sessionData = await sessionCheck.json()
-      
-      console.log('🔍 [SignIn] Session verification:', {
-        hasSession: !!sessionData,
-        sessionData,
-        cookies: document.cookie
-      })
-
-      if (!sessionData) {
-        throw new Error('Session non établie')
+  
+      // Attendre un peu plus longtemps pour la propagation de la session
+      await new Promise(resolve => setTimeout(resolve, 500))
+  
+      // Vérifier la session différemment
+      const session = await fetch('/api/auth/session')
+      const sessionData = await session.json()
+  
+      if (sessionData?.user) {
+        console.log('✅ [SignIn] Authentication successful')
+        router.push(callbackUrl)
+        router.refresh()
+      } else {
+        throw new Error('Échec de l\'authentification')
       }
-
-      console.log('✅ [SignIn] Authentication successful')
-      setLoadingState('idle')
-      
-      // Attente courte pour assurer la propagation des cookies
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      router.push(callbackUrl)
-      router.refresh()
-      
+  
     } catch (error) {
-      console.error('❌ [SignIn] Authentication error:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        type: error instanceof Error ? error.name : typeof error
-      })
+      console.error('❌ [SignIn] Authentication error:', error)
       setError(error instanceof Error ? error.message : 'Erreur de connexion')
-      setLoadingState('error')
     } finally {
       setIsLoading(false)
+      setLoadingState('idle')
     }
   }
-
+  
   // Monitoring des cookies
   useEffect(() => {
     const checkCookies = () => {

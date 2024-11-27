@@ -1,12 +1,17 @@
 // app/api/admin/places/enrich/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { EnrichmentService } from '@/lib/services/places/EnrichmentService';
 import { GooglePlacesService } from '@/lib/services/core/GooglePlacesService';
 import { ImageService } from '@/lib/services/core/ImageService';
 import connectDB from '@/lib/db/connection';
+import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
 
-export async function POST(req: NextRequest) {
+async function handleEnrichPlaces(req: Request, session: SessionWithUser) {
   try {
+    console.log('👤 [API/Places] POST request by:', {
+      user: session.user.email,
+      role: session.user.role
+    });
     await connectDB();
     const { previews } = await req.json();
     
@@ -48,3 +53,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = protectApiRoute(handleEnrichPlaces, 'admin');

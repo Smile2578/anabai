@@ -9,9 +9,12 @@ interface User {
   email: string;
   password: string;
   role: 'admin' | 'editor' | 'user' | 'premium' | 'luxury';
+  status: "active" | "inactive";
   image?: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
+  createdAt: Date;
+  lastLogin: Date;
 }
 
 export interface IUser extends Document {
@@ -20,9 +23,12 @@ export interface IUser extends Document {
   email: string;
   password: string;
   role: 'admin' | 'editor' | 'user' | 'premium' | 'luxury';
+  status: "active" | "inactive";
   image?: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
+  createdAt: Date;
+  lastLogin: Date;
 }
 
 const UserSchema: Schema<IUser> = new Schema(
@@ -35,13 +41,16 @@ const UserSchema: Schema<IUser> = new Schema(
       enum: ['admin', 'editor', 'user', 'premium', 'luxury'],
       default: 'user' 
     },
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active"
+    },
     image: { type: String },
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
   },
-  { timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true }
+  { timestamps: true
    }
 );
 
