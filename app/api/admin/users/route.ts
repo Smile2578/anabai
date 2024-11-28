@@ -7,18 +7,22 @@ import User, { IUser } from '@/models/User';
 
 async function handleGetUsers(req: Request, session: SessionWithUser) {
   try {
-    console.log('👥 [API/Users] GET request by:', {
-      user: session.user.email,
-      role: session.user.role
-    });
-
+    console.log("👥 [API/Users] GET request by:", session.user.email);
     await connectDB();
     
     const users = await User.find({})
-      .select('id name email role status createdAt lastLogin')
-      .sort('-createdAt');
+      .select('_id name email role status createdAt lastLogin')
+      .sort('-createdAt')
+      .lean();
 
-    return NextResponse.json(users);
+    // Transformer les données pour garantir le format correct de l'ID
+    const formattedUsers = users.map(user => ({
+      ...user,
+      id: user._id.toString(),
+      _id: undefined
+    }));
+
+    return NextResponse.json(formattedUsers);
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json(

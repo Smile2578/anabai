@@ -1,4 +1,3 @@
-// components/admin/users/user-filters.tsx
 "use client";
 
 import { Search } from "lucide-react";
@@ -11,7 +10,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function UserFilters() {
+interface UserFiltersProps {
+  onSearchChange: (value: string) => void;
+  onRoleChange: (value: string) => void;
+  onStatusChange: (value: string) => void;
+  search: string;
+  role: string;
+  status: string;
+}
+
+export function UserFilters({
+  onSearchChange,
+  onRoleChange,
+  onStatusChange,
+  search,
+  role,
+  status
+}: UserFiltersProps) {
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div className="flex flex-1 gap-4">
@@ -20,10 +35,12 @@ export function UserFilters() {
           <Input
             placeholder="Rechercher par nom ou email..."
             className="pl-9"
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
           />
         </div>
         <div className="flex gap-4">
-          <Select>
+          <Select value={role} onValueChange={onRoleChange}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Rôle" />
             </SelectTrigger>
@@ -37,7 +54,7 @@ export function UserFilters() {
             </SelectContent>
           </Select>
 
-          <Select>
+          <Select value={status} onValueChange={onStatusChange}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Statut" />
             </SelectTrigger>

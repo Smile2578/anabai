@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { User } from "./UsersManagement";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
 const userFormSchema = z.object({
@@ -90,6 +90,26 @@ export function UserDialog({
     }
   };
 
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        password: '' // Le mot de passe reste vide lors de l'édition
+      });
+    } else {
+      form.reset({
+        name: '',
+        email: '',
+        role: 'user',
+        status: 'active',
+        password: ''
+      });
+    }
+  }, [user, form]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
@@ -97,11 +117,36 @@ export function UserDialog({
           <DialogTitle>
             {user ? "Modifier l'utilisateur" : "Nouvel utilisateur"}
           </DialogTitle>
-          <DialogDescription>
-            {user
-              ? "Modifiez les informations de l'utilisateur ci-dessous"
-              : "Créez un nouvel utilisateur en remplissant les informations ci-dessous"}
-          </DialogDescription>
+          <>
+            <DialogDescription>
+              {user
+                ? "Modifiez les informations de l'utilisateur ci-dessous"
+                : "Créez un nouvel utilisateur en remplissant les informations ci-dessous"}
+            </DialogDescription>            
+            {user && (
+              <div className="mt-4 bg-muted p-3 rounded-md text-sm">
+                <h3 className="font-medium mb-2">Informations actuelles</h3>
+                <div className="grid gap-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">ID :</span>
+                    <span className="font-medium">{user.id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Email actuel :</span>
+                    <span className="font-medium">{user.email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Rôle actuel :</span>
+                    <span className="font-medium">{user.role}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Statut actuel :</span>
+                    <span className="font-medium">{user.status}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         </DialogHeader>
 
         <Form {...form}>

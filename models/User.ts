@@ -1,5 +1,4 @@
 // models/User.ts
-
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
@@ -10,6 +9,9 @@ interface User {
   password: string;
   role: 'admin' | 'editor' | 'user' | 'premium' | 'luxury';
   status: "active" | "inactive";
+  emailVerified: boolean;
+  verificationToken: string | null;
+  verificationTokenExpiry: Date | null;
   image?: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
@@ -24,6 +26,9 @@ export interface IUser extends Document {
   password: string;
   role: 'admin' | 'editor' | 'user' | 'premium' | 'luxury';
   status: "active" | "inactive";
+  emailVerified: boolean;
+  verificationToken: string | null;
+  verificationTokenExpiry: Date | null;
   image?: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
@@ -44,17 +49,30 @@ const UserSchema: Schema<IUser> = new Schema(
     status: {
       type: String,
       enum: ["active", "inactive"],
-      default: "active"
+      default: "inactive" // Changé à inactive par défaut jusqu'à la vérification
     },
+    emailVerified: { type: Boolean, default: false },
+    verificationToken: { type: String, default: null },
+    verificationTokenExpiry: { type: Date, default: null },
     image: { type: String },
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
+    lastLogin: { type: Date, default: Date.now }
   },
-  { timestamps: true
+  { timestamps: true,
+    toJSON: {
+      transform: function(doc, ret) {
+        ret.id = ret._id.toString();
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      }
+    }
    }
+
 );
 
-// Relation virtuelle avec les lieux (en tant qu'auteur)
+// Relations virtuelles inchangées
 UserSchema.virtual('places', {
   ref: 'Place',
   localField: '_id',
@@ -62,7 +80,6 @@ UserSchema.virtual('places', {
   justOne: false
 });
 
-// Relation virtuelle avec les questionnaires
 UserSchema.virtual('questionnaires', {
   ref: 'Questionnaire',
   localField: '_id',
@@ -70,20 +87,16 @@ UserSchema.virtual('questionnaires', {
   justOne: false
 });
 
-// Hachage du mot de passe avant l'enregistrement
+// Pré-save hook pour le hachage du mot de passe
 UserSchema.pre<IUser>('save', async function (next) {
-  if (!this.isModified('password')) {
-    return next();
-  }
+  if (!this.isModified('password')) return next();
+  
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
-    return next();
+    next();
   } catch (err) {
-    if (err instanceof Error) {
-      return next(err);
-    }
-    return next(new Error('Unknown error occurred'));
+    next(err instanceof Error ? err : new Error('Unknown error occurred'));
   }
 });
 

@@ -26,6 +26,26 @@ export default function UsersManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch = 
+      search === "" ||
+      user.name.toLowerCase().includes(search.toLowerCase()) ||
+      user.email.toLowerCase().includes(search.toLowerCase());
+  
+    const matchesRole = 
+      roleFilter === "all" || user.role === roleFilter;
+  
+    const matchesStatus = 
+      statusFilter === "all" || user.status === statusFilter;
+  
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+  
+
   const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -63,10 +83,14 @@ export default function UsersManagement() {
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
+        credentials: 'include' // Ajout des credentials pour l'authentification
       });
-
-      if (!response.ok) throw new Error('Erreur lors de la suppression');
-
+  
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erreur lors de la suppression');
+      }
+  
       // Mettre à jour la liste des utilisateurs
       setUsers(users.filter(user => user.id !== userId));
       
@@ -74,14 +98,19 @@ export default function UsersManagement() {
         title: "Utilisateur supprimé",
         description: "L'utilisateur a été supprimé avec succès",
       });
-    } catch {
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Une erreur est survenue lors de la suppression",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression",
       });
     }
   };
+
+  const handleDeleteSuccess = useCallback((userId: string) => {
+    setUsers(currentUsers => currentUsers.filter(user => user.id !== userId));
+  }, []);
 
   const handleSaveUser = async (userData: Partial<User>) => {
     try {
@@ -140,15 +169,23 @@ export default function UsersManagement() {
         </Button>
       </div>
 
-      <UserFilters />
+      <UserFilters
+        search={search}
+        role={roleFilter}
+        status={statusFilter}
+        onSearchChange={setSearch}
+        onRoleChange={setRoleFilter}
+        onStatusChange={setStatusFilter}
+      />
 
       {isLoading ? (
         <div>Chargement...</div>
       ) : (
         <UsersTable
-          users={users}
+          users={filteredUsers}
           onEdit={handleEditUser}
           onDelete={handleDeleteUser}
+          onDeleteSuccess={handleDeleteSuccess}
         />
       )}
 

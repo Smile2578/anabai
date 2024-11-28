@@ -39,21 +39,53 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState, useCallback } from "react";
+import { toast, Toaster } from "sonner";
 
+// Interface définissant les props du composant
 interface UsersTableProps {
   users: User[];
   onEdit: (user: User) => void;
   onDelete: (userId: string) => void;
+  onDeleteSuccess: (userId: string) => void;
 }
 
-export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
-  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+// Configuration des notifications toast
+const TOAST_CONFIG = {
+  duration: 4000,
+  position: 'top-center' as const
+};
 
-  const handleDelete = useCallback((userId: string) => {
-    onDelete(userId);
-    setDeletingUserId(null);
-  }, [onDelete]);
+export function UsersTable({ users, onEdit, onDeleteSuccess }: UsersTableProps) {
+  // État pour gérer l'utilisateur à supprimer
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
+  // Fonction de gestion de la suppression avec gestion des erreurs
+  const handleDelete = useCallback(async (userId: string) => {
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erreur lors de la suppression');
+      }
+
+      // Appeler onDeleteSuccess pour mettre à jour l'état parent
+      onDeleteSuccess(userId);
+      setUserToDelete(null);
+      toast.success('Utilisateur supprimé avec succès', TOAST_CONFIG);
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Une erreur est survenue lors de la suppression',
+        TOAST_CONFIG
+      );
+    }
+  }, [onDeleteSuccess]);
+
+  // Fonction pour obtenir le badge approprié selon le rôle
   const getRoleBadge = (role: User['role']) => {
     switch (role) {
       case 'admin':
@@ -73,6 +105,7 @@ export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
 
   return (
     <>
+      <Toaster richColors />
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -91,8 +124,10 @@ export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
                 <TableCell>{user.email}</TableCell>
                 <TableCell>{getRoleBadge(user.role)}</TableCell>
                 <TableCell>
-                    {user.createdAt ? format(new Date(user.createdAt), 'dd MMMM yyyy', { locale: fr }) : 'Date invalide'}
-                  </TableCell>
+                  {user.createdAt 
+                    ? format(new Date(user.createdAt), 'dd MMMM yyyy', { locale: fr }) 
+                    : 'Date invalide'}
+                </TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -117,7 +152,7 @@ export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
                         Contacter
                       </DropdownMenuItem>
                       {user.role !== 'admin' && (
-                        <DropdownMenuItem onClick={() => setDeletingUserId(user.id)}>
+                        <DropdownMenuItem onClick={() => setUserToDelete(user)}>
                           <Trash2 className="mr-2 h-4 w-4" />
                           Supprimer
                         </DropdownMenuItem>
@@ -131,24 +166,46 @@ export function UsersTable({ users, onEdit, onDelete }: UsersTableProps) {
         </Table>
       </div>
 
+      {/* Dialogue de confirmation de suppression avec informations détaillées */}
       <AlertDialog 
-        open={!!deletingUserId} 
-        onOpenChange={() => setDeletingUserId(null)}
+        open={!!userToDelete} 
+        onOpenChange={(open) => !open && setUserToDelete(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Êtes-vous sûr de vouloir supprimer cet utilisateur ?
+            <AlertDialogTitle className="text-destructive">
+              Confirmer la suppression
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Cette action est irréversible. Toutes les données associées à cet utilisateur seront supprimées.
+            <AlertDialogDescription className="space-y-2">
+              <p>Êtes-vous sûr de vouloir supprimer l&apos;utilisateur suivant ?</p>
+              {userToDelete && (
+                <div className="bg-muted p-3 rounded-md mt-2">
+                  <p><strong>Nom :</strong> {userToDelete.name}</p>
+                  <p><strong>Email :</strong> {userToDelete.email}</p>
+                  <p><strong>Rôle :</strong> {userToDelete.role}</p>
+                  <p><strong>Inscription :</strong> {userToDelete.createdAt ? format(new Date(userToDelete.createdAt), 'dd MMMM yyyy', { locale: fr }) : 'Date invalide'}</p>
+                  <p><strong>Statut :</strong> {userToDelete.status}</p>
+                  <p><strong>ID :</strong> {userToDelete.id}</p>
+                </div>
+              )}
+              <p className="text-destructive font-semibold mt-4">
+                Cette action est irréversible. Toutes les données associées à cet utilisateur seront supprimées.
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setUserToDelete(null)}>
+              Annuler
+            </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deletingUserId && handleDelete(deletingUserId)}
+              onClick={() => {
+                if (userToDelete) {
+                  handleDelete(userToDelete.id);
+                } else {
+                  toast.error('Erreur: Utilisateur non sélectionné', TOAST_CONFIG);
+                }
+              }}
             >
               Supprimer
             </AlertDialogAction>
