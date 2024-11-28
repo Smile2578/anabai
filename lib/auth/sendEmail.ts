@@ -22,6 +22,26 @@ interface EmailTemplate {
   content: string;
 }
 
+// Déplacer la fonction sendEmail avant la classe EmailService
+export async function sendEmail({ to, subject, html }: { 
+  to: string; 
+  subject: string; 
+  html: string; 
+}): Promise<void> {
+  const result = await resend.emails.send({
+    from: 'Anaba.io <no-reply@anaba.io>',
+    to: [to],
+    subject,
+    html,
+  });
+
+  if (result.error) {
+    throw new Error(`Échec de l'envoi: ${result.error.message}`);
+  }
+
+  console.log('✉️ Email envoyé avec succès:', result.data);
+}
+
 class EmailService {
   private getBaseTemplate(content: string) {
     // Template de base pour tous les emails avec style consistent
@@ -82,5 +102,5 @@ class EmailService {
   }
 }
 
-// Export d'une instance unique du service
+// Export de l'instance du service
 export const emailService = new EmailService();
