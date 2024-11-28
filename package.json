@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "docker-compose up -d redis && jest --watch",
+    "test:cleanup": "docker-compose down"
   },
   "dependencies": {
     "@bull-board/api": "^6.5.3",
@@ -59,6 +60,7 @@
     "@vercel/blob": "^0.26.0",
     "antd": "^5.22.1",
     "bcryptjs": "^2.4.3",
+    "bull": "^4.16.4",
     "bullmq": "^5.29.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
@@ -66,8 +68,6 @@
     "csv-parse": "^5.5.6",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.5",
-    "embla-carousel-autoplay": "^8.3.1",
-    "embla-carousel-react": "^8.3.1",
     "framer-motion": "^11.11.17",
     "input-otp": "^1.4.1",
     "ioredis": "^5.4.1",
