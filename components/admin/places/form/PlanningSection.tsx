@@ -100,7 +100,7 @@ export const PlanningSection = ({ data, onChange, isSubmitting }: PlanningSectio
       seasonality.push({
         season,
         recommended: true,
-        details: { fr: '', ja: '' }
+        details: { fr: '' }
       });
     }
     
@@ -292,12 +292,6 @@ export const PlanningSection = ({ data, onChange, isSubmitting }: PlanningSectio
                         placeholder="Détails en français"
                         disabled={isSubmitting}
                       />
-                      <Input
-                        value={planningInfo.seasonality?.find(s => s.season === season.value)?.details.ja || ''}
-                        onChange={(e) => updateSeasonDetails(season.value, 'ja', e.target.value)}
-                        placeholder="詳細"
-                        disabled={isSubmitting}
-                      />
                     </div>
                   )}
                 </div>
@@ -318,12 +312,6 @@ export const PlanningSection = ({ data, onChange, isSubmitting }: PlanningSectio
                 placeholder="Conseils en français"
                 disabled={isSubmitting}
               />
-              <Input
-                value={planningInfo.tips?.ja || ''}
-                onChange={(e) => updatePlanningInfo({ tips: { ...planningInfo.tips, ja: e.target.value } })}
-                placeholder="アドバイス"
-                disabled={isSubmitting}
-              />
             </div>
           </div>
 
@@ -338,12 +326,6 @@ export const PlanningSection = ({ data, onChange, isSubmitting }: PlanningSectio
                 value={planningInfo.warnings?.fr || ''}
                 onChange={(e) => updatePlanningInfo({ warnings: { ...planningInfo.warnings, fr: e.target.value } })}
                 placeholder="Avertissements en français"
-                disabled={isSubmitting}
-              />
-              <Input
-                value={planningInfo.warnings?.ja || ''}
-                onChange={(e) => updatePlanningInfo({ warnings: { ...planningInfo.warnings, ja: e.target.value } })}
-                placeholder="警告"
                 disabled={isSubmitting}
               />
             </div>

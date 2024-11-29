@@ -3,12 +3,19 @@ import { auth } from '@/auth';
 import BlogPost from '@/models/blog.model';
 import connectDB from '@/lib/db/connection';
 
+type RouteContext = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteContext
 ) {
   try {
     const session = await auth();
+    const resolvedParams = await params;
     
     if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
       return NextResponse.json(
@@ -19,9 +26,9 @@ export async function PATCH(
 
     await connectDB();
 
-    const { action } = await request.json();
+    const data = await request.json();
+    const post = await BlogPost.findById(resolvedParams.id);
 
-    const post = await BlogPost.findById(params.id);
     if (!post) {
       return NextResponse.json(
         { error: 'Article non trouvé' },
@@ -29,24 +36,7 @@ export async function PATCH(
       );
     }
 
-    switch (action) {
-      case 'publish':
-        post.status = 'published';
-        post.publishedAt = new Date();
-        break;
-      case 'archive':
-        post.status = 'archived';
-        break;
-      case 'delete':
-        await post.deleteOne();
-        return NextResponse.json({ success: true });
-      default:
-        return NextResponse.json(
-          { error: 'Action non valide' },
-          { status: 400 }
-        );
-    }
-
+    post.status = data.status;
     await post.save();
 
     return NextResponse.json(post);

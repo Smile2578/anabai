@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PlaceService } from '@/lib/services/places/PlaceService';
+import connectDB from '@/lib/db/connection';
+import Place from '@/models/place.model';
 
-type Props = {
-  params: Promise<{ id: string }>
-}
+type RouteContext = {
+  params: Promise<{
+    placeId: string;
+  }>;
+};
 
 export async function GET(
-  request: NextRequest,
-  { params }: Props
+  _request: NextRequest,
+  { params }: RouteContext
 ) {
-  const { id } = await params;
-  
   try {
-    const placeService = new PlaceService();
-    const place = await placeService.getPlace(id);
+    const resolvedParams = await params;
+    await connectDB();
 
+    const place = await Place.findById(resolvedParams.placeId);
     if (!place) {
       return NextResponse.json(
         { error: 'Lieu non trouvé' },
@@ -24,9 +26,9 @@ export async function GET(
 
     return NextResponse.json(place);
   } catch (error) {
-    console.error('Erreur lors de la récupération du lieu:', error);
+    console.error('Error in GET /api/places/[placeId]:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur' },
+      { error: 'Erreur serveur interne' },
       { status: 500 }
     );
   }

@@ -4,8 +4,7 @@ import connectDB from '@/lib/db/connection';
 import User from '@/models/User';
 import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
 import mongoose from 'mongoose';
-// Fonction utilitaire pour extraire userId de l'URL
-// app/api/admin/users/[userId]/route.ts
+
 
 function getUserIdFromRequest(req: NextRequest): string | null {
   try {

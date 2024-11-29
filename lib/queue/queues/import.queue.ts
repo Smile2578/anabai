@@ -5,7 +5,13 @@ import { ImportJobData} from '../types/import.types'
 import { QueueConfig } from '../types/queue.types'
 
 const queueConfig: QueueConfig = {
-  redis: redisConfig,
+  redis: {
+    host: redisConfig.host || 'localhost',
+    port: redisConfig.port || 6379,
+    password: redisConfig.password,
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false
+  },
   defaultJobOptions: {
     attempts: 3,
     backoff: {

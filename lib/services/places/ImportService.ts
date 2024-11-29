@@ -89,10 +89,13 @@ export class ImportService {
 
     // Création des URLs des photos sans utiliser getPhotoUrl
     const photos = googlePlace.photos?.map((photo, index) => ({
-      url: this.googlePlacesService.getPhotoUrl(photo),
+      url: photo.name,
       source: 'Google Places',
       isCover: index === 0,
-      name: `img_${(index + 1).toString().padStart(2, '0')}`
+      name: `${googlePlace.displayName.text}-${index + 1}`,
+      caption: {
+        fr: photo.name
+      }
     })) || [];
 
     

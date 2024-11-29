@@ -4,9 +4,9 @@ import BlogPost from '@/models/blog.model';
 import connectDB from '@/lib/db/connection';
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 export async function GET(
@@ -15,6 +15,7 @@ export async function GET(
 ) {
   try {
     const session = await auth();
+    const resolvedParams = await params;
     
     if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
       return NextResponse.json(
@@ -25,7 +26,7 @@ export async function GET(
 
     await connectDB();
 
-    const post = await BlogPost.findById(params.id);
+    const post = await BlogPost.findById(resolvedParams.id);
     if (!post) {
       return NextResponse.json(
         { error: 'Article non trouvé' },
@@ -49,6 +50,7 @@ export async function PATCH(
 ) {
   try {
     const session = await auth();
+    const resolvedParams = await params;
     
     if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
       return NextResponse.json(
@@ -60,7 +62,7 @@ export async function PATCH(
     await connectDB();
 
     const data = await request.json();
-    const post = await BlogPost.findById(params.id);
+    const post = await BlogPost.findById(resolvedParams.id);
 
     if (!post) {
       return NextResponse.json(
