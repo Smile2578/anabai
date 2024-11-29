@@ -5,13 +5,11 @@ import { auth } from '@/auth';
 import connectDB from '@/lib/db/connection';
 import BlogPost from '@/models/blog.model';
 import Image from 'next/image';
-interface Props {
-  params: {
-    id: string;
-  };
-}
 
-export default async function BlogPostPreview({ params }: Props) {
+type Params = Promise<{ id: string }>;
+
+export default async function BlogPostPreview(props: { params: Params }) {
+  const params = await props.params;
   const session = await auth();
   
   if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {

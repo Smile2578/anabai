@@ -8,26 +8,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { BlogPost } from '@/types/blog';
+import type { BlogPost, BlogPostSEO } from '@/types/blog';
 import { useSession } from 'next-auth/react';
 import { Loader2, ImageIcon } from 'lucide-react';
+import useSWR from 'swr';
 import Image from 'next/image';
 
 type BlogPostForm = Omit<BlogPost, '_id' | 'createdAt' | 'updatedAt'>;
-
-interface SEOFormData {
-  title?: {
-    fr?: string;
-    en?: string;
-  };
-  description?: {
-    fr?: string;
-    en?: string;
-  };
-  keywords?: string[];
-}
-
 type Params = Promise<{ id: string }>;
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function EditBlogPost(props: { params: Params }) {
   const params = use(props.params);
@@ -35,12 +25,14 @@ export default function EditBlogPost(props: { params: Params }) {
   const { data: session } = useSession();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [tinyMCEKey, setTinyMCEKey] = useState<string>('');
   const [isLoadingEditor, setIsLoadingEditor] = useState(true);
-  const [post, setPost] = useState<BlogPostForm | null>(null);
 
-  // Charger la clé TinyMCE
+  const { data: post, mutate } = useSWR<BlogPostForm>(
+    `/api/admin/blog/${params.id}`,
+    fetcher
+  );
+
   useEffect(() => {
     setIsLoadingEditor(true);
     fetch('/api/admin/tinymce')
@@ -63,31 +55,6 @@ export default function EditBlogPost(props: { params: Params }) {
       });
   }, [toast]);
 
-  // Charger l'article
-  useEffect(() => {
-    setIsLoading(true);
-    fetch(`/api/admin/blog/${params.id}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        setPost(data);
-      })
-      .catch(error => {
-        console.error('Erreur lors de la récupération de l\'article:', error);
-        toast({
-          title: 'Erreur',
-          description: 'Impossible de charger l\'article.',
-          variant: 'destructive',
-        });
-        router.push('/admin/blog');
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [params.id, router, toast]);
-
   const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0] || !post) return;
     
@@ -107,13 +74,13 @@ export default function EditBlogPost(props: { params: Params }) {
         throw new Error(data.error);
       }
 
-      setPost({
+      await mutate({
         ...post,
         coverImage: {
           url: data.location,
           alt: file.name.split('.')[0],
         },
-      });
+      }, false);
 
       toast({
         title: 'Image téléchargée',
@@ -164,38 +131,47 @@ export default function EditBlogPost(props: { params: Params }) {
     }
   };
 
-  const updateSEO = (data: Partial<SEOFormData>) => {
-    setPost(prev => {
-      if (!prev) return null;
-      
-      const currentSEO: SEOFormData = prev.seo || {
-        title: { fr: '', en: '' },
-        description: { fr: '', en: '' },
-        keywords: []
-      };
-      
-      const newSEO = {
-        title: {
-          fr: currentSEO.title?.fr || '',
-          en: currentSEO.title?.en || '',
-          ...data.title,
-        },
-        description: {
-          fr: currentSEO.description?.fr || '',
-          en: currentSEO.description?.en || '',
-          ...data.description,
-        },
-        keywords: data.keywords || currentSEO.keywords || [],
-      };
+  const updateField = async (field: string, value: any) => {
+    if (!post) return;
+    await mutate({ ...post, [field]: value }, false);
+  };
 
-      return {
-        ...prev,
-        seo: newSEO,
-      };
+  const updateSEO = (data: Partial<BlogPostSEO>) => {
+    if (!post) return;
+    mutate({
+      ...post,
+      seo: {
+        title: { fr: post.title.fr, en: post.title.en || '', ...post.seo?.title, ...data.title },
+        description: { fr: post.excerpt.fr, en: post.excerpt.en || '', ...post.seo?.description, ...data.description },
+        keywords: data.keywords || post.seo?.keywords || [],
+      },
     });
   };
 
-  if (isLoading || !post) {
+  const renderEditor = (lang: 'fr' | 'en') => (
+    <Editor
+      apiKey={tinyMCEKey}
+      init={{
+        height: 500,
+        menubar: true,
+        plugins: [
+          'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+          'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+          'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+        ],
+        toolbar: 'undo redo | blocks | ' +
+          'bold italic forecolor | alignleft aligncenter ' +
+          'alignright alignjustify | bullist numlist outdent indent | ' +
+          'removeformat | help',
+      }}
+      value={post?.content?.[lang] || ''}
+      onEditorChange={(content) => {
+        updateField('content', { ...post?.content, [lang]: content });
+      }}
+    />
+  );
+
+  if (!post) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -203,73 +179,10 @@ export default function EditBlogPost(props: { params: Params }) {
     );
   }
 
-  const renderEditor = (lang: 'fr' | 'en') => {
-    if (isLoadingEditor) {
-      return (
-        <div className="flex items-center justify-center h-[500px] border rounded-md">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      );
-    }
-
-    if (!tinyMCEKey) {
-      return (
-        <div className="flex items-center justify-center h-[500px] border rounded-md">
-          <p className="text-destructive">Erreur de chargement de l&apos;éditeur</p>
-        </div>
-      );
-    }
-
-    return (
-      <Editor
-        apiKey={tinyMCEKey}
-        init={{
-          height: 500,
-          menubar: true,
-          plugins: [
-            'anchor', 'autolink', 'charmap', 'codesample', 'emoticons', 
-            'image', 'link', 'lists', 'media', 'searchreplace', 
-            'table', 'visualblocks', 'wordcount', 'fullscreen',
-            'advlist', 'preview', 'help', 'code'
-          ],
-          toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | ' +
-            'link image media table | align lineheight | numlist bullist indent outdent | ' +
-            'emoticons charmap | removeformat | help',
-          content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
-          
-          // Configuration de l'upload d'images
-          images_upload_url: '/api/admin/blog/upload',
-          images_upload_credentials: true,
-          images_reuse_filename: true,
-          automatic_uploads: true,
-          
-          // Personnalisation de la boîte de dialogue d'image
-          image_title: true,
-          image_description: true,
-          image_caption: true,
-          image_dimensions: true,
-          
-          // Tailles d'images prédéfinies
-          image_class_list: [
-            { title: 'Responsive', value: 'img-fluid' },
-            { title: 'Pleine largeur', value: 'img-fluid w-full' },
-            { title: 'Aligné à gauche', value: 'img-fluid float-left mr-4' },
-            { title: 'Aligné à droite', value: 'img-fluid float-right ml-4' }
-          ],
-        }}
-        value={post.content?.[lang] || ''}
-        onEditorChange={(content) => {
-          const newContent = { ...post.content, [lang]: content };
-          setPost(prev => prev ? { ...prev, content: newContent } : null);
-        }}
-      />
-    );
-  };
-
   return (
     <div className="container mx-auto py-10">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">Modifier l&apos;Article</h1>
+        <h1 className="text-2xl font-bold">Modifier l'Article</h1>
         <div className="space-x-4">
           <Button
             variant="outline"
@@ -305,7 +218,7 @@ export default function EditBlogPost(props: { params: Params }) {
                   src={post.coverImage.url}
                   alt={post.coverImage.alt}
                   fill
-                  className="w-full h-full object-cover rounded-md"
+                  className="object-cover rounded-md"
                 />
               </div>
             ) : (
@@ -324,13 +237,10 @@ export default function EditBlogPost(props: { params: Params }) {
                 type="text"
                 placeholder="Texte alternatif"
                 value={post.coverImage?.alt || ''}
-                onChange={(e) => setPost(prev => prev ? {
-                  ...prev,
-                  coverImage: {
-                    ...prev.coverImage,
-                    alt: e.target.value,
-                  },
-                } : null)}
+                onChange={(e) => updateField('coverImage', {
+                  ...post.coverImage,
+                  alt: e.target.value,
+                })}
                 className="w-full"
               />
             </div>
@@ -349,10 +259,7 @@ export default function EditBlogPost(props: { params: Params }) {
               <Input
                 id="title-fr"
                 value={post.title?.fr || ''}
-                onChange={(e) => setPost(prev => prev ? {
-                  ...prev,
-                  title: { ...prev.title, fr: e.target.value },
-                } : null)}
+                onChange={(e) => updateField('title', { ...post.title, fr: e.target.value })}
                 required
               />
             </div>
@@ -362,10 +269,7 @@ export default function EditBlogPost(props: { params: Params }) {
               <Input
                 id="excerpt-fr"
                 value={post.excerpt?.fr || ''}
-                onChange={(e) => setPost(prev => prev ? {
-                  ...prev,
-                  excerpt: { ...prev.excerpt, fr: e.target.value },
-                } : null)}
+                onChange={(e) => updateField('excerpt', { ...post.excerpt, fr: e.target.value })}
                 required
               />
             </div>
@@ -382,10 +286,7 @@ export default function EditBlogPost(props: { params: Params }) {
               <Input
                 id="title-en"
                 value={post.title?.en || ''}
-                onChange={(e) => setPost(prev => prev ? {
-                  ...prev,
-                  title: { ...prev.title, en: e.target.value },
-                } : null)}
+                onChange={(e) => updateField('title', { ...post.title, en: e.target.value })}
               />
             </div>
 
@@ -394,10 +295,7 @@ export default function EditBlogPost(props: { params: Params }) {
               <Input
                 id="excerpt-en"
                 value={post.excerpt?.en || ''}
-                onChange={(e) => setPost(prev => prev ? {
-                  ...prev,
-                  excerpt: { ...prev.excerpt, en: e.target.value },
-                } : null)}
+                onChange={(e) => updateField('excerpt', { ...post.excerpt, en: e.target.value })}
               />
             </div>
 
@@ -415,10 +313,7 @@ export default function EditBlogPost(props: { params: Params }) {
             <Input
               id="category"
               value={post.category}
-              onChange={(e) => setPost(prev => prev ? {
-                ...prev,
-                category: e.target.value,
-              } : null)}
+              onChange={(e) => updateField('category', e.target.value)}
               required
             />
           </div>
@@ -427,10 +322,7 @@ export default function EditBlogPost(props: { params: Params }) {
             <Input
               id="tags"
               value={post.tags?.join(', ')}
-              onChange={(e) => setPost(prev => prev ? {
-                ...prev,
-                tags: e.target.value.split(',').map(tag => tag.trim()),
-              } : null)}
+              onChange={(e) => updateField('tags', e.target.value.split(',').map(tag => tag.trim()))}
             />
           </div>
         </div>
@@ -450,7 +342,12 @@ export default function EditBlogPost(props: { params: Params }) {
                 <Input
                   id="seo-title-fr"
                   value={post.seo?.title?.fr || post.title?.fr || ''}
-                  onChange={(e) => updateSEO({ title: { fr: e.target.value } })}
+                  onChange={(e) => updateSEO({
+                    title: {
+                      fr: e.target.value,
+                      en: post.seo?.title?.en || post.title?.en || '',
+                    },
+                  })}
                   placeholder={post.title?.fr}
                 />
                 <p className="text-sm text-gray-500 mt-1">
@@ -464,7 +361,12 @@ export default function EditBlogPost(props: { params: Params }) {
                   id="seo-description-fr"
                   className="w-full min-h-[100px] px-3 py-2 border rounded-md"
                   value={post.seo?.description?.fr || post.excerpt?.fr || ''}
-                  onChange={(e) => updateSEO({ description: { fr: e.target.value } })}
+                  onChange={(e) => updateSEO({
+                    description: {
+                      fr: e.target.value,
+                      en: post.seo?.description?.en || post.excerpt?.en || '',
+                    },
+                  })}
                   placeholder={post.excerpt?.fr}
                 />
                 <p className="text-sm text-gray-500 mt-1">
@@ -479,7 +381,12 @@ export default function EditBlogPost(props: { params: Params }) {
                 <Input
                   id="seo-title-en"
                   value={post.seo?.title?.en || post.title?.en || ''}
-                  onChange={(e) => updateSEO({ title: { en: e.target.value } })}
+                  onChange={(e) => updateSEO({
+                    title: {
+                      fr: post.seo?.title?.fr || post.title?.fr || '',
+                      en: e.target.value,
+                    },
+                  })}
                   placeholder={post.title?.en}
                 />
                 <p className="text-sm text-gray-500 mt-1">
@@ -493,7 +400,12 @@ export default function EditBlogPost(props: { params: Params }) {
                   id="seo-description-en"
                   className="w-full min-h-[100px] px-3 py-2 border rounded-md"
                   value={post.seo?.description?.en || post.excerpt?.en || ''}
-                  onChange={(e) => updateSEO({ description: { en: e.target.value } })}
+                  onChange={(e) => updateSEO({
+                    description: {
+                      fr: post.seo?.description?.fr || post.excerpt?.fr || '',
+                      en: e.target.value,
+                    },
+                  })}
                   placeholder={post.excerpt?.en}
                 />
                 <p className="text-sm text-gray-500 mt-1">
@@ -508,8 +420,8 @@ export default function EditBlogPost(props: { params: Params }) {
             <Input
               id="seo-keywords"
               value={post.seo?.keywords?.join(', ') || ''}
-              onChange={(e) => updateSEO({ 
-                keywords: e.target.value.split(',').map(kw => kw.trim())
+              onChange={(e) => updateSEO({
+                keywords: e.target.value.split(',').map(kw => kw.trim()),
               })}
               placeholder="exemple, mot-clé, référencement"
             />

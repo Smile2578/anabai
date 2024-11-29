@@ -5,37 +5,19 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import type { BlogPost, BlogPostVersion } from '@/models/blog.model';
+import type { BlogPost, BlogPostVersion } from '@/types/blog';
 import useSWR from 'swr';
+import { use } from 'react';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-interface Props {
-  params: {
-    id: string;
-  };
-}
+type Params = Promise<{ id: string }>;
 
-export default function BlogPostVersionsPage({ params }: Props) {
+export default function BlogVersionsPage(props: { params: Params }) {
+  const params = use(props.params);
   const router = useRouter();
   const { toast } = useToast();
-  const [selectedVersion, setSelectedVersion] = useState<BlogPostVersion | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
 
   const { data: post, mutate } = useSWR<BlogPost>(
@@ -43,17 +25,31 @@ export default function BlogPostVersionsPage({ params }: Props) {
     fetcher
   );
 
+  if (!post?.versions?.length) {
+    return (
+      <div className="container mx-auto py-10">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Aucune version disponible</h1>
+          <Button
+            variant="outline"
+            onClick={() => router.push(`/admin/blog/${params.id}/edit`)}
+          >
+            Retour à l'édition
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const handleRestore = async (versionIndex: number) => {
-    if (!confirm('Êtes-vous sûr de vouloir restaurer cette version ?')) {
-      return;
-    }
-
-    setIsRestoring(true);
-
     try {
-      const response = await fetch(`/api/admin/blog/${params.id}/versions/${versionIndex}`, {
-        method: 'POST',
-      });
+      setIsRestoring(true);
+      const response = await fetch(
+        `/api/admin/blog/${params.id}/versions/${versionIndex}`,
+        {
+          method: 'POST',
+        }
+      );
 
       if (!response.ok) {
         throw new Error('Erreur lors de la restauration');
@@ -61,7 +57,7 @@ export default function BlogPostVersionsPage({ params }: Props) {
 
       toast({
         title: 'Version restaurée',
-        description: 'L\'article a été restauré à la version sélectionnée.',
+        description: 'L\'article a été restauré avec succès.',
       });
 
       mutate();
@@ -78,156 +74,48 @@ export default function BlogPostVersionsPage({ params }: Props) {
     }
   };
 
-  if (!post) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto py-10">
       <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">Historique des versions</h1>
-          <p className="text-gray-600">
-            Article : {post.title.fr}
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold">Versions de l'article</h1>
         <Button
           variant="outline"
           onClick={() => router.push(`/admin/blog/${params.id}/edit`)}
         >
-          Retour à l&apos;édition
+          Retour à l'édition
         </Button>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Date</TableHead>
-            <TableHead>Auteur</TableHead>
-            <TableHead>Titre (FR)</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {post.versions?.map((version: BlogPostVersion, index: number) => (
-            <TableRow key={version.createdAt.toString()}>
-              <TableCell>
-                {format(new Date(version.createdAt), 'dd MMMM yyyy HH:mm', { locale: fr })}
-              </TableCell>
-              <TableCell>{version.createdBy.name}</TableCell>
-              <TableCell>{version.title.fr}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedVersion(version);
-                      setIsDialogOpen(true);
-                    }}
-                  >
-                    Voir
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleRestore(index)}
-                    disabled={isRestoring}
-                  >
-                    Restaurer
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Détails de la version</DialogTitle>
-          </DialogHeader>
-          
-          {selectedVersion && (
-            <div className="space-y-6">
+      <div className="space-y-6">
+        {post.versions.map((version: BlogPostVersion, index: number) => (
+          <div
+            key={version.createdAt.toString()}
+            className="border rounded-lg p-6"
+          >
+            <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="font-medium mb-2">Titre</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Français</p>
-                    <p>{selectedVersion.title.fr}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">English</p>
-                    <p>{selectedVersion.title.en}</p>
-                  </div>
-                </div>
+                <h2 className="text-xl font-semibold mb-2">
+                  {version.title.fr}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Créée le{' '}
+                  {format(new Date(version.createdAt), 'dd MMMM yyyy à HH:mm', {
+                    locale: fr,
+                  })}
+                  {' par '}
+                  {version.createdBy.name}
+                </p>
               </div>
-
-              <div>
-                <h3 className="font-medium mb-2">Extrait</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Français</p>
-                    <p>{selectedVersion.excerpt.fr}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">English</p>
-                    <p>{selectedVersion.excerpt.en}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-medium mb-2">Contenu</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Français</p>
-                    <div 
-                      className="prose prose-sm max-w-none border rounded-md p-4"
-                      dangerouslySetInnerHTML={{ __html: selectedVersion.content.fr }}
-                    />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">English</p>
-                    <div 
-                      className="prose prose-sm max-w-none border rounded-md p-4"
-                      dangerouslySetInnerHTML={{ __html: selectedVersion.content.en || '' }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-medium mb-2">Métadonnées</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Catégorie</p>
-                    <p>{selectedVersion.category}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Tags</p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedVersion.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-2 py-1 bg-gray-100 rounded-full text-sm"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <Button
+                onClick={() => handleRestore(index)}
+                disabled={isRestoring}
+              >
+                Restaurer cette version
+              </Button>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        ))}
+      </div>
     </div>
   );
 } 
