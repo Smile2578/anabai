@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Editor } from '@tinymce/tinymce-react';
 import { Button } from '@/components/ui/button';
@@ -15,12 +15,6 @@ import Image from 'next/image';
 
 type BlogPostForm = Omit<BlogPost, '_id' | 'createdAt' | 'updatedAt'>;
 
-interface PageProps {
-  params: {
-    id: string;
-  };
-}
-
 interface SEOFormData {
   title?: {
     fr?: string;
@@ -33,7 +27,10 @@ interface SEOFormData {
   keywords?: string[];
 }
 
-export default function EditBlogPost({ params }: PageProps) {
+type Params = Promise<{ id: string }>;
+
+export default function EditBlogPost(props: { params: Params }) {
+  const params = use(props.params);
   const router = useRouter();
   const { data: session } = useSession();
   const { toast } = useToast();
