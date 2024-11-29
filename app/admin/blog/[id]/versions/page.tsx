@@ -34,7 +34,7 @@ export default function BlogVersionsPage(props: { params: Params }) {
             variant="outline"
             onClick={() => router.push(`/admin/blog/${params.id}/edit`)}
           >
-            Retour à l'édition
+            Retour à l&apos;édition
           </Button>
         </div>
       </div>
@@ -77,12 +77,12 @@ export default function BlogVersionsPage(props: { params: Params }) {
   return (
     <div className="container mx-auto py-10">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">Versions de l'article</h1>
+        <h1 className="text-2xl font-bold">Versions de l&apos;article</h1>
         <Button
           variant="outline"
           onClick={() => router.push(`/admin/blog/${params.id}/edit`)}
         >
-          Retour à l'édition
+          Retour à l&apos;édition
         </Button>
       </div>
 

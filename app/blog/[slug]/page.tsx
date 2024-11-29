@@ -1,4 +1,4 @@
-import { Metadata, ResolvingMetadata } from 'next';
+import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -11,8 +11,7 @@ type Params = Promise<{ slug: string }>;
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 export async function generateMetadata(
-  props: { params: Params; searchParams: SearchParams },
-  parent: ResolvingMetadata
+  props: { params: Params; searchParams: SearchParams }
 ): Promise<Metadata> {
   const params = await props.params;
   await connectDB();

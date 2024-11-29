@@ -26,7 +26,6 @@ export default function EditBlogPost(props: { params: Params }) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tinyMCEKey, setTinyMCEKey] = useState<string>('');
-  const [isLoadingEditor, setIsLoadingEditor] = useState(true);
 
   const { data: post, mutate } = useSWR<BlogPostForm>(
     `/api/admin/blog/${params.id}`,
@@ -34,7 +33,6 @@ export default function EditBlogPost(props: { params: Params }) {
   );
 
   useEffect(() => {
-    setIsLoadingEditor(true);
     fetch('/api/admin/tinymce')
       .then(res => res.json())
       .then(data => {
@@ -49,9 +47,6 @@ export default function EditBlogPost(props: { params: Params }) {
           description: 'Impossible de charger l\'éditeur de texte.',
           variant: 'destructive',
         });
-      })
-      .finally(() => {
-        setIsLoadingEditor(false);
       });
   }, [toast]);
 
@@ -131,9 +126,9 @@ export default function EditBlogPost(props: { params: Params }) {
     }
   };
 
-  const updateField = async (field: string, value: any) => {
+  const updateField = (field: string, value: unknown) => {
     if (!post) return;
-    await mutate({ ...post, [field]: value }, false);
+    mutate({ ...post, [field]: value }, false);
   };
 
   const updateSEO = (data: Partial<BlogPostSEO>) => {
@@ -182,7 +177,7 @@ export default function EditBlogPost(props: { params: Params }) {
   return (
     <div className="container mx-auto py-10">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">Modifier l'Article</h1>
+        <h1 className="text-2xl font-bold">Modifier l&apos;article</h1>
         <div className="space-x-4">
           <Button
             variant="outline"
