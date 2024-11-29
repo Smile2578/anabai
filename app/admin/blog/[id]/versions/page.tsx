@@ -99,7 +99,7 @@ export default function BlogPostVersionsPage({ params }: Props) {
           variant="outline"
           onClick={() => router.push(`/admin/blog/${params.id}/edit`)}
         >
-          Retour à l'édition
+          Retour à l&apos;édition
         </Button>
       </div>
 
