@@ -3,9 +3,15 @@ import { auth } from '@/auth';
 import BlogPost from '@/models/blog.model';
 import connectDB from '@/lib/db/connection';
 
+type RouteContext = {
+  params: {
+    id: string;
+  };
+};
+
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params }: RouteContext
 ) {
   try {
     const session = await auth();
@@ -39,7 +45,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteContext
 ) {
   try {
     const session = await auth();
