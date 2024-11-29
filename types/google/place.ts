@@ -40,7 +40,7 @@ export interface GooglePlace {
   regularOpeningHours?: GoogleOpeningHours;
   secondaryOpeningHours?: GoogleOpeningHours[];
   
-  priceLevel?: string;
+  priceLevel?: 'PRICE_LEVEL_FREE' | 'PRICE_LEVEL_INEXPENSIVE' | 'PRICE_LEVEL_MODERATE' | 'PRICE_LEVEL_EXPENSIVE' | 'PRICE_LEVEL_VERY_EXPENSIVE';
   priceRange?: GooglePriceRange;
   
   internationalPhoneNumber?: string;
@@ -60,6 +60,15 @@ export interface GooglePlace {
   reservable?: boolean;
   takeout?: boolean;
   paymentOptions?: GooglePaymentOptions;
+  
+  // Food and drink options
+  servesBeer?: boolean;
+  servesBreakfast?: boolean;
+  servesBrunch?: boolean;
+  servesDinner?: boolean;
+  servesLunch?: boolean;
+  servesVegetarianFood?: boolean;
+  servesWine?: boolean;
   
   utcOffsetMinutes?: number;
 }

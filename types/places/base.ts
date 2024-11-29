@@ -39,8 +39,13 @@ export interface PlaceImage {
   url: string;
   source: string;
   isCover: boolean;
-  caption?: LocalizedString;
-  name?: string; 
+  caption: LocalizedString;
+  name?: string;
+  blobId?: string;
+  blobUrl?: string;
+  contentType?: string;
+  uploadedAt?: string;
+  size?: number;
 }
 
 export interface PlacePricing {
@@ -92,6 +97,15 @@ export interface PracticalInfo {
     wheelchairAccessibleEntrance: boolean;
     wheelchairAccessibleRestroom: boolean;
     wheelchairAccessibleSeating: boolean;
+  };
+  foodAndDrinkOptions?: {
+    servesBeer: boolean;
+    servesBreakfast: boolean;
+    servesBrunch: boolean;
+    servesDinner: boolean;
+    servesLunch: boolean;
+    servesVegetarianFood: boolean;
+    servesWine: boolean;
   };
 }
 

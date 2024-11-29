@@ -201,15 +201,6 @@ export const ImagesSection = ({ data, onChange, isSubmitting }: ImagesSectionPro
                                 disabled={isSubmitting}
                               />
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Label>Légende JA</Label>
-                              <Input
-                                value={image.caption?.ja || ''}
-                                onChange={(e) => handleCaptionChange(index, 'ja', e.target.value)}
-                                placeholder="キャプション"
-                                disabled={isSubmitting}
-                              />
-                            </div>
                           </div>
 
                           {/* Actions */}

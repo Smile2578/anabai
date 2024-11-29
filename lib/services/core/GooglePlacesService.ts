@@ -65,7 +65,8 @@ export class GooglePlacesService {
   }
 
   public getPhotoUrl(photo: { name: string }): string {
-    return `${this.baseUrl}/media/${photo.name}?key=${this.apiKey}&maxwidth=800&maxheight=600&quality=80`;
+    const photoReference = photo.name.split('/').pop();
+    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&maxheight=600&photo_reference=${photoReference}&key=${this.apiKey}`;
   }
 
   private async fetchWithCache(

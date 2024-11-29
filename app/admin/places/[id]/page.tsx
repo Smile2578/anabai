@@ -4,6 +4,7 @@
 import { use } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlaceEditForm } from '@/components/admin/places/PlaceEditForm';
+import { PlaceCard } from '@/components/places/PlaceCard';
 import { usePlace } from '@/hooks/usePlace';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -86,10 +87,18 @@ export default function PlaceEditPage({ params }: { params: Promise<{ id: string
         </AlertDialog>
       </div>
       <TooltipProvider>
-      <PlaceEditForm
-        place={place}
-        onSubmit={updatePlace}
-        />
+        <div className="grid grid-cols-1 gap-6">
+          <div>
+            <PlaceEditForm
+              place={place}
+              onSubmit={updatePlace}
+            />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Aperçu de la carte</h2>
+            <PlaceCard place={place} />
+          </div>
+        </div>
       </TooltipProvider>
     </div>
   );

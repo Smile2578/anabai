@@ -30,7 +30,7 @@ export interface Place {
   openingHours?: OpeningHours;
   contact?: PlaceContact;
   rating?: PlaceRating;
-  practical_info?: PracticalInfo;
+  practicalInfo?: PracticalInfo;
   metadata: PlaceMetadata;
   isActive: boolean;
   updatedAt: Date;

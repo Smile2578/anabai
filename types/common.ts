@@ -2,8 +2,7 @@
 export type Language = 'fr' | 'ja' | 'en';
 
 export interface LocalizedString {
-  fr?: string;
-  ja?: string;
+  fr: string;
   en?: string;
 }
 
@@ -95,3 +94,52 @@ export type Status = 'brouillon' | 'publié' | 'archivé';
 
 export type PriceLevel = 1 | 2 | 3 | 4;
 
+export interface PriceRange {
+  min?: number;
+  max?: number;
+  currency?: string;
+}
+
+export interface PriceDetails {
+  level: PriceLevel;
+  range?: PriceRange;
+  details?: LocalizedStringRequired;
+}
+
+export type FoodAndDrinkOption = 'servesBreakfast' | 'servesBeer' | 'servesBrunch' | 'servesDinner' | 'servesLunch' | 'servesVegetarianFood' | 'servesWine';
+
+export interface PaginationOptions {
+  page: number;
+  limit: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export type SortOrder = 'asc' | 'desc';
+
+export interface SortOptions {
+  field: string;
+  order: SortOrder;
+}
+
+export interface DateRange {
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export interface SearchFilters extends DateRange {
+  search?: string;
+  [key: string]: any;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}

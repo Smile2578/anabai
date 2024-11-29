@@ -6,20 +6,14 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { JapaneseYen } from 'lucide-react';
+import { Banknote } from 'lucide-react';
+import { PRICE_LEVELS } from '@/lib/config/price-levels';
 
 interface PricingSectionProps {
   data: Place;
   onChange: (value: Partial<Place>) => void;
   isSubmitting?: boolean;
 }
-
-const PRICE_LEVELS = [
-  { value: 1, label: 'Économique', description: 'Moins de ¥1,000', icon: '¥' },
-  { value: 2, label: 'Intermédiaire', description: '¥1,000 - ¥3,000', icon: '¥¥' },
-  { value: 3, label: 'Élevé', description: '¥3,000 - ¥10,000', icon: '¥¥¥' },
-  { value: 4, label: 'Luxe', description: 'Plus de ¥10,000', icon: '¥¥¥¥' },
-];
 
 export const PricingSection = ({ data, onChange, isSubmitting }: PricingSectionProps) => {
   const pricing = data.pricing || {
@@ -29,22 +23,39 @@ export const PricingSection = ({ data, onChange, isSubmitting }: PricingSectionP
   };
 
   const handlePriceLevelChange = (value: string) => {
+    const level = parseInt(value) as 1 | 2 | 3 | 4;
+    const priceInfo = PRICE_LEVELS.find(p => p.value === level);
+    
     onChange({
       pricing: {
         ...pricing,
-        level: parseInt(value) as 1 | 2 | 3 | 4
+        level,
+        details: {
+          fr: priceInfo?.description || '',
+          ja: priceInfo?.ja.description || ''
+        }
       }
     });
   };
 
   const handlePriceRangeChange = (field: 'min' | 'max', value: string) => {
     const numValue = value === '' ? undefined : parseInt(value);
+    const newRange = {
+      min: field === 'min' ? numValue ?? 0 : pricing.range?.min ?? 0,
+      max: field === 'max' ? numValue ?? 0 : pricing.range?.max ?? 0
+    };
+
+    // Mettre à jour automatiquement la description si elle est vide
+    const rangeText = numValue !== undefined ? 
+      `¥${newRange.min.toLocaleString()} - ¥${newRange.max.toLocaleString()}` : '';
+
     onChange({
       pricing: {
         ...pricing,
-        range: {
-          min: field === 'min' ? numValue ?? 0 : pricing.range?.min ?? 0,
-          max: field === 'max' ? numValue ?? 0 : pricing.range?.max ?? 0
+        range: newRange,
+        details: {
+          fr: pricing.details.fr || rangeText,
+          ja: pricing.details.ja || rangeText
         }
       }
     });
@@ -67,7 +78,7 @@ export const PricingSection = ({ data, onChange, isSubmitting }: PricingSectionP
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-2xl font-bold text-primary flex items-center gap-2">
-            <JapaneseYen className="w-6 h-6" />
+            <Banknote className="w-6 h-6" />
             Tarification
           </CardTitle>
           <Badge variant="outline" className="text-lg px-4">
@@ -111,36 +122,7 @@ export const PricingSection = ({ data, onChange, isSubmitting }: PricingSectionP
               </div>
             ))}
           </RadioGroup>
-        </div>
-
-        <Separator />
-
-        {/* Fourchette de prix */}
-        <div className="space-y-4">
-          <Label className="text-lg font-semibold">Fourchette de prix</Label>
-          <div className="flex items-center gap-4">
-            <div className="flex-1 space-y-2">
-              <Label>Prix minimum (¥)</Label>
-              <Input
-                type="number"
-                value={pricing.range?.min || ''}
-                onChange={(e) => handlePriceRangeChange('min', e.target.value)}
-                placeholder="Ex: 1000"
-                disabled={isSubmitting}
-              />
-            </div>
-            <div className="flex-1 space-y-2">
-              <Label>Prix maximum (¥)</Label>
-              <Input
-                type="number"
-                value={pricing.range?.max || ''}
-                onChange={(e) => handlePriceRangeChange('max', e.target.value)}
-                placeholder="Ex: 3000"
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
-        </div>
+        </div>  
 
         <Separator />
 
@@ -176,9 +158,7 @@ export const PricingSection = ({ data, onChange, isSubmitting }: PricingSectionP
           <p className="text-sm font-medium">Résumé de la tarification :</p>
           <div className="space-y-1 text-sm text-muted-foreground">
             <p>Niveau : {PRICE_LEVELS.find(level => level.value === pricing.level)?.label}</p>
-            {pricing.range?.min && pricing.range?.max && (
-              <p>Fourchette : ¥{pricing.range.min.toLocaleString()} - ¥{pricing.range.max.toLocaleString()}</p>
-            )}
+            <p>Fourchette : {PRICE_LEVELS.find(level => level.value === pricing.level)?.description}</p>
           </div>
         </div>
       </CardContent>

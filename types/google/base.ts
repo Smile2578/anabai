@@ -25,7 +25,6 @@ export interface GoogleDisplayName {
     bookingRequired: boolean;
     englishSupport: boolean;
     paymentMethods: string[];
-    budget_range?: string;
   }
 
 

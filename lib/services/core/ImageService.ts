@@ -20,6 +20,7 @@ interface ProcessedImage {
 
 export class ImageService {
  private cacheDir: string;
+ private readonly defaultImagePath: string = '/images/placeholder.webp';
  
  constructor() {
    this.cacheDir = path.join(process.cwd(), 'public', 'cache', 'images');
@@ -120,13 +121,35 @@ export class ImageService {
      throw new Error(errors.join(', '));
    }
  }
- 
+
+ private async getDefaultImage(): Promise<string> {
+   const defaultImagePath = path.join(process.cwd(), 'public', this.defaultImagePath);
+   try {
+     await fs.access(defaultImagePath);
+     return this.defaultImagePath;
+   } catch {
+     console.warn('Default image not found, creating one...');
+     // Créer une image par défaut simple avec Sharp
+     await sharp({
+       create: {
+         width: 800,
+         height: 600,
+         channels: 4,
+         background: { r: 200, g: 200, b: 200, alpha: 1 }
+       }
+     })
+     .webp()
+     .toFile(defaultImagePath);
+     return this.defaultImagePath;
+   }
+ }
+
  async cachePrimaryImage(images: { url: string; isCover: boolean }[]): Promise<string> {
   await this.ensureCacheDir();
 
   if (images.length === 0) {
     console.warn('No images available, using placeholder.');
-    return '/cache/images/placeholder.webp'; 
+    return this.getDefaultImage();
   }
 
   try {
@@ -136,7 +159,7 @@ export class ImageService {
     return cachedPath;
   } catch (error) {
     console.error('Error caching primary image:', error);
-    return '/cache/images/placeholder.webp'; 
+    return this.getDefaultImage();
   }
 }
 
@@ -163,7 +186,7 @@ async cacheImage(url: string): Promise<string> {
     }
   } catch (error) {
     console.error('Error caching image:', error);
-    return '/images/placeholder.jpg'; // Image par défaut en cas d'erreur
+    return this.getDefaultImage();
   }
 }
 

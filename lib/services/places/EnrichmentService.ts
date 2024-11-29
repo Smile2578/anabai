@@ -7,8 +7,9 @@ import { PLACE_CATEGORIES } from '@/lib/config/categories';
 import { GooglePlace } from '@/types/google/place';
 import { PlacePricing, AccessInfo, PracticalInfo } from '@/types/places/base';
 import { ImportPreview } from '@/types/import';
-import { GooglePhoto } from '@/types/google/details';
+import { GooglePhoto, GooglePriceRange } from '@/types/google/details';
 import { PlaceImage } from '@/types/places/base';
+import { PRICE_LEVELS } from '@/lib/config/price-levels';
 
 interface EnrichmentLog {
   placeId: string;
@@ -140,7 +141,9 @@ export class EnrichmentService {
     return Array.from(subcategories);
   }
 
-  private transformPriceLevel(priceLevel: string): 1 | 2 | 3 | 4 {
+  private transformPriceLevel(priceLevel?: string): 1 | 2 | 3 | 4 {
+    if (!priceLevel) return 2; // Prix modéré par défaut
+
     const priceLevelMap: Record<string, 1 | 2 | 3 | 4> = {
       'PRICE_LEVEL_FREE': 1,
       'PRICE_LEVEL_INEXPENSIVE': 1,
@@ -148,7 +151,8 @@ export class EnrichmentService {
       'PRICE_LEVEL_EXPENSIVE': 3,
       'PRICE_LEVEL_VERY_EXPENSIVE': 4
     };
-    return priceLevelMap[priceLevel] || 2; // Prix modéré par défaut
+
+    return priceLevelMap[priceLevel] || 2;
   }
 
   private getPriceLevelDescription(priceLevel: string): string {
@@ -159,26 +163,67 @@ export class EnrichmentService {
       'PRICE_LEVEL_EXPENSIVE': 'Prix élevé',
       'PRICE_LEVEL_VERY_EXPENSIVE': 'Prix très élevé'
     };
+
     return descriptions[priceLevel] || 'Prix modéré';
   }
 
-  private async extractPricing(details: GooglePlace): Promise<PlacePricing | undefined> {
-    if (!details.priceLevel) return undefined;
+  private formatPriceRange(range?: GooglePriceRange): string {
+    if (!range?.lowerPrice && !range?.upperPrice) return '';
+    
+    const formatPrice = (price?: number) => 
+      price ? `¥${price.toLocaleString()}` : '?';
 
-    const level = this.transformPriceLevel(details.priceLevel);
-    if (!level) return undefined;
+    if (range.lowerPrice === range.upperPrice) {
+      return `${formatPrice(range.lowerPrice)}`;
+    }
+
+    return `${formatPrice(range.lowerPrice)} - ${formatPrice(range.upperPrice)}`;
+  }
+
+  private transformPricing(googlePlace: GooglePlace): PlacePricing | undefined {
+    if (!googlePlace.priceLevel && !googlePlace.priceRange) {
+      return undefined;
+    }
+
+    const level = this.transformPriceLevel(googlePlace.priceLevel);
+    const priceInfo = PRICE_LEVELS.find(p => p.value === level);
+
+    // Extraire la fourchette de prix du texte si disponible
+    let range: { min: number; max: number } | undefined;
+    
+    if (googlePlace.priceRange?.text) {
+      // Extraire les nombres du texte (ex: "2,000-3,000 ¥")
+      const matches = googlePlace.priceRange.text.match(/(\d+[,\d]*)/g);
+      if (matches && matches.length >= 2) {
+        range = {
+          min: parseInt(matches[0].replace(/,/g, '')),
+          max: parseInt(matches[1].replace(/,/g, ''))
+        };
+      }
+    }
+    
+    // Utiliser les valeurs explicites si disponibles
+    if (googlePlace.priceRange?.lowerPrice && googlePlace.priceRange?.upperPrice) {
+      range = {
+        min: googlePlace.priceRange.lowerPrice,
+        max: googlePlace.priceRange.upperPrice
+      };
+    }
+
+    const details = {
+      fr: range 
+        ? `Prix entre ¥${range.min.toLocaleString()} et ¥${range.max.toLocaleString()}`
+        : priceInfo?.description || '',
+      ja: range
+        ? `料金：¥${range.min.toLocaleString()} ～ ¥${range.max.toLocaleString()}`
+        : priceInfo?.ja?.description || ''
+    };
 
     return {
       level,
       currency: 'JPY',
-      range: details.priceRange ? {
-        min: details.priceRange.lowerPrice || 0,
-        max: details.priceRange?.upperPrice !== undefined ? details.priceRange.upperPrice : 0
-      } : undefined,
-      details: details.priceRange?.text ? {
-        fr: details.priceRange.text as string,
-        ja: details.priceRange.text as string
-      } : { fr: '', ja: '' }
+      range,
+      details
     };
   }
 
@@ -202,7 +247,16 @@ export class EnrichmentService {
         wheelchairAccessibleEntrance: Boolean(details.accessibilityOptions.wheelchairAccessibleEntrance),
         wheelchairAccessibleRestroom: Boolean(details.accessibilityOptions.wheelchairAccessibleRestroom),
         wheelchairAccessibleSeating: Boolean(details.accessibilityOptions.wheelchairAccessibleSeating)
-      } : undefined
+      } : undefined,
+      foodAndDrinkOptions: {
+        servesBeer: Boolean(details.servesBeer),
+        servesBreakfast: Boolean(details.servesBreakfast),
+        servesBrunch: Boolean(details.servesBrunch),
+        servesDinner: Boolean(details.servesDinner),
+        servesLunch: Boolean(details.servesLunch),
+        servesVegetarianFood: Boolean(details.servesVegetarianFood),
+        servesWine: Boolean(details.servesWine)
+      }
     };
   }
 
@@ -272,7 +326,7 @@ export class EnrichmentService {
 
         // Traitement des images avec noms courts
         let images = await Promise.all(
-          (detailsFr.photos || []).map(async (photo: GooglePhoto, index: number) => {
+          (detailsFr.photos?.slice(0, 1) || []).map(async (photo: GooglePhoto, index: number) => {
             try {
               const photoUrl = this.googlePlacesService.getPhotoUrl(photo);
               const shortName = `img_${(index + 1).toString().padStart(2, '0')}`;
@@ -283,7 +337,7 @@ export class EnrichmentService {
               return {
                 url: cachedUrl, // Utiliser l'URL mise en cache
                 source: 'Google Places',
-                isCover: index === 0,
+                isCover: true, // Toujours true car c'est la seule image
                 name: shortName,
                 caption: {
                   fr: photo.authorAttributions?.[0]?.displayName || 'Image du lieu',
@@ -532,5 +586,43 @@ export class EnrichmentService {
         logs
       }
     };
+  }
+
+  async enrichSingleImage(placeId: string): Promise<PlaceImage | null> {
+    try {
+      console.log(`Début de l'enrichissement d'image pour ${placeId}`);
+  
+      const [detailsFr] = await Promise.all([
+        this.googlePlacesService.getPlaceDetails(placeId, 'fr')
+      ]);
+
+      if (!detailsFr.photos?.length) {
+        console.log('Aucune photo disponible pour ce lieu');
+        return null;
+      }
+
+      const photo = detailsFr.photos[0];
+      const photoUrl = this.googlePlacesService.getPhotoUrl(photo);
+      
+      try {
+        const cachedUrl = await this.imageService.cacheImage(photoUrl);
+        
+        return {
+          url: cachedUrl,
+          source: 'Google Places',
+          isCover: true,
+          name: 'img_01',
+          caption: {
+            fr: photo.authorAttributions?.[0]?.displayName || 'Image du lieu'
+          }
+        };
+      } catch (error) {
+        console.error(`Erreur de traitement d'image:`, error);
+        return null;
+      }
+    } catch (error) {
+      console.error(`Erreur lors de l'enrichissement d'image pour ${placeId}:`, error);
+      throw error;
+    }
   }
 }

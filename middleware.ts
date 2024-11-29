@@ -17,14 +17,6 @@ export async function middleware(req: NextRequest) {
       cookieName: 'next-auth.session-token',
     })
 
-    console.log('🔑 [Middleware] Token check:', {
-      token,
-      cookies: req.cookies.getAll(),
-      path: req.nextUrl.pathname,
-      headers: {
-        cookie: req.headers.get('cookie'),
-      }
-    })
 
     if (!token) {
       // Vérifier si nous avons un cookie de session

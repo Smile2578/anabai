@@ -58,18 +58,18 @@ export const placeFormSchema = z.object({
   })),
 
   pricing: z.object({
-    level: z.number().min(1).max(4).optional(),
-    currency: z.string().default('JPY'),
+    level: z.number().min(1).max(4),
     range: z.object({
       min: z.number().optional(),
       max: z.number().optional(),
+      currency: z.string().default('JPY'),
     }).optional(),
     details: z.object({
-      fr: z.string().optional(),
+      fr: z.string(),
       ja: z.string().optional(),
       en: z.string().optional(),
     }).optional(),
-  }).optional(),
+  }),
 
   openingHours: z.object({
     periods: z.array(z.object({

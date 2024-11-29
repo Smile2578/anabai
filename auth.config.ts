@@ -180,9 +180,6 @@ export const authConfig: NextAuthConfig = {
       })
     ],
 
-  
-  // Activation du mode debug en développement
-  debug: process.env.NODE_ENV === 'development',
 
   events: {
     async signIn({ user, account, isNewUser }) {

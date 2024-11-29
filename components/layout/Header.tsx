@@ -3,7 +3,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { Loader, Menu } from "lucide-react"
+import { FileText, Loader, Menu } from "lucide-react"
 import AnabaLogo from "@/components/brand/AnabaLogo"
 import { Button } from "@/components/ui/button"
 import {
@@ -127,6 +127,12 @@ export function Header({ className }: { className?: string }) {
                     Gestion des lieux
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/admin/blog">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Gestion des articles
+                  </Link>
+                </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem asChild>
                     <Link href="/admin/users">
@@ -140,7 +146,7 @@ export function Header({ className }: { className?: string }) {
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <SignOutButton variant="ghost" showIcon={true} className="w-full justify-start" />
+            <SignOutButton variant="destructive" showIcon={true} className="w-full justify-start" />
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -262,6 +268,12 @@ export function Header({ className }: { className?: string }) {
                             </Button>
                           </Link>
                         )}
+                        <Link href="/admin/blog">
+                          <Button variant="ghost" className="w-full justify-start">
+                            <FileText className="mr-2 h-4 w-4" />
+                              Gestion des articles
+                          </Button>
+                        </Link>
                       </>
                     )}
                     <SignOutButton fullWidth variant="destructive" className="mt-4" />

@@ -4,7 +4,7 @@ import { PracticalInfo } from '@/types/places/base';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Info, Accessibility, Car, CreditCard } from 'lucide-react';
+import { Info, Accessibility, Car, CreditCard, Coffee, GlassWater } from 'lucide-react';
 
 interface PracticalSectionProps {
   data: Place;
@@ -12,20 +12,44 @@ interface PracticalSectionProps {
   isSubmitting?: boolean;
 }
 
+type FoodAndDrinkOptionsKey = keyof Required<PracticalInfo>['foodAndDrinkOptions'];
+
 const PAYMENT_METHODS = [
   { id: 'cash', label: 'Espèces', ja: '現金' },
   { id: 'credit_card', label: 'Carte de crédit', ja: 'クレジットカード' },
   { id: 'ic_card', label: 'Carte IC', ja: 'ICカード' },
   { id: 'qr_code', label: 'QR Code', ja: 'QRコード' },
 ] as const;
+
 export const PracticalSection = ({ data, onChange, isSubmitting }: PracticalSectionProps) => {
-  const practicalInfo = data.practical_info || {};
+  const practicalInfo = data.practicalInfo || {};
 
   const updatePracticalInfo = (updates: Partial<PracticalInfo>) => {
     onChange({
-      practical_info: {
+      practicalInfo: {
         ...practicalInfo,
         ...updates
+      }
+    });
+  };
+
+  const updateFoodAndDrinkOptions = (field: FoodAndDrinkOptionsKey, value: boolean) => {
+    const defaultOptions: Required<PracticalInfo>['foodAndDrinkOptions'] = {
+      servesBeer: false,
+      servesBreakfast: false,
+      servesBrunch: false,
+      servesDinner: false,
+      servesLunch: false,
+      servesVegetarianFood: false,
+      servesWine: false
+    };
+
+    const currentOptions = practicalInfo.foodAndDrinkOptions || defaultOptions;
+
+    updatePracticalInfo({
+      foodAndDrinkOptions: {
+        ...currentOptions,
+        [field]: value
       }
     });
   };
@@ -33,11 +57,53 @@ export const PracticalSection = ({ data, onChange, isSubmitting }: PracticalSect
   const togglePaymentMethod = (methodId: string) => {
     const currentMethods = practicalInfo.paymentMethods || [];
     const newMethods = currentMethods.includes(methodId)
-      ? currentMethods.filter(id => id !== methodId)
+      ? currentMethods.filter((id: string) => id !== methodId)
       : [...currentMethods, methodId];
     
     updatePracticalInfo({ paymentMethods: newMethods });
   };
+
+  const foodAndDrinkOptions: Array<{
+    key: FoodAndDrinkOptionsKey;
+    label: string;
+    description: string;
+  }> = [
+    {
+      key: 'servesBreakfast',
+      label: 'Petit-déjeuner',
+      description: 'Service de petit-déjeuner'
+    },
+    {
+      key: 'servesBrunch',
+      label: 'Brunch',
+      description: 'Service de brunch'
+    },
+    {
+      key: 'servesLunch',
+      label: 'Déjeuner',
+      description: 'Service de déjeuner'
+    },
+    {
+      key: 'servesDinner',
+      label: 'Dîner',
+      description: 'Service de dîner'
+    },
+    {
+      key: 'servesVegetarianFood',
+      label: 'Options végétariennes',
+      description: 'Propose des plats végétariens'
+    },
+    {
+      key: 'servesBeer',
+      label: 'Bière',
+      description: 'Sert de la bière'
+    },
+    {
+      key: 'servesWine',
+      label: 'Vin',
+      description: 'Sert du vin'
+    }
+  ];
 
   return (
     <Card className="hover-card">
@@ -132,6 +198,32 @@ export const PracticalSection = ({ data, onChange, isSubmitting }: PracticalSect
                 />
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Options de nourriture et boissons */}
+        <div className="space-y-4">
+          <Label className="text-lg font-semibold flex items-center gap-2">
+            <Coffee className="w-5 h-5" />
+            <GlassWater className="w-5 h-5" />
+            Options de nourriture et boissons
+          </Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {foodAndDrinkOptions.map((option) => (
+              <div key={option.key} className="flex items-center justify-between p-4 rounded-lg border">
+                <div className="space-y-0.5">
+                  <Label>{option.label}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {option.description}
+                  </p>
+                </div>
+                <Switch
+                  checked={practicalInfo.foodAndDrinkOptions?.[option.key] || false}
+                  onCheckedChange={(checked) => updateFoodAndDrinkOptions(option.key, checked)}
+                  disabled={isSubmitting}
+                />
+              </div>
+            ))}
           </div>
         </div>
 

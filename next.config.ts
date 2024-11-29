@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
         hostname: 'places.googleapis.com',
         pathname: '/v1/**',
       },
+      {
+        protocol: 'https',
+        hostname: '*.public.blob.vercel-storage.com',
+      }
     ],
   },
   experimental: {

@@ -3,7 +3,8 @@ import { GooglePlace } from '@/types/google/place';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, MapPin, Phone, Globe, Star, Clock, Tag } from 'lucide-react';
+import { Loader2, MapPin, Phone, Globe, Star, Clock, Tag, Banknote } from 'lucide-react';
+import { GOOGLE_PRICE_LEVEL_MAP, PRICE_LEVELS } from '@/lib/config/price-levels';
 
 
 interface PlacePreviewProps {
@@ -13,21 +14,14 @@ interface PlacePreviewProps {
   isLoading?: boolean;
 }
 
-function getPriceLevel(level?: string): string {
-  switch (level) {
-    case 'PRICE_LEVEL_FREE':
-      return '¥';
-    case 'PRICE_LEVEL_INEXPENSIVE':
-      return '¥¥';
-    case 'PRICE_LEVEL_MODERATE':
-      return '¥¥¥';
-    case 'PRICE_LEVEL_EXPENSIVE':
-      return '¥¥¥¥';
-    case 'PRICE_LEVEL_VERY_EXPENSIVE':
-      return '¥¥¥¥¥';
-    default:
-      return '¥¥¥';
-  }
+function getPriceLevel(level?: string): { icon: string; description: string } {
+  if (!level) return { icon: '¥¥¥', description: PRICE_LEVELS[1].description };
+  const value = GOOGLE_PRICE_LEVEL_MAP[level as keyof typeof GOOGLE_PRICE_LEVEL_MAP] || 2;
+  const priceInfo = PRICE_LEVELS.find(p => p.value === value);
+  return {
+    icon: priceInfo?.icon || '¥¥¥',
+    description: priceInfo?.description || PRICE_LEVELS[1].description
+  };
 }
 
 export function PlacePreview({
@@ -60,11 +54,17 @@ export function PlacePreview({
               </Badge>
             )}
             
-            {/* Prix */}
+            {/* Prix et fourchette de prix */}
             {place.priceLevel && (
-              <Badge variant="outline">
-                {getPriceLevel(place.priceLevel)}
-              </Badge>
+              <>
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Banknote className="h-3 w-3" />
+                  {getPriceLevel(place.priceLevel).icon}
+                </Badge>
+                <Badge variant="outline" className="text-muted-foreground">
+                  {getPriceLevel(place.priceLevel).description}
+                </Badge>
+              </>
             )}
 
             {/* Statut */}
