@@ -13,14 +13,13 @@ import { useSession } from 'next-auth/react';
 import { Loader2, ImageIcon } from 'lucide-react';
 import Image from 'next/image';
 
-type Props = {
+type BlogPostForm = Omit<BlogPost, '_id' | 'createdAt' | 'updatedAt'>;
+
+interface PageProps {
   params: {
     id: string;
   };
-  searchParams: { [key: string]: string | string[] | undefined };
-};
-
-type BlogPostForm = Omit<BlogPost, '_id' | 'createdAt' | 'updatedAt'>;
+}
 
 interface SEOFormData {
   title?: {
@@ -34,7 +33,7 @@ interface SEOFormData {
   keywords?: string[];
 }
 
-export default function EditBlogPost({ params }: Props) {
+export default function EditBlogPost({ params }: PageProps) {
   const router = useRouter();
   const { data: session } = useSession();
   const { toast } = useToast();
