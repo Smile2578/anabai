@@ -16,7 +16,6 @@ type Props = {
 
 export async function generateMetadata(
   { params }: Props,
-  parent: ResolvingMetadata
 ): Promise<Metadata> {
   await connectDB();
   const post = await BlogPost.findOne({ slug: params.slug, status: 'published' }) as BlogPostType | null;
