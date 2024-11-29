@@ -60,7 +60,6 @@
     "@vercel/blob": "^0.26.0",
     "antd": "^5.22.1",
     "bcryptjs": "^2.4.3",
-    "bull": "^4.16.4",
     "bullmq": "^5.29.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",

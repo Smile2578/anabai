@@ -3,7 +3,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { FileText, Loader, Menu } from "lucide-react"
+import { Book, FileText, Loader, Menu } from "lucide-react"
 import AnabaLogo from "@/components/brand/AnabaLogo"
 import { Button } from "@/components/ui/button"
 import {
@@ -83,7 +83,7 @@ export function Header({ className }: { className?: string }) {
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuContent className="w-56 bg-background/95" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">{session.user.name}</p>
@@ -105,10 +105,16 @@ export function Header({ className }: { className?: string }) {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem asChild>
+            <DropdownMenuItem asChild className="hover:bg-background/90">
               <Link href="/dashboard">
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 Tableau de bord
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/blog">
+                <Book className="mr-2 h-4 w-4" />
+                Anablog
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
@@ -241,6 +247,12 @@ export function Header({ className }: { className?: string }) {
                       <Button variant="ghost" className="w-full justify-start">
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         Tableau de bord
+                      </Button>
+                    </Link>
+                    <Link href="/blog">
+                      <Button variant="ghost" className="w-full justify-start">
+                        <Book className="mr-2 h-4 w-4" />
+                        Anablog
                       </Button>
                     </Link>
                     <Link href="/account">
