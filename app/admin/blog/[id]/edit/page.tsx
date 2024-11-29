@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { BlogPost } from '@/types/blog';
 import { useSession } from 'next-auth/react';
 import { Loader2, ImageIcon } from 'lucide-react';
-import type { LocalizedString } from '@/types/common';
+import Image from 'next/image';
 
 type BlogPostForm = Omit<BlogPost, '_id' | 'createdAt' | 'updatedAt'>;
 
@@ -212,7 +212,7 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
     if (!tinyMCEKey) {
       return (
         <div className="flex items-center justify-center h-[500px] border rounded-md">
-          <p className="text-destructive">Erreur de chargement de l'éditeur</p>
+          <p className="text-destructive">Erreur de chargement de l&apos;éditeur</p>
         </div>
       );
     }
@@ -266,7 +266,7 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
   return (
     <div className="container mx-auto py-10">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">Modifier l'Article</h1>
+        <h1 className="text-2xl font-bold">Modifier l&apos;Article</h1>
         <div className="space-x-4">
           <Button
             variant="outline"
@@ -298,9 +298,10 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
           <div className="flex items-center gap-4">
             {post.coverImage?.url ? (
               <div className="relative w-40 h-24">
-                <img
+                <Image
                   src={post.coverImage.url}
                   alt={post.coverImage.alt}
+                  fill
                   className="w-full h-full object-cover rounded-md"
                 />
               </div>

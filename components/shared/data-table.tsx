@@ -29,7 +29,6 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   loading = false,
-  onSelectedRowsChange,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = useState({});
 

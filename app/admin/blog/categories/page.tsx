@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -79,7 +78,6 @@ function CategoryRow({ category, level = 0, onEdit, onDelete }: CategoryRowProps
 }
 
 export default function BlogCategoriesPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<BlogCategory | null>(null);
@@ -260,7 +258,7 @@ export default function BlogCategoriesPage() {
               </div>
 
               <div>
-                <Label htmlFor="order">Ordre d'affichage</Label>
+                <Label htmlFor="order">Ordre d&apos;affichage</Label>
                 <Input
                   id="order"
                   name="order"

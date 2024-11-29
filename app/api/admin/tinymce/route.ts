@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 
 export async function GET(request: NextRequest) {
   console.log('🔑 [TINYMCE] API Key:', process.env.TINYMCE_API_KEY);
+  console.log('request:', request);
   try {
     const session = await auth();
     

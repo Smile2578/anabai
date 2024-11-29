@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { BlogPost } from '@/types/blog';
 import { useSession } from 'next-auth/react';
 import { Loader2, ImageIcon } from 'lucide-react';
+import Image from 'next/image';
 
 type BlogPostForm = Omit<BlogPost, '_id' | 'createdAt' | 'updatedAt' | 'publishedAt'>;
 
@@ -160,7 +161,7 @@ export default function CreateBlogPost() {
     if (!tinyMCEKey) {
       return (
         <div className="flex items-center justify-center h-[500px] border rounded-md">
-          <p className="text-destructive">Erreur de chargement de l'éditeur</p>
+          <p className="text-destructive">Erreur de chargement de l&apos;éditeur</p>
         </div>
       );
     }
@@ -203,7 +204,7 @@ export default function CreateBlogPost() {
           ],
           
           // Message personnalisé pendant l'upload
-          images_upload_handler: (blobInfo, progress) => new Promise((resolve, reject) => {
+          images_upload_handler: (blobInfo) => new Promise((resolve, reject) => {
             const formData = new FormData();
             formData.append('file', blobInfo.blob(), blobInfo.filename());
 
@@ -220,6 +221,7 @@ export default function CreateBlogPost() {
                 }
               })
               .catch(error => {
+                console.error('Erreur lors de l\'upload de l\'image:', error);
                 reject({ message: 'Erreur lors de l\'upload de l\'image', remove: true });
               });
           })
@@ -261,9 +263,10 @@ export default function CreateBlogPost() {
           <div className="flex items-center gap-4">
             {post.coverImage?.url ? (
               <div className="relative w-40 h-24">
-                <img
+                <Image
                   src={post.coverImage.url}
                   alt={post.coverImage.alt}
+                  fill
                   className="w-full h-full object-cover rounded-md"
                 />
               </div>
@@ -283,13 +286,13 @@ export default function CreateBlogPost() {
                 type="text"
                 placeholder="Texte alternatif"
                 value={post.coverImage?.alt || ''}
-                onChange={(e) => setPost(prev => ({
-                  ...prev,
+                onChange={(e) => setPost({
+                  ...post,
                   coverImage: {
-                    ...prev.coverImage,
+                    ...post.coverImage,
                     alt: e.target.value,
                   },
-                }))}
+                })}
                 className="w-full"
               />
             </div>

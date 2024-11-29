@@ -4,6 +4,7 @@ import BlogPost from '@/models/blog.model';
 import connectDB from '@/lib/db/connection';
 
 export async function GET(request: NextRequest) {
+  console.log('request:', request);
   try {
     const session = await auth();
     

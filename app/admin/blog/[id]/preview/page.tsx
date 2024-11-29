@@ -4,7 +4,7 @@ import { fr } from 'date-fns/locale';
 import { auth } from '@/auth';
 import connectDB from '@/lib/db/connection';
 import BlogPost from '@/models/blog.model';
-
+import Image from 'next/image';
 interface Props {
   params: {
     id: string;
@@ -39,7 +39,7 @@ export default async function BlogPostPreview({ params }: Props) {
               href={`/admin/blog/${params.id}/edit`}
               className="px-4 py-1 bg-white text-blue-600 rounded-md text-sm font-medium hover:bg-blue-50 transition-colors"
             >
-              Retour à l'édition
+              Retour à l&apos;édition
             </a>
           </div>
         </div>
@@ -58,9 +58,10 @@ export default async function BlogPostPreview({ params }: Props) {
           </div>
           {post.coverImage?.url && (
             <div className="aspect-video relative mb-8">
-              <img
+              <Image
                 src={post.coverImage.url}
                 alt={post.coverImage.alt}
+                fill
                 className="object-cover w-full h-full rounded-lg"
               />
             </div>

@@ -5,6 +5,7 @@ import { fr } from 'date-fns/locale';
 import connectDB from '@/lib/db/connection';
 import BlogPost from '@/models/blog.model';
 import type { BlogPost as BlogPostType } from '@/types/blog';
+import Image from 'next/image';
 
 interface Props {
   params: {
@@ -61,11 +62,12 @@ export default async function BlogPostPage({ params }: Props) {
             {post.publishedAt ? format(post.publishedAt, 'dd MMMM yyyy', { locale: fr }) : ''}
           </time>
         </div>
-        {post.coverImage && (
+        {post.coverImage?.url && (
           <div className="aspect-video relative mb-8">
-            <img
+            <Image
               src={post.coverImage.url}
               alt={post.coverImage.alt}
+              fill
               className="object-cover w-full h-full rounded-lg"
             />
           </div>

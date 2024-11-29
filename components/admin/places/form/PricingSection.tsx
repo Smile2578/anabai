@@ -38,29 +38,6 @@ export const PricingSection = ({ data, onChange, isSubmitting }: PricingSectionP
     });
   };
 
-  const handlePriceRangeChange = (field: 'min' | 'max', value: string) => {
-    const numValue = value === '' ? undefined : parseInt(value);
-    const newRange = {
-      min: field === 'min' ? numValue ?? 0 : pricing.range?.min ?? 0,
-      max: field === 'max' ? numValue ?? 0 : pricing.range?.max ?? 0
-    };
-
-    // Mettre à jour automatiquement la description si elle est vide
-    const rangeText = numValue !== undefined ? 
-      `¥${newRange.min.toLocaleString()} - ¥${newRange.max.toLocaleString()}` : '';
-
-    onChange({
-      pricing: {
-        ...pricing,
-        range: newRange,
-        details: {
-          fr: pricing.details.fr || rangeText,
-          ja: pricing.details.ja || rangeText
-        }
-      }
-    });
-  };
-
   const handleDetailsChange = (lang: 'fr' | 'ja', value: string) => {
     onChange({
       pricing: {
