@@ -1,4 +1,4 @@
-import { Metadata } from 'next';
+import { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -7,13 +7,17 @@ import BlogPost from '@/models/blog.model';
 import type { BlogPost as BlogPostType } from '@/types/blog';
 import Image from 'next/image';
 
-interface Props {
+type Props = {
   params: {
     slug: string;
   };
-}
+  searchParams: { [key: string]: string | string[] | undefined };
+};
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata(
+  { params }: Props,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
   await connectDB();
   const post = await BlogPost.findOne({ slug: params.slug, status: 'published' }) as BlogPostType | null;
 
