@@ -7,9 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest",
+    "test": "jest --config jest.config.ts",
     "test:watch": "docker-compose up -d redis && jest --watch",
-    "test:cleanup": "docker-compose down"
+    "test:cleanup": "docker-compose down",
+    "test:redis": "cross-env NODE_ENV=development ts-node -r tsconfig-paths/register scripts/test-redis-connection.ts",
+    "test-redis-connection": "ts-node scripts/test-redis-connection.ts"
   },
   "dependencies": {
     "@bull-board/api": "^6.5.3",
@@ -56,6 +58,7 @@
     "@tanstack/react-query": "^5.60.5",
     "@tanstack/react-table": "^8.20.5",
     "@tinymce/tinymce-react": "^5.1.1",
+    "@upstash/redis": "^1.34.3",
     "@vercel/analytics": "^1.4.1",
     "@vercel/blob": "^0.26.0",
     "antd": "^5.22.1",
@@ -94,6 +97,7 @@
     "react-resizable-panels": "^2.1.6",
     "react-type-animation": "^3.2.0",
     "recharts": "^2.13.3",
+    "redis": "^4.7.0",
     "resend": "^4.0.1",
     "sharp": "^0.33.5",
     "sonner": "^1.7.0",
@@ -106,6 +110,7 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "@jest/types": "^29.6.3",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
     "@types/bcrypt": "^5.0.2",
@@ -120,6 +125,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/react-leaflet": "^2.8.3",
+    "cross-env": "^7.0.3",
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.0.3",
     "eslint-config-prettier": "^9.1.0",
@@ -129,6 +135,8 @@
     "prettier": "^3.3.3",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.6.3"
   }
 }

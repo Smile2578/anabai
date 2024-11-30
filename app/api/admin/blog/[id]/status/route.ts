@@ -1,50 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import BlogPost from '@/models/blog.model';
-import connectDB from '@/lib/db/connection';
+import { protectApiRoute, SessionWithUser, RouteParams } from '@/lib/auth/protect-api';
+import { blogQueue } from '@/lib/queue/queues/blog.queue';
+import { z } from 'zod';
 
-type RouteContext = {
-  params: Promise<{
-    id: string;
-  }>;
-};
+const updateStatusSchema = z.object({
+  action: z.enum(['publish', 'unpublish', 'schedule']),
+  scheduledDate: z.string().datetime().optional()
+});
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: RouteContext
-) {
+async function updatePostStatus(
+  req: NextRequest,
+  session: SessionWithUser,
+  routeParams: RouteParams
+): Promise<NextResponse> {
   try {
-    const session = await auth();
-    const resolvedParams = await params;
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Non autorisé' },
-        { status: 401 }
-      );
+    const params = await routeParams.params;
+    if (!params.id) {
+      return NextResponse.json({ error: 'ID requis' }, { status: 400 });
     }
 
-    await connectDB();
+    const body = await req.json();
+    const validatedBody = updateStatusSchema.parse(body);
+    const { action, scheduledDate } = validatedBody;
 
-    const data = await request.json();
-    const post = await BlogPost.findById(resolvedParams.id);
-
-    if (!post) {
-      return NextResponse.json(
-        { error: 'Article non trouvé' },
-        { status: 404 }
-      );
+    let job;
+    switch (action) {
+      case 'publish':
+        job = await blogQueue.addPublishJob(params.id, session.user.id);
+        break;
+      case 'unpublish':
+        job = await blogQueue.addUnpublishJob(params.id, session.user.id);
+        break;
+      case 'schedule':
+        if (!scheduledDate) {
+          return NextResponse.json(
+            { error: 'Date de publication requise pour la planification' },
+            { status: 400 }
+          );
+        }
+        job = await blogQueue.addScheduleJob(params.id, session.user.id, new Date(scheduledDate));
+        break;
     }
 
-    post.status = data.status;
-    await post.save();
-
-    return NextResponse.json(post);
+    return NextResponse.json({
+      success: true,
+      jobId: job?.id,
+      message: `Action ${action} ajoutée à la queue avec succès`
+    });
   } catch (error) {
-    console.error('Error in PATCH /api/admin/blog/[id]/status:', error);
+    console.error('Erreur lors de la mise à jour du statut:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur interne' },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : 'Erreur interne du serveur' },
+      { status: error instanceof z.ZodError ? 400 : 500 }
     );
   }
-} 
+}
+
+export const PATCH = protectApiRoute(updatePostStatus); 

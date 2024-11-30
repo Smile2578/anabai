@@ -1,43 +1,63 @@
 // lib/auth/protect-api.ts
-import { auth } from "@/auth"
-import { NextResponse } from 'next/server'
-import { Session } from 'next-auth'
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/auth';
 
-export type SessionWithUser = Session & {
+export interface SessionWithUser {
   user: {
-    role?: string
+    id: string;
+    email: string;
+    role: string;
   }
 }
 
+export type RouteContext = Promise<Record<string, string>>;
+
+export type RouteParams = {
+  params: RouteContext;
+  searchParams?: Record<string, string>;
+};
+
 export function protectApiRoute(
-  handler: (req: Request, session: SessionWithUser) => Promise<NextResponse>,
+  handler: (
+    req: NextRequest,
+    session: SessionWithUser,
+    routeParams: RouteParams
+  ) => Promise<NextResponse>,
   requiredRole: 'admin' | 'editor' = 'admin'
 ) {
-  return async function protectedHandler(req: Request) {
+  return async function protectedHandler(
+    req: NextRequest,
+    context: { params: RouteContext }
+  ) {
     try {
-      const session = await auth() as SessionWithUser | null
+      const session = await auth() as SessionWithUser | null;
 
       if (!session?.user) {
         return NextResponse.json(
           { error: 'Non authentifié' },
           { status: 401 }
-        )
+        );
       }
 
       if (!session.user.role || (requiredRole === 'admin' && session.user.role !== 'admin')) {
         return NextResponse.json(
           { error: 'Non autorisé' },
           { status: 403 }
-        )
+        );
       }
 
-      return handler(req, session)
+      const routeParams: RouteParams = {
+        params: context.params,
+        searchParams: Object.fromEntries(req.nextUrl.searchParams)
+      };
+
+      return handler(req, session, routeParams);
     } catch (error) {
-      console.error('API Protection Error:', error)
+      console.error('API Protection Error:', error);
       return NextResponse.json(
         { error: 'Erreur serveur' },
         { status: 500 }
-      )
+      );
     }
-  }
+  };
 }

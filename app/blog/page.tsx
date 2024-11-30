@@ -50,6 +50,7 @@ async function getInitialData() {
     timelinePosts: JSON.parse(JSON.stringify(timelinePosts)),
     tags
   };
+  
   interface TimelinePost {
     _id: string;
     title: { fr: string };
@@ -129,7 +130,7 @@ export default async function BlogPage() {
       </section>
 
       {/* Category Filter */}
-      <section className="sticky top-16 bg-background/80 backdrop-blur-sm z-10 py-4 border-y w-full">
+      <section className="top-16 bg-background/80 backdrop-blur-sm z-10 py-4 border-y w-full">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-screen-2xl">
           <CategoryFilterWrapper />
         </div>

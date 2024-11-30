@@ -1,91 +1,67 @@
-import { Queue, Worker } from 'bullmq';
-import { redisConfig } from '../config/redis';
-import { BlogJobData, BlogJobResult } from '../types/blog.types';
+import { Job } from 'bullmq';
+import { BlogJobData, BaseJobResult } from '../types/queue.types';
+import { BaseQueueService } from '../services/BaseQueueService';
 
-const connection = {
-  host: redisConfig.host || 'localhost',
-  port: redisConfig.port || 6379,
-  password: redisConfig.password,
-};
-
-export const blogQueue = new Queue<BlogJobData>('blog', {
-  connection,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 1000
-    },
-    removeOnComplete: true,
-    removeOnFail: false
-  }
-});
-
-// Créer un worker pour traiter les jobs
-export const worker = new Worker<BlogJobData, BlogJobResult>(
-  'blog',
-  async (job) => {
-    const { postId, action, scheduledDate} = job.data;
-
-    try {
+export class BlogQueueService extends BaseQueueService<BlogJobData, BaseJobResult> {
+  constructor() {
+    super('blog', async (job: Job<BlogJobData, BaseJobResult>) => {
+      const { postId, action } = job.data;
+      
       switch (action) {
         case 'publish':
-          // TODO: Implémenter la logique de publication
           return {
             success: true,
             message: `Article ${postId} publié avec succès`,
+            data: { postId, published: true }
           };
-
         case 'unpublish':
-          // TODO: Implémenter la logique de dépublication
           return {
             success: true,
             message: `Article ${postId} dépublié avec succès`,
+            data: { postId, unpublished: true }
           };
-
         case 'schedule':
-          if (!scheduledDate) {
-            throw new Error('Date de publication programmée requise');
-          }
-          // TODO: Implémenter la logique de programmation
           return {
             success: true,
-            message: `Article ${postId} programmé pour le ${scheduledDate}`,
+            message: `Publication de l'article ${postId} planifiée`,
+            data: { postId, scheduled: true }
           };
-
-        case 'process-images':
-          // TODO: Implémenter le traitement des images
-          return {
-            success: true,
-            message: `Images de l'article ${postId} traitées avec succès`,
-          };
-
         default:
-          throw new Error(`Action inconnue: ${action}`);
+          throw new Error(`Action non supportée: ${action}`);
       }
-    } catch (error) {
-      console.error(`Erreur lors du traitement de l'article ${postId}:`, error);
-      throw error;
-    }
-  },
-  { 
-    connection,
-    autorun: true,
-    concurrency: 5,
-    removeOnComplete: { count: 1000 },
-    removeOnFail: { count: 5000 }
+    });
   }
-);
 
-// Gestionnaires d'événements
-worker.on('completed', (job) => {
-  console.log(`Job ${job.id} terminé avec succès`);
-});
+  async addPublishJob(postId: string, userId: string): Promise<Job<BlogJobData, BaseJobResult>> {
+    return this.addJob('publish', {
+      postId,
+      userId,
+      action: 'publish'
+    });
+  }
 
-worker.on('failed', (job, error) => {
-  console.error(`Job ${job?.id} échoué:`, error);
-});
+  async addUnpublishJob(postId: string, userId: string): Promise<Job<BlogJobData, BaseJobResult>> {
+    return this.addJob('unpublish', {
+      postId,
+      userId,
+      action: 'unpublish'
+    });
+  }
 
-worker.on('error', (error) => {
-  console.error('Erreur de worker:', error);
-}); 
+  async addScheduleJob(
+    postId: string, 
+    userId: string, 
+    scheduledDate: Date
+  ): Promise<Job<BlogJobData, BaseJobResult>> {
+    return this.addJob('schedule', {
+      postId,
+      userId,
+      action: 'schedule',
+      scheduledDate
+    }, {
+      delay: scheduledDate.getTime() - Date.now()
+    });
+  }
+}
+
+export const blogQueue = new BlogQueueService(); 

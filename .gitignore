@@ -44,3 +44,10 @@ next-env.d.ts
 
 # docs
 /docs
+
+# logs
+/logs
+
+# test
+
+/__tests__

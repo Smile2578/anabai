@@ -62,7 +62,7 @@ class EmailService {
         <h1 style="color: #333; margin-bottom: 24px;">Bienvenue sur Anaba.io, ${name} !</h1>
         <p style="color: #666; margin-bottom: 24px;">Pour commencer votre voyage au Japon, veuillez vérifier votre adresse email en cliquant sur le bouton ci-dessous :</p>
         <div style="text-align: center; margin: 32px 0;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/auth/verify-email?token=${token}"
+          <a href="https://www.anaba.io/auth/verify-email?token=${token}"
              style="display: inline-block; padding: 12px 24px; background-color: #4A3AFF; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
             Vérifier mon compte
           </a>
