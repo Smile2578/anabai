@@ -1,13 +1,13 @@
 // lib/services/places/EnrichmentService.ts
+
 import { GooglePlacesService } from '../core/GooglePlacesService';
 import { ImageService } from '../core/ImageService';
 import { Place } from '@/types/places/main';
 import { Category, Subcategory } from '@/types/common';
 import { PLACE_CATEGORIES } from '@/lib/config/categories';
 import { GooglePlace } from '@/types/google/place';
-import { PlacePricing, AccessInfo, PracticalInfo } from '@/types/places/base';
+import { PlacePricing } from '@/types/places/base';
 import { ImportPreview } from '@/types/import';
-import { GooglePhoto, GooglePriceRange } from '@/types/google/details';
 import { PlaceImage } from '@/types/places/base';
 import { PRICE_LEVELS } from '@/lib/config/price-levels';
 
@@ -46,7 +46,6 @@ export class EnrichmentService {
   ) {}
 
   private determineCategory(types: string[]): Category {
-    // Mapper les types Google vers nos catégories
     const typeMapping: Partial<Record<string, Category>> = {
       'restaurant': 'Restaurant',
       'food': 'Restaurant',
@@ -76,10 +75,8 @@ export class EnrichmentService {
   }
 
   private determineSubcategories(types: string[], category: Category): Subcategory[] {
-    // Récupérer les sous-catégories possibles pour cette catégorie
     const possibleSubcategories = PLACE_CATEGORIES[category].subcategories;
     
-    // Mapper les types Google vers nos sous-catégories
     const typeToSubcategory: Record<string, Subcategory[]> = {
       'ramen_restaurant': ['Ramen'],
       'sushi_restaurant': ['Sushi'],
@@ -130,7 +127,6 @@ export class EnrichmentService {
       const mappedSubcategories = typeToSubcategory[type];
       if (mappedSubcategories) {
         mappedSubcategories.forEach((sub) => {
-          // Vérifier que la sous-catégorie est valide pour cette catégorie
           if (possibleSubcategories.includes(sub as never)) {
             subcategories.add(sub);
           }
@@ -142,7 +138,7 @@ export class EnrichmentService {
   }
 
   private transformPriceLevel(priceLevel?: string): 1 | 2 | 3 | 4 {
-    if (!priceLevel) return 2; // Prix modéré par défaut
+    if (!priceLevel) return 2;
 
     const priceLevelMap: Record<string, 1 | 2 | 3 | 4> = {
       'PRICE_LEVEL_FREE': 1,
@@ -155,153 +151,6 @@ export class EnrichmentService {
     return priceLevelMap[priceLevel] || 2;
   }
 
-  private getPriceLevelDescription(priceLevel: string): string {
-    const descriptions: Record<string, string> = {
-      'PRICE_LEVEL_FREE': 'Gratuit',
-      'PRICE_LEVEL_INEXPENSIVE': 'Prix abordable',
-      'PRICE_LEVEL_MODERATE': 'Prix modéré',
-      'PRICE_LEVEL_EXPENSIVE': 'Prix élevé',
-      'PRICE_LEVEL_VERY_EXPENSIVE': 'Prix très élevé'
-    };
-
-    return descriptions[priceLevel] || 'Prix modéré';
-  }
-
-  private formatPriceRange(range?: GooglePriceRange): string {
-    if (!range?.lowerPrice && !range?.upperPrice) return '';
-    
-    const formatPrice = (price?: number) => 
-      price ? `¥${price.toLocaleString()}` : '?';
-
-    if (range.lowerPrice === range.upperPrice) {
-      return `${formatPrice(range.lowerPrice)}`;
-    }
-
-    return `${formatPrice(range.lowerPrice)} - ${formatPrice(range.upperPrice)}`;
-  }
-
-  private transformPricing(googlePlace: GooglePlace): PlacePricing | undefined {
-    if (!googlePlace.priceLevel && !googlePlace.priceRange) {
-      return undefined;
-    }
-
-    const level = this.transformPriceLevel(googlePlace.priceLevel);
-    const priceInfo = PRICE_LEVELS.find(p => p.value === level);
-
-    // Extraire la fourchette de prix du texte si disponible
-    let range: { min: number; max: number } | undefined;
-    
-    if (googlePlace.priceRange?.text) {
-      // Extraire les nombres du texte (ex: "2,000-3,000 ¥")
-      const matches = googlePlace.priceRange.text.match(/(\d+[,\d]*)/g);
-      if (matches && matches.length >= 2) {
-        range = {
-          min: parseInt(matches[0].replace(/,/g, '')),
-          max: parseInt(matches[1].replace(/,/g, ''))
-        };
-      }
-    }
-    
-    // Utiliser les valeurs explicites si disponibles
-    if (googlePlace.priceRange?.lowerPrice && googlePlace.priceRange?.upperPrice) {
-      range = {
-        min: googlePlace.priceRange.lowerPrice,
-        max: googlePlace.priceRange.upperPrice
-      };
-    }
-
-    const details = {
-      fr: range 
-        ? `Prix entre ¥${range.min.toLocaleString()} et ¥${range.max.toLocaleString()}`
-        : priceInfo?.description || '',
-      ja: range
-        ? `料金：¥${range.min.toLocaleString()} ～ ¥${range.max.toLocaleString()}`
-        : priceInfo?.ja?.description || ''
-    };
-
-    return {
-      level,
-      currency: 'JPY',
-      range,
-      details
-    };
-  }
-
-  private async extractPracticalInfo(details: GooglePlace): Promise<PracticalInfo> {
-    return {
-      bookingRequired: Boolean(details.reservable),
-      englishSupport: true, // Par défaut à true, à affiner si possible
-      paymentMethods: details.paymentOptions?.acceptedPaymentTypes || [],
-      delivery: Boolean(details.delivery),
-      dineIn: Boolean(details.dineIn),
-      takeout: Boolean(details.takeout),
-      parkingOptions: details.parkingOptions ? {
-        freeParking: Boolean(details.parkingOptions.freeParking),
-        paidParking: Boolean(details.parkingOptions.paidParking),
-        streetParking: Boolean(details.parkingOptions.streetParking),
-        valetParking: Boolean(details.parkingOptions.valetParking),
-        parkingAvailable: Boolean(details.parkingOptions.parkingAvailable)
-      } : undefined,
-      accessibilityOptions: details.accessibilityOptions ? {
-        wheelchairAccessibleParking: Boolean(details.accessibilityOptions.wheelchairAccessibleParking),
-        wheelchairAccessibleEntrance: Boolean(details.accessibilityOptions.wheelchairAccessibleEntrance),
-        wheelchairAccessibleRestroom: Boolean(details.accessibilityOptions.wheelchairAccessibleRestroom),
-        wheelchairAccessibleSeating: Boolean(details.accessibilityOptions.wheelchairAccessibleSeating)
-      } : undefined,
-      foodAndDrinkOptions: {
-        servesBeer: Boolean(details.servesBeer),
-        servesBreakfast: Boolean(details.servesBreakfast),
-        servesBrunch: Boolean(details.servesBrunch),
-        servesDinner: Boolean(details.servesDinner),
-        servesLunch: Boolean(details.servesLunch),
-        servesVegetarianFood: Boolean(details.servesVegetarianFood),
-        servesWine: Boolean(details.servesWine)
-      }
-    };
-  }
-
-  private async enrichAccessInfo(details: GooglePlace): Promise<AccessInfo> {
-    const access: AccessInfo = {
-      nearestStation: undefined,
-      walkingTime: undefined,
-      transportOptions: []
-    };
-
-    // Chercher la station la plus proche dans les composants d'adresse
-    const stationComponent = details.addressComponents.find(
-      c => c.types.includes('transit_station') || 
-           c.types.includes('subway_station')
-    );
-    if (stationComponent) {
-      access.nearestStation = stationComponent.longText;
-    }
-
-    // Utiliser routingSummaries pour les infos de transport
-    if (details.routingSummaries) {
-      const transportInfo = details.routingSummaries
-        .filter(summary => summary.transitInfo)
-        .map(summary => ({
-          mode: summary.transitInfo?.primaryMode,
-          duration: summary.duration,
-          distance: summary.distanceMeters
-        }));
-
-      if (transportInfo.length > 0) {
-        // Extraire les options de transport
-        access.transportOptions = transportInfo.map(info => 
-          `${info.mode} (${Math.round(info.duration / 60)} min)`
-        );
-        
-        // Utiliser le temps de marche si disponible
-        const walkingOption = transportInfo.find(info => info.mode === 'WALKING');
-        if (walkingOption) {
-          access.walkingTime = Math.round(walkingOption.duration / 60);
-        }
-      }
-    }
-
-    return access;
-  }
   private async enrichPlaceDetails(placeId: string): Promise<Place> {
     try {
       console.log(`Début de l'enrichissement pour ${placeId}`);
@@ -311,82 +160,56 @@ export class EnrichmentService {
         this.googlePlacesService.getPlaceDetails(placeId, 'ja')
       ]);
 
-      // Extraire la préfecture et la ville des composants d'adresse
+      if (!detailsFr || !detailsJa) {
+        throw new Error('Impossible de récupérer les détails du lieu');
+      }
+
+      // Extraction de la préfecture et de la ville
       const prefecture = detailsFr.addressComponents?.find(
-        (comp: { types: string[]; longText: string }) => comp.types.includes('administrative_area_level_1')
+        comp => comp.types.includes('administrative_area_level_1')
       )?.longText || '';
 
       const city = detailsFr.addressComponents?.find(
-        (comp: { types: string[]; longText: string }) => comp.types.includes('locality') || comp.types.includes('sublocality_level_1')
+        comp => comp.types.includes('locality') || comp.types.includes('sublocality_level_1')
       )?.longText || '';
 
       const postalCode = detailsFr.addressComponents?.find(
-        (comp: { types: string[]; longText: string }) => comp.types.includes('postal_code')
+        comp => comp.types.includes('postal_code')
       )?.longText;
 
-        // Traitement des images avec noms courts
-        let images = await Promise.all(
-          (detailsFr.photos?.slice(0, 1) || []).map(async (photo: GooglePhoto, index: number) => {
-            try {
-              const photoUrl = this.googlePlacesService.getPhotoUrl(photo);
-              const shortName = `img_${(index + 1).toString().padStart(2, '0')}`;
-              
-              // Utiliser ImageService pour cacher l'image
-              const cachedUrl = await this.imageService.cacheImage(photoUrl);
-              
-              return {
-                url: cachedUrl, // Utiliser l'URL mise en cache
-                source: 'Google Places',
-                isCover: true, // Toujours true car c'est la seule image
-                name: shortName,
-                caption: {
-                  fr: photo.authorAttributions?.[0]?.displayName || 'Image du lieu',
-                }
-              };
-            } catch (error) {
-              console.error(`Erreur de traitement d'image:`, error);
-              return null;
-            }
-          })
-        );
-      let openingHours;
-      if (detailsFr.currentOpeningHours?.periods?.length || detailsFr.regularOpeningHours?.periods?.length) {
-        const hours = detailsFr.currentOpeningHours || detailsFr.regularOpeningHours;
-        if (hours?.periods?.length && hours?.weekdayDescriptions?.length) {
-          openingHours = {
-            weekdayTexts: {
-                fr: hours.weekdayDescriptions.join('\n')
-              },
-              periods: hours.periods.map((period: { open: { day: number; hour: number; minute: number }; close?: { hour: number; minute: number } }) => ({
-                day: period.open.day,
-                open: `${period.open.hour}:${period.open.minute.toString().padStart(2, '0')}`,
-                close: period.close ? 
-                  `${period.close.hour}:${period.close.minute.toString().padStart(2, '0')}` :
-                  '23:59'
-              }))
+      // Traitement des images
+      const images = await Promise.all(
+        (detailsFr.photos || []).slice(0, 1).map(async (photo, index) => {
+          try {
+            const photoUrl = await this.googlePlacesService.getPhotoUrl(photo);
+            const processedImage = await this.imageService.cacheImage(photoUrl);
+            
+            return {
+              url: processedImage,
+              source: 'Google Places',
+              isCover: true,
+              name: `img_${(index + 1).toString().padStart(2, '0')}`,
+              caption: {
+                fr: photo.authorAttributions?.[0]?.displayName || 'Image du lieu',
+              }
             };
+          } catch (error) {
+            console.error(`Erreur de traitement d'image:`, error);
+            return null;
           }
-        }
+        })
+      ).then(images => images.filter(Boolean));
 
-      // Filtrer les images null et ajouter une image par défaut si nécessaire
-      images = images.filter(Boolean);
-      if (images.length === 0) {
-        images = [{
-          url: '/images/placeholder.jpg',
-          source: 'Default',
-          isCover: true,
-          name: 'img_00',
-          caption: {
-            fr: 'Image par défaut',
-          }
-        }];
-      }
-
-      // Construction du lieu enrichi
+      // Construction de l'objet Place enrichi
       const enrichedPlace: Place = {
         name: {
           fr: detailsFr.displayName.text,
           ja: detailsJa.displayName.text
+        },
+        originalData: {
+          title: detailsFr.displayName.text,
+          note: detailsFr.editorialSummary?.text || '',
+          url: detailsFr.websiteUri
         },
         location: {
           point: {
@@ -408,11 +231,13 @@ export class EnrichmentService {
             prefecture,
             city,
             postalCode
-          },
-          access: await this.enrichAccessInfo(detailsFr)
+          }
         },
         category: this.determineCategory(detailsFr.types),
-        subcategories: this.determineSubcategories(detailsFr.types, this.determineCategory(detailsFr.types)),
+        subcategories: this.determineSubcategories(
+          detailsFr.types, 
+          this.determineCategory(detailsFr.types)
+        ),
         images: images as PlaceImage[],
         description: {
           fr: detailsFr.editorialSummary?.text || 
@@ -420,26 +245,8 @@ export class EnrichmentService {
           ja: detailsJa.editorialSummary?.text ||
               detailsJa.displayName.text
         },
-        openingHours,
-        pricing: detailsFr.priceLevel ? {
-          level: this.transformPriceLevel(detailsFr.priceLevel),
-          currency: 'JPY',
-          range: detailsFr.priceRange ? {
-            min: detailsFr.priceRange.lowerPrice || 0,
-            max: detailsFr.priceRange.upperPrice || 0
-          } : undefined,
-          details: {
-            fr: detailsFr.priceRange?.text || this.getPriceLevelDescription(detailsFr.priceLevel),
-            ja: detailsJa.priceRange?.text
-          }
-        } : {
-          level: 2,
-          currency: 'JPY',
-          details: {
-            fr: 'Prix modéré',
-            ja: '適度な価格'
-          }
-        },
+        openingHours: this.extractOpeningHours(detailsFr),
+        pricing: this.transformPricing(detailsFr),
         contact: {
           phone: detailsFr.internationalPhoneNumber,
           website: detailsFr.websiteUri,
@@ -448,7 +255,7 @@ export class EnrichmentService {
         metadata: {
           source: 'Google Places',
           placeId,
-          status: 'publié',
+          status: 'brouillon',
           lastEnriched: new Date(),
           rating: detailsFr.rating,
           ratingCount: detailsFr.userRatingCount,
@@ -463,38 +270,56 @@ export class EnrichmentService {
 
       return enrichedPlace;
     } catch (error) {
-      console.error(`Erreur lors de l'enrichissement détaillé pour ${placeId}:`, error);
+      console.error(`Erreur lors de l'enrichissement pour ${placeId}:`, error);
       throw error;
     }
   }
 
+  private extractOpeningHours(details: GooglePlace) {
+    const hours = details.currentOpeningHours || details.regularOpeningHours;
+    if (!hours?.periods?.length || !hours?.weekdayDescriptions?.length) {
+      return undefined;
+    }
 
-  private validateEnrichedData(place: Place): EnrichmentLog {
-    const log: EnrichmentLog = {
-      placeId: place._id,
-      name: place.name.fr,
-      fieldsExtracted: {
-        name: Boolean(place.name?.fr && place.name?.ja),
-        address: Boolean(place.location?.address?.full?.fr && place.location?.address?.full?.ja),
-        coordinates: Boolean(place.location?.point?.coordinates),
-        category: Boolean(place.category),
-        images: Boolean(place.images?.length > 0),
-        openingHours: Boolean(place.openingHours?.weekdayTexts?.fr),
-        pricing: Boolean(place.pricing?.level),
-        contact: Boolean(place.contact?.phone || place.contact?.website),
-        access: Boolean(place.location?.access?.nearestStation)
+    return {
+      weekdayTexts: {
+        fr: hours.weekdayDescriptions.join('\n')
       },
-      missingFields: []
+      periods: hours.periods.map(period => ({
+        day: period.open.day,
+        open: `${period.open.hour}:${period.open.minute.toString().padStart(2, '0')}`,
+        close: period.close ? 
+          `${period.close.hour}:${period.close.minute.toString().padStart(2, '0')}` :
+          '23:59'
+      }))
     };
+  }
 
-    // Identifier les champs manquants
-    Object.entries(log.fieldsExtracted).forEach(([field, extracted]) => {
-      if (!extracted) {
-        log.missingFields.push(field);
+  private transformPricing(details: GooglePlace): PlacePricing {
+    const level = this.transformPriceLevel(details.priceLevel);
+    const priceInfo = PRICE_LEVELS.find(p => p.value === level);
+
+    let range;
+    if (details.priceRange?.lowerPrice && details.priceRange?.upperPrice) {
+      range = {
+        min: details.priceRange.lowerPrice,
+        max: details.priceRange.upperPrice
+      };
+    }
+
+    return {
+      level,
+      currency: 'JPY',
+      range,
+      details: {
+        fr: range 
+          ? `Prix entre ¥${range.min.toLocaleString()} et ¥${range.max.toLocaleString()}`
+          : priceInfo?.description || '',
+        ja: range
+          ? `料金：¥${range.min.toLocaleString()} ～ ¥${range.max.toLocaleString()}`
+          : priceInfo?.ja?.description || ''
       }
-    });
-
-    return log;
+    };
   }
 
   async enrichPreview(preview: ImportPreview): Promise<{
@@ -506,25 +331,22 @@ export class EnrichmentService {
         throw new Error('ID de lieu manquant');
       }
 
-      console.log(`Enrichissement de ${preview.original.Title} (ID: ${preview.enriched.placeId})`);
-
       const enrichedPlace = await this.enrichPlaceDetails(preview.enriched.placeId);
       const log = this.validateEnrichedData(enrichedPlace);
 
-      const enrichedPreview: ImportPreview = {
-        ...preview,
-        status: 'success',
-        enriched: {
-          success: true,
-          place: enrichedPlace,
-          placeId: preview.enriched.placeId
-        }
+      return {
+        preview: {
+          ...preview,
+          status: 'success',
+          enriched: {
+            success: true,
+            place: enrichedPlace,
+            placeId: preview.enriched.placeId
+          }
+        },
+        log
       };
-
-      return { preview: enrichedPreview, log };
-
     } catch (error) {
-      console.error(`Erreur d'enrichissement pour ${preview.original.Title}:`, error);
       return {
         preview: {
           ...preview,
@@ -546,12 +368,9 @@ export class EnrichmentService {
     let successCount = 0;
     let failedCount = 0;
 
-    // Processus d'enrichissement par lots avec délai
     for (const preview of previews) {
       try {
-        // Pause entre les requêtes pour éviter le rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
-        
         const { preview: enrichedPreview, log } = await this.enrichPreview(preview);
         
         if (enrichedPreview.status === 'success') {
@@ -562,7 +381,6 @@ export class EnrichmentService {
         }
 
         results.push(enrichedPreview);
-
       } catch (error) {
         console.error('Error enriching preview:', error);
         failedCount++;
@@ -588,14 +406,10 @@ export class EnrichmentService {
     };
   }
 
-  async enrichSingleImage(placeId: string): Promise<PlaceImage | null> {
+  async enrichSingleImage(placeId: string, source: string = 'Google Places'): Promise<PlaceImage | null> {
     try {
-      console.log(`Début de l'enrichissement d'image pour ${placeId}`);
-  
-      const [detailsFr] = await Promise.all([
-        this.googlePlacesService.getPlaceDetails(placeId, 'fr')
-      ]);
-
+      const detailsFr = await this.googlePlacesService.getPlaceDetails(placeId, 'fr');
+      
       if (!detailsFr.photos?.length) {
         console.log('Aucune photo disponible pour ce lieu');
         return null;
@@ -609,7 +423,7 @@ export class EnrichmentService {
         
         return {
           url: cachedUrl,
-          source: 'Google Places',
+          source,
           isCover: true,
           name: 'img_01',
           caption: {
@@ -624,5 +438,32 @@ export class EnrichmentService {
       console.error(`Erreur lors de l'enrichissement d'image pour ${placeId}:`, error);
       throw error;
     }
+  }
+
+  private validateEnrichedData(place: Place): EnrichmentLog {
+    const log: EnrichmentLog = {
+      placeId: place._id,
+      name: place.name.fr,
+      fieldsExtracted: {
+        name: Boolean(place.name?.fr && place.name?.ja),
+        address: Boolean(place.location?.address?.full?.fr && place.location?.address?.full?.ja),
+        coordinates: Boolean(place.location?.point?.coordinates),
+        category: Boolean(place.category),
+        images: Boolean(place.images?.length > 0),
+        openingHours: Boolean(place.openingHours?.weekdayTexts?.fr),
+        pricing: Boolean(place.pricing?.level),
+        contact: Boolean(place.contact?.phone || place.contact?.website),
+        access: Boolean(place.location?.address?.city && place.location?.address?.prefecture)
+      },
+      missingFields: []
+    };
+
+    Object.entries(log.fieldsExtracted).forEach(([field, extracted]) => {
+      if (!extracted) {
+        log.missingFields.push(field);
+      }
+    });
+
+    return log;
   }
 }

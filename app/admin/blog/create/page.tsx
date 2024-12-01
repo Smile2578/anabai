@@ -27,8 +27,13 @@ export default function CreateBlogPost() {
     content: { fr: '' },
     excerpt: { fr: '' },
     category: '',
+    categories: [],
     tags: [],
     status: 'draft',
+    metadata: {
+      readingTime: 0,
+      wordCount: 0
+    },
     seo: {
       title: { fr: '' },
       description: { fr: '' },

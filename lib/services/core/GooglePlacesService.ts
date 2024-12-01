@@ -9,8 +9,8 @@ type CacheParams = {
 };
 
 export class GooglePlacesService {
-  public readonly baseUrl = 'https://places.googleapis.com/v1';
-  protected readonly apiKey: string;
+  private readonly baseUrl = 'https://places.googleapis.com/v1';
+  private readonly apiKey: string;
   private readonly cache: Map<string, { data: unknown; timestamp: number }>;
   private readonly rateLimiter: {
     tokens: number;
@@ -24,11 +24,7 @@ export class GooglePlacesService {
       throw new Error('Google Maps API key is not configured');
     }
     this.apiKey = apiKey;
-
-    // Initialisation du cache avec Map natif
     this.cache = new Map();
-
-    // Rate limiter simple
     this.rateLimiter = {
       tokens: GOOGLE_MAPS_CONFIG.limits.maxRequestsPerSecond,
       lastRefill: Date.now(),
@@ -45,7 +41,7 @@ export class GooglePlacesService {
       const now = Date.now();
       const timeSinceLastRefill = now - this.rateLimiter.lastRefill;
       const tokensToAdd = Math.floor(timeSinceLastRefill * (this.rateLimiter.refillRate / 1000));
-
+      
       if (tokensToAdd > 0) {
         this.rateLimiter.tokens = Math.min(
           this.rateLimiter.refillRate,
@@ -88,7 +84,6 @@ export class GooglePlacesService {
       ...fetchOptions
     } = options;
 
-    // Vérifier le cache si un cacheKey est fourni
     if (cacheKey && !bypassCache) {
       const cached = this.cache.get(cacheKey);
       if (cached && (Date.now() - cached.timestamp) < cacheTTL) {
@@ -97,9 +92,7 @@ export class GooglePlacesService {
       }
     }
 
-    // Attendre le rate limiting
     await this.waitForRateLimit();
-
     let lastError: Error | null = null;
     
     for (let i = 0; i <= retries; i++) {
@@ -122,8 +115,7 @@ export class GooglePlacesService {
         }
 
         const data = await response.json();
-
-        // Mettre en cache si un cacheKey est fourni
+        
         if (cacheKey) {
           this.cache.set(cacheKey, { 
             data, 
@@ -133,7 +125,6 @@ export class GooglePlacesService {
         }
 
         return data;
-
       } catch (error) {
         console.error(`Attempt ${i + 1} failed:`, error);
         lastError = error as Error;
@@ -221,7 +212,6 @@ export class GooglePlacesService {
     maxResults: number = 5
   ): Promise<GooglePlace[]> {
     try {
-      // Construire les paramètres de recherche sans restriction de type
       const searchRequest = {
         textQuery: query,
         languageCode: language,
@@ -239,32 +229,18 @@ export class GooglePlacesService {
         }
       };
 
-      const response = await fetch(`${this.baseUrl}/places:searchText`, {
+      const response = await this.fetchWithCache('/places:searchText', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': this.apiKey,
-          'X-Goog-FieldMask': 'places'
-        },
         body: JSON.stringify(searchRequest)
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error('Places API Error Response:', data);
-        throw new Error(
-          `Failed to search places: ${data.error?.message || response.statusText}`
-        );
-      }
-
-      if (!data.places || !Array.isArray(data.places)) {
-        console.log('No places found in response:', data);
+      if (!response.places || !Array.isArray(response.places)) {
+        console.log('No places found in response:', response);
         return [];
       }
 
-      const places = data.places.slice(0, maxResults);
-
+      const places = response.places.slice(0, maxResults);
+      
       // Récupérer les détails pour chaque lieu trouvé
       const detailedPlaces = await Promise.all(
         places.map(async (place: GooglePlace) => {
@@ -278,7 +254,6 @@ export class GooglePlacesService {
       );
 
       return detailedPlaces.filter((place): place is GooglePlace => place !== null);
-
     } catch (error) {
       console.error('Error in searchPlacesInteractive:', error);
       throw error;

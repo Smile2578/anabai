@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { protectApiRoute, SessionWithUser, RouteParams } from '@/lib/auth/protect-api';
-import { blogQueue } from '@/lib/queue/queues/blog.queue';
 import { z } from 'zod';
+import connectDB from '@/lib/db/connection';
+import BlogPost from '@/models/blog.model';
 
 const updateStatusSchema = z.object({
-  action: z.enum(['publish', 'unpublish', 'schedule']),
+  action: z.enum(['publish', 'archive', 'delete']),
   scheduledDate: z.string().datetime().optional()
 });
 
@@ -14,41 +15,46 @@ async function updatePostStatus(
   routeParams: RouteParams
 ): Promise<NextResponse> {
   try {
-    const params = await routeParams.params;
-    if (!params.id) {
-      return NextResponse.json({ error: 'ID requis' }, { status: 400 });
+    const resolvedParams = await routeParams.params;
+    console.log('ID reçu:', resolvedParams.id);
+
+    await connectDB();
+    const post = await BlogPost.findById(resolvedParams.id);
+    console.log('Post trouvé:', post);
+    
+    if (!post) {
+      console.log('Post non trouvé dans la DB');
+      return NextResponse.json({ error: 'Article non trouvé' }, { status: 404 });
     }
 
     const body = await req.json();
     const validatedBody = updateStatusSchema.parse(body);
-    const { action, scheduledDate } = validatedBody;
+    const { action } = validatedBody;
 
-    let job;
     switch (action) {
       case 'publish':
-        job = await blogQueue.addPublishJob(params.id, session.user.id);
+        post.status = 'published';
+        post.publishedAt = new Date();
+        await post.save();
         break;
-      case 'unpublish':
-        job = await blogQueue.addUnpublishJob(params.id, session.user.id);
+
+      case 'archive':
+        post.status = 'archived';
+        await post.save();
         break;
-      case 'schedule':
-        if (!scheduledDate) {
-          return NextResponse.json(
-            { error: 'Date de publication requise pour la planification' },
-            { status: 400 }
-          );
-        }
-        job = await blogQueue.addScheduleJob(params.id, session.user.id, new Date(scheduledDate));
+
+      case 'delete':
+        await BlogPost.deleteOne({ _id: resolvedParams.id });
         break;
     }
 
     return NextResponse.json({
       success: true,
-      jobId: job?.id,
-      message: `Action ${action} ajoutée à la queue avec succès`
+      message: `Article ${action === 'delete' ? 'supprimé' : action === 'publish' ? 'publié' : 'archivé'} avec succès`
     });
+
   } catch (error) {
-    console.error('Erreur lors de la mise à jour du statut:', error);
+    console.error('Erreur complète:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erreur interne du serveur' },
       { status: error instanceof z.ZodError ? 400 : 500 }

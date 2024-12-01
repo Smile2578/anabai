@@ -1,6 +1,6 @@
 // components/admin/places/PlaceList.tsx
-import { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+
+import { Card } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -10,13 +10,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Category, Status } from '@/types/common';
 import { Place } from '@/types/places/main';
 import { PlaceActions } from './PlaceActions';
 import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
 
-
+// Interfaces pour les props
 export interface PlaceListProps {
   data: Place[];
   isLoading: boolean;
@@ -31,58 +30,20 @@ export interface PlaceListProps {
 }
 
 export function PlaceList({
+  data,
   isLoading,
   error,
   onEdit,
   onDelete,
   pagination
 }: PlaceListProps) {
-
-  const [search] = useState('');
-  const [category] = useState<Category>();
-  const [status] = useState<Status>();
-  const [page] = useState(1);
-  const [fetchedPlaces, setFetchedPlaces] = useState<Place[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [fetchError, setFetchError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    const fetchPlaces = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (search) params.append('search', search);
-        if (category) params.append('category', category);
-        if (status) params.append('status', status);
-        params.append('page', page.toString());
-        params.append('limit', '50');
-
-        const response = await fetch(`/api/admin/places?${params.toString()}`);
-        if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des lieux');
-        }
-        const data = await response.json();
-        setFetchedPlaces(data.places);
-      } catch (err) {
-        setFetchError(err instanceof Error ? err : new Error('Une erreur est survenue'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPlaces();
-  }, [search, category, status, page]);
-
-
-
-  if (fetchError || error) {
+  // Si une erreur survient, on affiche un message d'erreur
+  if (error) {
     return (
       <Card>
-        <CardContent className="pt-6">
-          <div className="text-center text-red-500">
-            Erreur lors du chargement des lieux : {(fetchError || error)?.message}
-          </div>
-        </CardContent>
+        <div className="p-6 text-center text-red-500">
+          Erreur lors du chargement des lieux : {error.message}
+        </div>
       </Card>
     );
   }
@@ -104,20 +65,20 @@ export function PlaceList({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading || isLoading ? (
+            {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
+                <TableCell colSpan={8} className="text-center">
                   Chargement...
                 </TableCell>
               </TableRow>
-            ) : fetchedPlaces?.length === 0 ? (
+            ) : data?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
+                <TableCell colSpan={8} className="text-center">
                   Aucun lieu trouvé
                 </TableCell>
               </TableRow>
             ) : (
-              fetchedPlaces?.map((place: Place) => (
+              data?.map((place) => (
                 <PlaceRow 
                   key={place._id} 
                   place={place} 
@@ -130,9 +91,10 @@ export function PlaceList({
         </Table>
       </Card>
 
+      {/* Pagination */}
       <div className="flex justify-between items-center">
         <div className="text-sm text-gray-500">
-          {fetchedPlaces.length} lieux trouvés
+          {data?.length} lieux trouvés
         </div>
         <div className="flex gap-2">
           <Button
@@ -155,6 +117,7 @@ export function PlaceList({
   );
 }
 
+// Composant PlaceRow pour afficher une ligne du tableau
 interface PlaceRowProps {
   place: Place;
   onEdit: (id: string) => void;
@@ -163,22 +126,26 @@ interface PlaceRowProps {
 
 function PlaceRow({ place, onEdit }: PlaceRowProps) {
   const router = useRouter();
+  
   return (
     <TableRow key={place._id} className="group">
-                  <TableCell>
-                    <div className="cursor-pointer" onClick={() => router.push(`/admin/places/${place._id}`)}>
-                      <div className="font-medium group-hover:text-primary transition-colors">
-                        {place.name.fr}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {place.name.ja}
-                      </div>
-                    </div>
+      <TableCell>
+        <div 
+          className="cursor-pointer" 
+          onClick={() => router.push(`/admin/places/${place._id}`)}
+        >
+          <div className="font-medium group-hover:text-primary transition-colors">
+            {place.name.fr}
+          </div>
+          <div className="text-sm text-gray-500">
+            {place.name.ja}
+          </div>
+        </div>
       </TableCell>
       <TableCell>
         <Badge variant="outline">{place.category}</Badge>
       </TableCell>
-      <TableCell>{place.subcategories}</TableCell>
+      <TableCell>{place.subcategories.join(', ')}</TableCell>
       <TableCell>{place.location.address.city}</TableCell>
       <TableCell>{place.location.address.prefecture}</TableCell>
       <TableCell>

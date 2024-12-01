@@ -173,6 +173,10 @@ export function ImportWizard({
     }
   };
 
+  const handlePreviewUpdate = (updatedPreviews: ImportPreview[]) => {
+    setPreviews(updatedPreviews);
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 'upload':
@@ -212,6 +216,7 @@ export function ImportWizard({
                   []
                 );
               }}
+              onUpdate={handlePreviewUpdate}
             />
 
             <div className="flex justify-between items-center pt-4 border-t">

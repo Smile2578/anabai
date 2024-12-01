@@ -1,23 +1,18 @@
 // components/admin/places/PlaceFilters.tsx
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Search, X } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuCheckboxItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Category, Status } from '@/types/common';
-import { PLACE_CATEGORIES } from '@/lib/config/categories';
+import { Category, Status, SUBCATEGORIES } from "@/types/common";
 
-type FilterType = 'categories' | 'status' | 'priceRange';
-
+// Interface des props du composant
 interface PlaceFiltersProps {
   searchValue: string;
   onSearchChange: (value: string) => void;
@@ -26,9 +21,27 @@ interface PlaceFiltersProps {
     status: Status[];
     priceRange: number[];
   };
-  onFilterChange: (type: FilterType, value: Category[] | Status[] | number[]) => void;
+  onFilterChange: (
+    type: 'categories' | 'status' | 'priceRange',
+    value: Category[] | Status[] | number[]
+  ) => void;
   onClearFilters: () => void;
 }
+
+// Options de statut prédéfinies
+const STATUS_OPTIONS: { value: Status; label: string }[] = [
+  { value: 'publié', label: 'Publié' },
+  { value: 'brouillon', label: 'Brouillon' },
+  { value: 'archivé', label: 'Archivé' }
+];
+
+// Options de catégories générées à partir des SUBCATEGORIES
+const CATEGORY_OPTIONS: { value: Category; label: string }[] = Object.keys(SUBCATEGORIES).map(
+  category => ({
+    value: category as Category,
+    label: category
+  })
+);
 
 export function PlaceFilters({
   searchValue,
@@ -37,137 +50,185 @@ export function PlaceFilters({
   onFilterChange,
   onClearFilters
 }: PlaceFiltersProps) {
-  const hasActiveFilters = 
-    selectedFilters.categories.length > 0 || 
+  // Vérification de la présence de filtres actifs
+  const hasActiveFilters = Boolean(
+    searchValue ||
+    selectedFilters.categories.length > 0 ||
     selectedFilters.status.length > 0 ||
-    selectedFilters.priceRange.length > 0;
+    selectedFilters.priceRange.length > 0
+  );
+
+  // Gestion du changement de statut
+  const handleStatusChange = (value: string) => {
+    if (value === 'all') {
+      onFilterChange('status', []);
+      return;
+    }
+    onFilterChange('status', [value as Status]);
+  };
+
+  // Gestion du changement de catégorie
+  const handleCategoryChange = (value: string) => {
+    if (value === 'all') {
+      onFilterChange('categories', []);
+      return;
+    }
+
+    const category = value as Category;
+    const currentCategories = [...selectedFilters.categories];
+    const categoryIndex = currentCategories.indexOf(category);
+    
+    if (categoryIndex === -1) {
+      // Ajouter la catégorie si elle n'existe pas
+      currentCategories.push(category);
+    } else {
+      // Retirer la catégorie si elle existe déjà
+      currentCategories.splice(categoryIndex, 1);
+    }
+    
+    onFilterChange('categories', currentCategories);
+  };
+
+  // Suppression d'un filtre individuel
+  const handleRemoveFilter = (type: 'category' | 'status', value: string) => {
+    if (type === 'category') {
+      const newCategories = selectedFilters.categories.filter(cat => cat !== value);
+      onFilterChange('categories', newCategories);
+    } else if (type === 'status') {
+      onFilterChange('status', []);
+    }
+  };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-      {/* Barre de recherche */}
-      <div className="relative flex-1 w-full">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-        <Input
-          value={searchValue}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Rechercher un lieu..."
-          className="pl-10 w-full"
-        />
-        {searchValue && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6"
-            onClick={() => onSearchChange('')}
+    <div className="space-y-4">
+      {/* Barre de filtres principale */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+        {/* Champ de recherche */}
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher un lieu..."
+            value={searchValue}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+
+        {/* Sélecteurs de filtres */}
+        <div className="flex gap-4">
+          {/* Sélecteur de statut */}
+          <Select
+            value={selectedFilters.status[0] || 'all'}
+            onValueChange={handleStatusChange}
           >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Statut" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              {STATUS_OPTIONS.map((status) => (
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-      {/* Menu des filtres */}
-      <div className="flex items-center gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-2">
-              <SlidersHorizontal className="h-4 w-4" />
-              Filtres
-              {hasActiveFilters && (
-                <Badge variant="secondary" className="ml-1">
-                  {selectedFilters.categories.length + 
-                   selectedFilters.status.length +
-                   selectedFilters.priceRange.length}
-                </Badge>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            {/* Catégories */}
-            <DropdownMenuLabel>Catégories</DropdownMenuLabel>
-            {(Object.keys(PLACE_CATEGORIES) as Category[]).map((category) => (
-              <DropdownMenuCheckboxItem
-                key={category}
-                checked={selectedFilters.categories.includes(category)}
-                onCheckedChange={(checked) => {
-                  const newCategories = checked 
-                    ? [...selectedFilters.categories, category]
-                    : selectedFilters.categories.filter(c => c !== category);
-                  onFilterChange('categories', newCategories);
-                }}
-              >
-                {category}
-              </DropdownMenuCheckboxItem>
-            ))}
-
-            <DropdownMenuSeparator />
-
-            {/* Statuts */}
-            <DropdownMenuLabel>Statut</DropdownMenuLabel>
-            {['brouillon', 'publié', 'archivé'].map((status) => (
-              <DropdownMenuCheckboxItem
-                key={status}
-                checked={selectedFilters.status.includes(status as Status)}
-                onCheckedChange={(checked) => {
-                  const newStatus = checked
-                    ? [...selectedFilters.status, status as Status]
-                    : selectedFilters.status.filter(s => s !== status);
-                  onFilterChange('status', newStatus);
-                }}
-              >
-                <Badge 
-                  variant={
-                    status === 'publié' ? 'default' :
-                    status === 'archivé' ? 'destructive' :
-                    'secondary'
-                  }
-                  className="mr-2"
+          {/* Sélecteur de catégories */}
+          <Select
+            value={selectedFilters.categories.length === 0 ? 'all' : selectedFilters.categories[0]}
+            onValueChange={handleCategoryChange}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Catégories">
+                {selectedFilters.categories.length === 0 
+                  ? "Toutes les catégories" 
+                  : `${selectedFilters.categories.length} sélectionnée(s)`}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les catégories</SelectItem>
+              {CATEGORY_OPTIONS.map((category) => (
+                <SelectItem 
+                  key={category.value} 
+                  value={category.value}
+                  className={selectedFilters.categories.includes(category.value) ? "bg-primary/10" : ""}
                 >
-                  {status}
-                </Badge>
-              </DropdownMenuCheckboxItem>
-            ))}
+                  {category.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <DropdownMenuSeparator />
-
-            {/* Niveau de prix */}
-            <DropdownMenuLabel>Prix</DropdownMenuLabel>
-            {[1, 2, 3, 4].map((level) => (
-              <DropdownMenuCheckboxItem
-                key={level}
-                checked={selectedFilters.priceRange.includes(level)}
-                onCheckedChange={(checked) => {
-                  const newPriceRange = checked
-                    ? [...selectedFilters.priceRange, level]
-                    : selectedFilters.priceRange.filter(p => p !== level);
-                  onFilterChange('priceRange', newPriceRange);
-                }}
-              >
-                {'¥'.repeat(level)}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Bouton de réinitialisation */}
-        <AnimatePresence>
+          {/* Bouton de réinitialisation */}
           {hasActiveFilters && (
-            <motion.div
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: 'auto' }}
-              exit={{ opacity: 0, width: 0 }}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClearFilters}
+              className="h-10 w-10"
+              title="Réinitialiser les filtres"
             >
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClearFilters}
-                className="text-muted-foreground"
-              >
-                Réinitialiser
-              </Button>
-            </motion.div>
+              <X className="h-4 w-4" />
+            </Button>
           )}
-        </AnimatePresence>
+        </div>
       </div>
+
+      {/* Affichage des filtres actifs */}
+      {hasActiveFilters && (
+        <div className="flex flex-wrap gap-2">
+          {/* Affichage des catégories sélectionnées */}
+          {selectedFilters.categories.map((category) => (
+            <Badge
+              key={category}
+              variant="secondary"
+              className="flex items-center gap-1 px-3 py-1"
+            >
+              {category}
+              <button
+                onClick={() => handleRemoveFilter('category', category)}
+                className="ml-1 hover:text-primary"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+
+          {/* Affichage du statut sélectionné */}
+          {selectedFilters.status.map((status) => (
+            <Badge
+              key={status}
+              variant="secondary"
+              className="flex items-center gap-1 px-3 py-1"
+            >
+              {STATUS_OPTIONS.find(opt => opt.value === status)?.label || status}
+              <button
+                onClick={() => handleRemoveFilter('status', status)}
+                className="ml-1 hover:text-primary"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+
+          {/* Affichage de la recherche active si présente */}
+          {searchValue && (
+            <Badge
+              variant="secondary"
+              className="flex items-center gap-1 px-3 py-1"
+            >
+              Recherche: {searchValue}
+              <button
+                onClick={() => onSearchChange('')}
+                className="ml-1 hover:text-primary"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+        </div>
+      )}
     </div>
   );
 }

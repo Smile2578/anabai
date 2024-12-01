@@ -16,7 +16,7 @@ async function handleSearchGooglePlaces(req: Request, session: SessionWithUser) 
 
     if (!query) {
       return NextResponse.json(
-        { error: 'Query parameter is required' },
+        { error: 'Le paramètre query est requis' },
         { status: 400 }
       );
     }
@@ -27,7 +27,7 @@ async function handleSearchGooglePlaces(req: Request, session: SessionWithUser) 
     return NextResponse.json({ places: results });
 
   } catch (error) {
-    console.error('Google Places search error:', error);
+    console.error('Erreur de recherche Google Places:', error);
     return NextResponse.json(
       { error: 'Erreur lors de la recherche' },
       { status: 500 }

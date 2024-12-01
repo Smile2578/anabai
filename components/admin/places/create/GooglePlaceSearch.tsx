@@ -64,7 +64,7 @@ export function GooglePlaceSearch({
 
       {/* Liste des résultats */}
       {value && results.length > 0 && (
-        <Card className="absolute w-full z-50 mt-1 py-2 max-h-[300px] overflow-auto">
+        <Card className="absolute w-full z-50 mt-1 py-2 max-h-[400px] overflow-auto">
           <div className="space-y-1">
             {results.map((place) => (
               <Button

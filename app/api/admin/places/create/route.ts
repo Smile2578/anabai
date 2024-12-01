@@ -52,12 +52,13 @@ async function handleCreatePlace(req: Request, session: SessionWithUser) {
       );
     }
 
-    // Fusionner les métadonnées initiales avec celles enrichies
+    // Fusionner les métadonnées initiales avec celles enrichies et définir le statut par défaut à "publié"
     const place = {
       ...enriched.preview.enriched.place,
       metadata: {
         ...enriched.preview.enriched.place.metadata,
         ...initialMetadata,
+        status: 'publié' // Statut par défaut
       }
     };
 

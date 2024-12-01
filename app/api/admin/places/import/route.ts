@@ -2,9 +2,9 @@
 import { NextResponse } from 'next/server';
 import { ImportService } from '@/lib/services/places/ImportService';
 import { GooglePlacesService } from '@/lib/services/core/GooglePlacesService';
-import { GeocodingService } from '@/lib/services/core/GeocodingService';
 import connectDB from '@/lib/db/connection';
 import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
+import { GeocodingService } from '@/lib/services/core/GeocodingService';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 

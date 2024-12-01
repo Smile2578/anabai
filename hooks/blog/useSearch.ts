@@ -1,114 +1,73 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { BlogPost } from '@/types/blog';
+import { useState, useCallback } from 'react';
+import { BlogSearchService } from '@/lib/services/blog/BlogSearchService';
+import { BlogPost } from '@/types/blog';
 
 interface SearchState {
-  query: string;
-  selectedTags: string[];
-  page: number;
-  limit: number;
-}
-
-interface PaginationInfo {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-interface UseSearchResult {
   posts: BlogPost[];
   loading: boolean;
   error: string | null;
-  pagination: PaginationInfo;
-  search: (query: string) => void;
-  selectTag: (tag: string) => void;
-  removeTag: (tag: string) => void;
-  setPage: (page: number) => void;
+  pagination: {
+    page: number;
+    totalPages: number;
+    totalItems: number;
+  };
 }
 
-const defaultPagination = {
-  total: 0,
-  page: 1,
-  limit: 10,
-  totalPages: 0,
-};
+const searchService = new BlogSearchService();
 
-export function useSearch(): UseSearchResult {
+export function useSearch() {
   const [state, setState] = useState<SearchState>({
-    query: '',
-    selectedTags: [],
-    page: 1,
-    limit: 10,
+    posts: [],
+    loading: false,
+    error: null,
+    pagination: {
+      page: 1,
+      totalPages: 0,
+      totalItems: 0,
+    },
   });
 
-  const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState<PaginationInfo>(defaultPagination);
+  const search = useCallback(async (
+    query: string,
+    tags: string[] = [],
+    page: number = 1,
+    limit: number = 10
+  ) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
 
-  const fetchPosts = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
+      const result = await searchService.search({
+        query,
+        tags,
+        page,
+        limit,
+      });
 
-      // Construire l'URL avec les paramètres de recherche
-      const params = new URLSearchParams();
-      if (state.query) params.append('q', state.query);
-      state.selectedTags.forEach(tag => params.append('tags[]', tag));
-      params.append('page', state.page.toString());
-      params.append('limit', state.limit.toString());
-
-      const response = await fetch(`/api/blog/search?${params.toString()}`);
-      if (!response.ok) throw new Error('Erreur lors de la recherche');
-
-      const data = await response.json();
-      setPosts(data.posts);
-      setPagination(data.pagination);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-      setPosts([]);
-      setPagination(defaultPagination);
-    } finally {
-      setLoading(false);
+      setState({
+        posts: result.posts,
+        loading: false,
+        error: null,
+        pagination: result.pagination,
+      });
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Une erreur est survenue',
+      }));
     }
-  }, [state]);
-
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
-
-  const search = useCallback((query: string) => {
-    setState(prev => ({ ...prev, query, page: 1 }));
-  }, []);
-
-  const selectTag = useCallback((tag: string) => {
-    setState(prev => ({
-      ...prev,
-      selectedTags: [...prev.selectedTags, tag],
-      page: 1,
-    }));
-  }, []);
-
-  const removeTag = useCallback((tag: string) => {
-    setState(prev => ({
-      ...prev,
-      selectedTags: prev.selectedTags.filter(t => t !== tag),
-      page: 1,
-    }));
   }, []);
 
   const setPage = useCallback((page: number) => {
-    setState(prev => ({ ...prev, page }));
+    setState(prev => ({
+      ...prev,
+      pagination: { ...prev.pagination, page },
+    }));
   }, []);
 
   return {
-    posts,
-    loading,
-    error,
-    pagination,
+    ...state,
     search,
-    selectTag,
-    removeTag,
     setPage,
   };
 } 

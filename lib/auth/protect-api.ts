@@ -15,6 +15,7 @@ export type RouteContext = Promise<Record<string, string>>;
 export type RouteParams = {
   params: RouteContext;
   searchParams?: Record<string, string>;
+  placeId?: string;
 };
 
 export function protectApiRoute(
@@ -48,7 +49,8 @@ export function protectApiRoute(
 
       const routeParams: RouteParams = {
         params: context.params,
-        searchParams: Object.fromEntries(req.nextUrl.searchParams)
+        searchParams: Object.fromEntries(req.nextUrl.searchParams),
+        placeId: req.nextUrl.searchParams.get('placeId') || undefined
       };
 
       return handler(req, session, routeParams);

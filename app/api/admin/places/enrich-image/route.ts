@@ -1,3 +1,5 @@
+// app/api/admin/places/enrich-image/route.ts
+
 import { NextResponse } from 'next/server';
 import { EnrichmentService } from '@/lib/services/places/EnrichmentService';
 import { GooglePlacesService } from '@/lib/services/core/GooglePlacesService';
@@ -29,7 +31,7 @@ async function handleEnrichPlaceImage(req: Request, session: SessionWithUser) {
     const enrichmentService = new EnrichmentService(googlePlacesService, imageService);
 
     // Enrichir l'image
-    const enrichedImage = await enrichmentService.enrichSingleImage(placeId);
+    const enrichedImage = await enrichmentService.enrichSingleImage(placeId, 'system');
 
     if (!enrichedImage) {
       return NextResponse.json(

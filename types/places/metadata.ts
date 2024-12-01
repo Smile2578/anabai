@@ -2,6 +2,7 @@
 import { Status } from '../common';
 
 export interface PlaceMetadata {
+  status: Status;
   source: string;
   authors?: {
     id: string;
@@ -13,7 +14,6 @@ export interface PlaceMetadata {
   lastEnriched?: Date;
   lastVerified?: Date;
   verifiedBy?: string;
-  status: Status;
   tags?: string[];
   businessStatus?: string;
   rating?: number;
@@ -29,4 +29,8 @@ export interface PlaceMetadata {
       description?: string;
     }>;
   };
+  lastModifiedAt?: Date;
+  lastModifiedBy?: string;
+  createdAt?: Date;
+  createdBy?: string;
 }

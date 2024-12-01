@@ -17,15 +17,16 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    const posts = await BlogPost.find({})
-      .select('title slug excerpt coverImage author category publishedAt status')
-      .sort({ createdAt: -1 });
+    const posts = await BlogPost.find()
+      .sort({ createdAt: -1 })
+      .populate('author', 'name email')
+      .lean();
 
     return NextResponse.json(posts);
   } catch (error) {
-    console.error('Error in GET /api/admin/blog:', error);
+    console.error('Error fetching blog posts:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur interne' },
+      { error: 'Erreur lors de la récupération des articles' },
       { status: 500 }
     );
   }

@@ -50,10 +50,10 @@ export interface ImportJobData extends BaseJobData {
 
 // Types pour les jobs de blog
 export interface BlogJobData extends BaseJobData {
-  action: 'publish' | 'unpublish' | 'schedule' | 'process-images' | 'generate-version';
   postId: string;
+  userId: string;
+  action: 'publish' | 'unpublish' | 'schedule' | 'process-images' | 'generate-version' | 'archive' | 'delete';
   scheduledDate?: Date;
-  version?: number;
 }
 
 // Types pour les jobs de lieux

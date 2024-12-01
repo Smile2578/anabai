@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PlaceStats } from '@/components/admin/places/PlaceStats';
@@ -16,18 +16,33 @@ import { usePlaces } from '@/hooks/usePlaces';
 import { Category, Status } from '@/types/common';
 import { placeRepository } from '@/lib/repositories/place-repository';
 
+// Interface pour la structure des filtres
 interface PlaceFilters {
   categories: Category[];
   status: Status[];
   priceRange: number[];
 }
 
+// Valeurs par défaut pour les statistiques
+const defaultStats = {
+  total: 0,
+  published: 0,
+  draft: 0,
+  archived: 0,
+  withImages: 0,
+  withoutImages: 0,
+  totalRatings: 0,
+  averageRating: 0,
+  byCategory: {},
+  byPrefecture: {}
+};
 
 export default function PlacesPage() {
+  // Initialisation des hooks nécessaires
   const router = useRouter();
   const { toast } = useToast();
 
-  // États
+  // États locaux pour la gestion des modales et des filtres
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,35 +53,24 @@ export default function PlacesPage() {
     priceRange: []
   });
   
-  // Données et chargement
+  // Utilisation du hook usePlaces pour récupérer les données
+  // avec gestion optimisée du cache et des requêtes
   const { 
-    data,
+    places,
+    stats,
+    totalPages,
     isLoading,
     error,
     refetch
   } = usePlaces({
     search: searchQuery,
     categories: filters.categories,
-    status: filters.status[0], 
+    status: filters.status[0],
     page: currentPage,
     limit: 50
   });
 
-  const places = data?.places || [];
-  const stats = data?.stats || {
-    total: 0,
-    published: 0,
-    draft: 0,
-    archived: 0,
-    withImages: 0,
-    withoutImages: 0,
-    totalRatings: 0,
-    averageRating: 0,
-    byCategory: {},
-    byPrefecture: {}
-  };
-  const totalPages = data?.totalPages || 1;
-  // Handler des filtres
+  // Gestionnaire de changement des filtres
   const handleFilterChange = (
     type: 'categories' | 'status' | 'priceRange',
     value: Category[] | Status[] | number[]
@@ -75,11 +79,10 @@ export default function PlacesPage() {
       ...prev,
       [type]: value
     }));
-    setCurrentPage(1); 
-    refetch(); 
+    setCurrentPage(1);
   };
 
-  // Handler de nettoyage
+  // Réinitialisation complète des filtres et de la recherche
   const handleClearFilters = () => {
     setFilters({
       categories: [],
@@ -90,15 +93,17 @@ export default function PlacesPage() {
     setCurrentPage(1);
   };
 
-
+  // Gestion de la suppression d'un lieu
   const handleDelete = async (id: string) => {
     try {
       await placeRepository.delete(id);
+      // Après la suppression, on force le rechargement des données
       await refetch();
       toast({
         description: "Le lieu a été supprimé avec succès"
       });
-    } catch {
+    } catch (err) {
+      console.error('Erreur lors de la suppression du lieu:', err);
       toast({
         variant: "destructive",
         description: "Erreur lors de la suppression du lieu"
@@ -106,19 +111,22 @@ export default function PlacesPage() {
     }
   };
 
+  // Navigation vers la page d'édition d'un lieu
   const handleEdit = (id: string) => {
     router.push(`/admin/places/${id}`);
   };
 
-  const handleCreateSuccess = (placeId: string) => {
+  // Gestion du succès de la création d'un lieu
+  const handleCreateSuccess = async (placeId: string) => {
     setIsCreateModalOpen(false);
-    refetch();
+    await refetch();
     router.push(`/admin/places/${placeId}`);
     toast({
       description: "Le lieu a été créé avec succès"
     });
   };
 
+  // Gestion de la fin de l'import
   const handleImportComplete = async () => {
     setIsImportModalOpen(false);
     await refetch();
@@ -127,7 +135,7 @@ export default function PlacesPage() {
     });
   };
 
-  // Gestion de l'erreur
+  // Affichage d'un message d'erreur si nécessaire
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
@@ -139,7 +147,7 @@ export default function PlacesPage() {
 
   return (
     <div className="container mx-auto py-8 space-y-8">
-      {/* En-tête */}
+      {/* En-tête avec bouton d'ajout */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Gestion des lieux</h1>
         <div className="flex gap-2">
@@ -153,10 +161,10 @@ export default function PlacesPage() {
         </div>
       </div>
 
-      {/* Statistiques */}
-      <PlaceStats stats={stats} />
+      {/* Statistiques globales */}
+      <PlaceStats stats={stats || defaultStats} />
 
-      {/* Filtres */}
+      {/* Barre de filtres */}
       <PlaceFilters
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
@@ -165,25 +173,19 @@ export default function PlacesPage() {
         onClearFilters={handleClearFilters}
       />
 
-      {/* Liste */}
-      {isLoading ? (
-        <div className="flex justify-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : (
-        <PlaceList
-          data={places}
-          isLoading={isLoading}
-          error={error as Error | null}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          pagination={{
-            currentPage,
-            totalPages,
-            onPageChange: setCurrentPage
-          }}
-        />
-      )}
+      {/* Liste des lieux avec gestion du chargement */}
+      <PlaceList
+        data={places}
+        isLoading={isLoading}
+        error={error as Error | null}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        pagination={{
+          currentPage,
+          totalPages,
+          onPageChange: setCurrentPage
+        }}
+      />
 
       {/* Modal de création */}
       <CreatePlaceDialog
@@ -197,7 +199,11 @@ export default function PlacesPage() {
         <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
           <ImportWizard
             onComplete={handleImportComplete}
-            onCancel={() => setIsImportModalOpen(false)} authorId={''} authorName={''} authorRole={'admin'}          />
+            onCancel={() => setIsImportModalOpen(false)} 
+            authorId={''}  // À remplacer par l'ID de l'utilisateur connecté
+            authorName={''} // À remplacer par le nom de l'utilisateur connecté
+            authorRole={'admin'}
+          />
         </DialogContent>
       </Dialog>
     </div>

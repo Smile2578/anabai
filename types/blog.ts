@@ -46,6 +46,12 @@ export interface BlogPost {
   versions?: BlogPostVersion[];
   createdAt: Date;
   updatedAt: Date;
+  views?: number;
+  categories: string[];
+  metadata: {
+    readingTime: number;
+    wordCount: number;
+  };
 }
 
 // Types pour les formulaires et les requêtes

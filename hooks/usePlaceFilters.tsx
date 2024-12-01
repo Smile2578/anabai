@@ -1,39 +1,39 @@
-// hooks/usePlaceFilters.ts
-import { useCallback, useState } from 'react';
-import { PlaceFilters } from '@/types/places/base';
-import { useDebounce } from './useDebounce';
+// hooks/usePlaceFilters.tsx
+import { useState, useCallback } from 'react';
+import { Category, Status } from '@/types/common';
 
-export function usePlaceFilters(initialFilters?: Partial<PlaceFilters>) {
-  const [filters, setFilters] = useState<PlaceFilters>({
-    search: '',
-    categories: [],
-    status: undefined,
-    priceRange: [],
-    ...initialFilters
-  });
+interface Filters {
+  categories: Category[];
+  status: Status[];
+  priceRange: number[];
+}
 
-  const debouncedSearch = useDebounce(filters.search, 300);
+const DEFAULT_FILTERS: Filters = {
+  categories: [],
+  status: [],
+  priceRange: []
+};
 
-  const updateFilter = useCallback(<K extends keyof PlaceFilters>(
-    key: K,
-    value: PlaceFilters[K]
+export function usePlaceFilters() {
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+
+  const handleFilterChange = useCallback((
+    type: keyof Filters,
+    value: Category[] | Status[] | number[]
   ) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters(prev => ({
+      ...prev,
+      [type]: value
+    }));
   }, []);
 
   const clearFilters = useCallback(() => {
-    setFilters({
-      search: '',
-      categories: [],
-      status: undefined,
-      priceRange: []
-    });
+    setFilters(DEFAULT_FILTERS);
   }, []);
 
   return {
     filters,
-    debouncedSearch,
-    updateFilter,
+    handleFilterChange,
     clearFilters
   };
 }

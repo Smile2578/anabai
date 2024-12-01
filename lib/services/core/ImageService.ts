@@ -1,243 +1,181 @@
 // lib/services/core/ImageService.ts
-import { createHash } from 'crypto';
-import path from 'path';
-import fs from 'fs/promises';
+import { Queue } from 'bullmq';
 import sharp from 'sharp';
-import { VALIDATION_RULES } from '@/lib/config/validation-rules';
+import { redisConfig } from '@/lib/queue/config/redis';
+import { logger } from '@/lib/logger';
+import { StorageService } from '../places/StorageService';
+import { PlaceRepository } from '@/lib/repositories/place-repository';
+import { LocationService } from './LocationService';
+import { ValidationService } from '../places/ValidationService';
 
-interface ImageDimensions {
- width: number;
- height: number;
+interface ImageProcessingOptions {
+  width?: number;
+  height?: number;
+  quality?: number;
+  format?: 'jpeg' | 'png' | 'webp';
 }
 
-interface ProcessedImage {
- buffer: Buffer;
- dimensions: ImageDimensions;
- format: string;
- size: number;
+interface ImageMetadata {
+  width: number;
+  height: number;
+  format: string;
+  size: number;
 }
-
 
 export class ImageService {
- private cacheDir: string;
- private readonly defaultImagePath: string = '/images/placeholder.webp';
- 
- constructor() {
-   this.cacheDir = path.join(process.cwd(), 'public', 'cache', 'images');
- }
+  private queue: Queue;
+  private storage: StorageService;
 
- private async ensureCacheDir(): Promise<void> {
-   try {
-     await fs.access(this.cacheDir);
-   } catch {
-     await fs.mkdir(this.cacheDir, { recursive: true });
-   }
- }
-
- private generateCacheKey(url: string): string {
-   const hash = createHash('md5')
-     .update(url)
-     .digest('hex')
-     .slice(0, 8);
-   
-   const timestamp = Date.now().toString(36).slice(-4);
-   return `img_${hash}_${timestamp}`;
- }
-
- private async downloadImage(url: string): Promise<Buffer> {
-   const response = await fetch(url);
-   if (!response.ok) {
-     throw new Error(`Failed to download image: ${response.statusText}`);
-   }
-   const arrayBuffer = await response.arrayBuffer();
-   return Buffer.from(arrayBuffer);
- }
-
- private async processImage(buffer: Buffer): Promise<ProcessedImage> {
-   const image = sharp(buffer);
-   const metadata = await image.metadata();
-
-   // Vérification du format
-   if (!metadata.format || !['jpeg', 'jpg', 'png', 'webp'].includes(metadata.format)) {
-     throw new Error('Format image non supporté');
-   }
-
-   // Redimensionnement si nécessaire
-   let processedImage = image;
-   if (metadata.width && metadata.height) {
-     const maxDimension = Math.max(metadata.width, metadata.height);
-     if (maxDimension > VALIDATION_RULES.images.dimensions.minWidth) {
-       processedImage = image.resize(
-         VALIDATION_RULES.images.dimensions.minWidth,
-         VALIDATION_RULES.images.dimensions.minHeight,
-         {
-           fit: 'inside',
-           withoutEnlargement: true
-         }
-       );
-     }
-   }
-
-   // Conversion en WebP pour optimisation
-   const optimizedBuffer = await processedImage
-     .webp({ quality: 80 })
-     .toBuffer({ resolveWithObject: true });
-
-   return {
-     buffer: optimizedBuffer.data,
-     dimensions: {
-       width: optimizedBuffer.info.width,
-       height: optimizedBuffer.info.height
-     },
-     format: 'webp',
-     size: optimizedBuffer.data.length
-   };
- }
-
- private async validateImage(
-   processedImage: ProcessedImage,
-   options = { maxSize: VALIDATION_RULES.images.maxSize }
- ): Promise<void> {
-   const errors: string[] = [];
-
-   // Vérification de la taille
-   if (processedImage.size > options.maxSize) {
-     errors.push(
-       `Image size exceeds maximum allowed (${options.maxSize / 1024 / 1024}MB)`
-     );
-   }
-
-   // Vérification des dimensions minimales
-   if (
-     processedImage.dimensions.width < VALIDATION_RULES.images.dimensions.minWidth ||
-     processedImage.dimensions.height < VALIDATION_RULES.images.dimensions.minHeight
-   ) {
-     errors.push(
-       `Image dimensions too small (minimum ${VALIDATION_RULES.images.dimensions.minWidth}x${VALIDATION_RULES.images.dimensions.minHeight}px)`
-     );
-   }
-
-   if (errors.length > 0) {
-     throw new Error(errors.join(', '));
-   }
- }
-
- private async getDefaultImage(): Promise<string> {
-   const defaultImagePath = path.join(process.cwd(), 'public', this.defaultImagePath);
-   try {
-     await fs.access(defaultImagePath);
-     return this.defaultImagePath;
-   } catch {
-     console.warn('Default image not found, creating one...');
-     // Créer une image par défaut simple avec Sharp
-     await sharp({
-       create: {
-         width: 800,
-         height: 600,
-         channels: 4,
-         background: { r: 200, g: 200, b: 200, alpha: 1 }
-       }
-     })
-     .webp()
-     .toFile(defaultImagePath);
-     return this.defaultImagePath;
-   }
- }
-
- async cachePrimaryImage(images: { url: string; isCover: boolean }[]): Promise<string> {
-  await this.ensureCacheDir();
-
-  if (images.length === 0) {
-    console.warn('No images available, using placeholder.');
-    return this.getDefaultImage();
+  constructor() {
+    this.queue = new Queue('image', {
+      connection: redisConfig,
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 1000
+        }
+      }
+    });
+    const placeRepository = new PlaceRepository();
+    const locationService = new LocationService();
+    const validationService = new ValidationService(locationService);
+    this.storage = new StorageService(placeRepository, validationService);
   }
 
-  try {
-    const coverImage = images.find(img => img.isCover) || images[0];
-    const cachedPath = await this.cacheImage(coverImage.url);
-    console.log(`Primary image cached at: ${cachedPath}`);
-    return cachedPath;
-  } catch (error) {
-    console.error('Error caching primary image:', error);
-    return this.getDefaultImage();
-  }
-}
-
-async cacheImage(url: string): Promise<string> {
-  await this.ensureCacheDir();
-
-  try {
-    // Générer un nom de fichier unique
-    const cacheKey = this.generateCacheKey(url);
-    const filename = `${cacheKey}.webp`;
-    const cachePath = path.join(this.cacheDir, filename);
-    const publicPath = `/cache/images/${filename}`;
-
-    // Vérifier si l'image existe déjà en cache
+  async processImage(
+    imageBuffer: Buffer,
+    options: ImageProcessingOptions = {}
+  ): Promise<Buffer> {
     try {
-      await fs.access(cachePath);
-      return publicPath;
-    } catch {
-      // Si l'image n'existe pas, la télécharger et la traiter
-      const imageBuffer = await this.downloadImage(url);
-      const processedImage = await this.processImage(imageBuffer);
-      await fs.writeFile(cachePath, processedImage.buffer);
-      return publicPath;
+      let processor = sharp(imageBuffer);
+
+      if (options.width || options.height) {
+        processor = processor.resize(options.width, options.height, {
+          fit: 'inside',
+          withoutEnlargement: true
+        });
+      }
+
+      if (options.format) {
+        processor = processor.toFormat(options.format, {
+          quality: options.quality || 80
+        });
+      }
+
+      return await processor.toBuffer();
+    } catch (error) {
+      logger.error('Error processing image:', error);
+      throw new Error('Failed to process image');
     }
-  } catch (error) {
-    console.error('Error caching image:', error);
-    return this.getDefaultImage();
+  }
+
+  async getImageMetadata(imageBuffer: Buffer): Promise<ImageMetadata> {
+    try {
+      const metadata = await sharp(imageBuffer).metadata();
+      return {
+        width: metadata.width || 0,
+        height: metadata.height || 0,
+        format: metadata.format || 'unknown',
+        size: imageBuffer.length
+      };
+    } catch (error) {
+      logger.error('Error getting image metadata:', error);
+      throw new Error('Failed to get image metadata');
+    }
+  }
+
+  async optimizeImage(
+    imageBuffer: Buffer,
+    targetSize: number = 800 * 1024 // 800KB par défaut
+  ): Promise<Buffer> {
+    try {
+      let quality = 80;
+      let optimizedBuffer = await this.processImage(imageBuffer, {
+        format: 'webp',
+        quality
+      });
+
+      while (optimizedBuffer.length > targetSize && quality > 20) {
+        quality -= 10;
+        optimizedBuffer = await this.processImage(imageBuffer, {
+          format: 'webp',
+          quality
+        });
+      }
+
+      return optimizedBuffer;
+    } catch (error) {
+      logger.error('Error optimizing image:', error);
+      throw new Error('Failed to optimize image');
+    }
+  }
+
+  async queueImageProcessing(
+    imageId: string,
+    options: ImageProcessingOptions
+  ): Promise<void> {
+    try {
+      await this.queue.add(
+        'process-image',
+        {
+          imageId,
+          options
+        },
+        {
+          jobId: `img-${imageId}`,
+          removeOnComplete: true,
+          removeOnFail: false
+        }
+      );
+      logger.info(`Image processing job queued for image ${imageId}`);
+    } catch (error) {
+      logger.error('Error queuing image processing job:', error);
+      throw new Error('Failed to queue image processing');
+    }
+  }
+
+  async uploadImage(
+    imageBuffer: Buffer,
+    path: string,
+    options: ImageProcessingOptions = {}
+  ): Promise<string> {
+    try {
+      const processedBuffer = await this.processImage(imageBuffer, options);
+      const url = await this.storage.uploadFile(processedBuffer, path);
+      return url;
+    } catch (error) {
+      logger.error('Error uploading image:', error);
+      throw new Error('Failed to upload image');
+    }
+  }
+
+  async deleteImage(path: string): Promise<void> {
+    try {
+      await this.storage.deleteFile(path);
+      logger.info(`Image deleted successfully: ${path}`);
+    } catch (error) {
+      logger.error('Error deleting image:', error);
+      throw new Error('Failed to delete image');
+    }
+  }
+
+  async cacheImage(url: string): Promise<string> {
+    try {
+      const response = await fetch(url);
+      const imageBuffer = await response.arrayBuffer();
+      const processedImage = await this.processImage(Buffer.from(imageBuffer));
+      const uploadedUrl = await this.uploadImage(processedImage, `cache/images/${Date.now()}.webp`);
+      return uploadedUrl;
+    } catch (error) {
+      logger.error('Error caching image:', error);
+      throw new Error('Failed to cache image');
+    }
+  }
+
+  async close(): Promise<void> {
+    await this.queue.close();
   }
 }
 
- async clearCache(olderThan?: Date): Promise<void> {
-   await this.ensureCacheDir();
-   const files = await fs.readdir(this.cacheDir);
-
-   for (const file of files) {
-     const filePath = path.join(this.cacheDir, file);
-     try {
-       const stats = await fs.stat(filePath);
-       if (!olderThan || stats.mtime < olderThan) {
-         await fs.unlink(filePath);
-       }
-     } catch (error) {
-       console.error(`Error deleting file ${file}:`, error);
-     }
-   }
- }
-
- async getCacheStats(): Promise<{ 
-   files: number; 
-   totalSize: number;
-   oldestFile?: Date;
-   newestFile?: Date;
- }> {
-   await this.ensureCacheDir();
-   const files = await fs.readdir(this.cacheDir);
-   let totalSize = 0;
-   let oldestFile: Date | undefined;
-   let newestFile: Date | undefined;
-
-   for (const file of files) {
-     const filePath = path.join(this.cacheDir, file);
-     const stats = await fs.stat(filePath);
-     
-     totalSize += stats.size;
-     
-     if (!oldestFile || stats.mtime < oldestFile) {
-       oldestFile = stats.mtime;
-     }
-     if (!newestFile || stats.mtime > newestFile) {
-       newestFile = stats.mtime;
-     }
-   }
-
-   return {
-     files: files.length,
-     totalSize,
-     oldestFile,
-     newestFile
-   };
- }
-}
+export const imageService = new ImageService();

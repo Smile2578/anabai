@@ -3,9 +3,6 @@ import { GooglePlacesService } from '../core/GooglePlacesService';
 import { GeocodingService } from '../core/GeocodingService';
 import { ImportPreview } from '@/types/import';
 import { GOOGLE_MAPS_CONFIG } from '@/lib/config/google-maps';
-import { GooglePlace } from '@/types/google/place';
-import { Place } from '@/types/places/main';
-import { Category, Subcategory } from '@/types/common';
 
 interface ImportResult {
   success: boolean;
@@ -33,120 +30,6 @@ export class ImportService {
       lng >= bounds.west &&
       lng <= bounds.east
     );
-  }
-
-  private determineCategory(types: string[]): Category {
-    // Mapper les types Google vers nos catégories
-    const typeMapping: Record<string, Category> = {
-      'restaurant': 'Restaurant',
-      'food': 'Restaurant',
-      'cafe': 'Café & Bar',
-      'bar': 'Café & Bar',
-      'lodging': 'Hôtel',
-      'hotel': 'Hôtel',
-      'shopping_mall': 'Shopping',
-      'store': 'Shopping',
-      'point_of_interest': 'Visite',
-      'tourist_attraction': 'Visite'
-    };
-
-    for (const type of types) {
-      const category = typeMapping[type];
-      if (category) {
-        return category;
-      }
-    }
-
-    return 'Visite'; // Catégorie par défaut
-  }
-
-  private determineSubcategories(types: string[], category: Category): Subcategory[] {
-    // Exemple de mapping pour quelques sous-catégories
-    const subcategories = new Set<Subcategory>();
-
-    if (category === 'Restaurant') {
-      if (types.includes('ramen_restaurant')) subcategories.add('Ramen');
-      if (types.includes('sushi_restaurant')) subcategories.add('Sushi');
-    } else if (category === 'Visite') {
-      if (types.includes('temple')) subcategories.add('Temple');
-      if (types.includes('museum')) subcategories.add('Musée');
-    }
-
-    return Array.from(subcategories);
-  }
-
-  private transformToPlace(googlePlace: GooglePlace, originalData: ImportPreview['original']): Place {
-    const category = this.determineCategory(googlePlace.types);
-    const subcategories = this.determineSubcategories(googlePlace.types, category);
-
-    // Conversion du format originalData
-    const transformedOriginalData = {
-      title: originalData.Title,
-      note: originalData.Note,
-      url: originalData.URL,
-      comment: originalData.Comment
-    };
-
-    // Création des URLs des photos sans utiliser getPhotoUrl
-    const photos = googlePlace.photos?.map((photo, index) => ({
-      url: photo.name,
-      source: 'Google Places',
-      isCover: index === 0,
-      name: `${googlePlace.displayName.text}-${index + 1}`,
-      caption: {
-        fr: photo.name
-      }
-    })) || [];
-
-    
-    return {
-      _id: googlePlace.id,
-      originalData: transformedOriginalData,
-      name: {
-        fr: googlePlace.displayName.text,
-        ja: googlePlace.displayName.text // On utilise la même valeur pour le moment
-      },
-      location: {
-        point: {
-          type: 'Point',
-          coordinates: [
-            googlePlace.location.longitude,
-            googlePlace.location.latitude
-          ]
-        },
-        address: {
-          full: {
-            fr: googlePlace.formattedAddress,
-            ja: googlePlace.formattedAddress
-          },
-          formatted: {
-            fr: googlePlace.formattedAddress,
-            ja: googlePlace.formattedAddress
-          },
-          prefecture: 'À déterminer', // À extraire des adressComponents
-          city: 'À déterminer'
-        }
-      },
-      category,
-      subcategories,
-      description: {
-        fr: googlePlace.editorialSummary?.text || googlePlace.displayName.text,
-        ja: googlePlace.displayName.text
-      },
-      images: photos,
-      metadata: {
-        source: 'Google Places',
-        placeId: googlePlace.id,
-        status: 'brouillon',
-        businessStatus: googlePlace.businessStatus,
-        rating: googlePlace.rating,
-        userRatingsTotal: googlePlace.userRatingCount
-      },
-      isActive: true,
-      updatedAt: new Date(),
-      createdAt: new Date(),
-      isGem: false
-    };
   }
 
   private validateCSVHeaders(headers: string[]): void {
@@ -179,21 +62,46 @@ export class ImportService {
 
     try {
       if (!record.Title?.trim()) {
-        throw new Error('Titre manquant');
+        preview.status = 'error';
+        preview.enriched.error = 'Titre manquant';
+        preview.enriched.details = {
+          reason: 'MISSING_TITLE',
+          message: 'Le titre est requis pour la recherche'
+        };
+        return preview;
       }
 
       // Rechercher directement le lieu par son nom
       const searchResult = await this.googlePlacesService.searchPlace(record.Title);
       
       if (!searchResult) {
-        throw new Error('Lieu introuvable');
+        preview.status = 'error';
+        preview.enriched.error = 'Lieu introuvable';
+        preview.enriched.details = {
+          reason: 'NOT_FOUND',
+          message: `Impossible de trouver "${record.Title}" sur Google Places`,
+          searchQuery: record.Title,
+          possibleReasons: [
+            'Le nom est peut-être mal orthographié',
+            'Le lieu n\'existe plus ou a changé de nom',
+            'L\'adresse complète pourrait aider à la recherche'
+          ]
+        };
+        return preview;
       }
 
       // Récupérer les détails pour vérifier la localisation
       const placeDetails = await this.googlePlacesService.getPlaceDetails(searchResult.id);
       
       if (!placeDetails) {
-        throw new Error('Impossible de récupérer les détails du lieu');
+        preview.status = 'error';
+        preview.enriched.error = 'Impossible de récupérer les détails du lieu';
+        preview.enriched.details = {
+          reason: 'DETAILS_NOT_FOUND',
+          message: 'Le lieu existe mais ses détails sont inaccessibles',
+          placeId: searchResult.id
+        };
+        return preview;
       }
 
       // Vérifier si le lieu est au Japon
@@ -205,17 +113,29 @@ export class ImportService {
       const isInJapan = this.validateLocation(location.lat, location.lng);
       
       if (!isInJapan) {
-        throw new Error('Le lieu n\'est pas au Japon');
+        preview.status = 'error';
+        preview.enriched.error = 'Le lieu n\'est pas au Japon';
+        preview.enriched.details = {
+          reason: 'OUTSIDE_JAPAN',
+          message: 'Les coordonnées du lieu sont en dehors du Japon',
+          location: {
+            latitude: location.lat,
+            longitude: location.lng
+          },
+          address: placeDetails.formattedAddress
+        };
+        return preview;
       }
-
-      // Transformer GooglePlace en notre type Place
-      const place = this.transformToPlace(placeDetails, preview.original);
 
       // Si on arrive ici, le lieu est valide et au Japon
       preview.enriched = {
         success: true,
         placeId: searchResult.id,
-        place
+        details: {
+          foundName: placeDetails.displayName.text,
+          address: placeDetails.formattedAddress,
+          types: placeDetails.types
+        }
       };
       preview.status = 'success';
 
@@ -223,6 +143,11 @@ export class ImportService {
       console.error(`Erreur lors du traitement de "${record.Title}":`, error);
       preview.status = 'error';
       preview.enriched.error = error instanceof Error ? error.message : 'Erreur inconnue';
+      preview.enriched.details = {
+        reason: 'PROCESSING_ERROR',
+        message: 'Une erreur est survenue lors du traitement',
+        error: error instanceof Error ? error.message : 'Erreur inconnue'
+      };
     }
 
     return preview;

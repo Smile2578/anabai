@@ -47,6 +47,9 @@ export type Subcategory =
   | 'Pizza'
   | 'Soba'
   | 'Yakitori'
+  | 'Japonais traditionnel'
+  | 'Viande'
+  | 'Poisson'
   | 'Okonomiyaki'
   | 'Tempura'
   | 'Teppanyaki'
@@ -68,12 +71,55 @@ export type Subcategory =
   | 'Bar à vin'
   | 'Bar de Jazz'
   | 'Bar à saké'
-  | 'Hotel de luxe';
+  | 'Hotel de luxe'
+  | 'Boite de nuit'
+  | 'Cave à cigares'
+  | 'Brunch'
+  | 'Ville historique'
+  | 'Ville traditionnelle'
+  | 'Salon de thé'
+  | 'Boulangerie'
+  | 'Cave à vin'
+  | 'Café à thême - Chien'
+  | 'Café à thême - Chat'
+  | 'Café à thême - Autre'
+  ;
 
 export const SUBCATEGORIES: SubcategoriesByCategory = {
-  Restaurant: ['Ramen', 'Sushi', 'Izakaya', 'Italien', 'Pizza', 'Soba', 'Yakitori', 'Okonomiyaki', 'Tempura', 'Teppanyaki'],
-  Hôtel: ['Hôtel traditionnel', 'Ryokan', 'Business Hotel', 'Love Hotel', 'Hotel de luxe'],
-  Visite: ['Temple', 'Sanctuaire', 'Musée', 'Parc', 'Point de vue', 'Jardin', 'Château', 'Monument'],
+  Restaurant: [
+    'Ramen',
+    'Sushi',
+    'Izakaya', 
+    'Italien', 
+    'Pizza', 
+    'Soba', 
+    'Okonomiyaki', 
+    'Tempura', 
+    'Teppanyaki', 
+    'Yakitori', 
+    'Japonais traditionnel', 
+    'Viande', 
+    'Poisson',
+    'Boulangerie'
+  ],
+  Hôtel: [
+    'Hôtel traditionnel', 
+    'Ryokan', 
+    'Business Hotel', 
+    'Love Hotel', 
+    'Hotel de luxe'],
+  Visite: [
+    'Temple', 
+    'Sanctuaire', 
+    'Musée', 
+    'Parc', 
+    'Point de vue', 
+    'Jardin', 
+    'Château', 
+    'Monument',
+    'Ville historique',
+    'Ville traditionnelle'
+  ],
   Shopping: [
     'Centre commercial',
     'Marché',
@@ -86,8 +132,25 @@ export const SUBCATEGORIES: SubcategoriesByCategory = {
     'Magasin de jeux-vidéos',
     'Librairie',
     'Magasin de TCG',
+    'Cave à cigares',
+    'Cave à vin'
   ],
-  'Café & Bar': ['Café', 'Bar', 'Kaitai', 'Karaoké', 'Bar à cocktails', 'Bar à vin', 'Bar de Jazz', 'Bar à saké'],
+  'Café & Bar': [
+    'Café', 
+    'Bar', 
+    'Kaitai', 
+    'Karaoké', 
+    'Bar à cocktails', 
+    'Bar à vin', 
+    'Bar de Jazz', 
+    'Bar à saké',
+    'Boite de nuit',
+    'Brunch',
+    'Salon de thé',
+    'Café à thême - Chien',
+    'Café à thême - Chat',
+    'Café à thême - Autre'
+  ],
 };
 
 export type Status = 'brouillon' | 'publié' | 'archivé';

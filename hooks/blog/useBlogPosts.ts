@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+// hooks/blog/useBlogPosts.ts
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BlogPostPreview } from '@/types/blog';
 
 async function fetchBlogPosts(): Promise<BlogPostPreview[]> {
@@ -10,8 +11,13 @@ async function fetchBlogPosts(): Promise<BlogPostPreview[]> {
 }
 
 export function useBlogPosts() {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  return useQuery<BlogPostPreview[]>({
     queryKey: ['blog-posts'],
     queryFn: fetchBlogPosts,
+    staleTime: 0, // Force le rafraîchissement à chaque fois
+    refetchOnMount: true, // Rafraîchit à chaque montage
+    refetchOnWindowFocus: true, // Rafraîchit quand la fenêtre reprend le focus
   });
-} 
+}

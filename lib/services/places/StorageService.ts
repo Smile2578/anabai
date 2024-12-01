@@ -1,4 +1,4 @@
-// lib/services/places/StorageService.ts
+import { put, del } from '@vercel/blob';
 import { Place } from '@/types/places/main';
 import { ImportPreview } from '@/types/import';
 import { PlaceRepository } from '@/lib/repositories/place-repository';
@@ -21,53 +21,76 @@ interface UpdateResult {
   place?: Place;
 }
 
+interface BulkUpdateResult {
+  success: boolean;
+  error?: string;
+}
+
 export class StorageService {
   constructor(
-    private repository: PlaceRepository,
+    private placeRepository: PlaceRepository,
     private validationService: ValidationService
   ) {}
 
+  // Méthodes de stockage des fichiers
+  async uploadFile(buffer: Buffer, path: string): Promise<string> {
+    const blob = await put(path, buffer, {
+      access: 'public',
+      addRandomSuffix: true,
+    });
+    return blob.url;
+  }
+
+  async deleteFile(path: string): Promise<void> {
+    await del(path);
+  }
+
+  // Méthodes de gestion des lieux
   async saveImportedPlaces(previews: ImportPreview[]): Promise<StorageResult> {
     const errors: Array<{ title: string; error: string }> = [];
     const duplicates: string[] = [];
     let savedCount = 0;
 
-    // Filtrer les previews valides
     const validPreviews = previews.filter(
       preview => preview.status === 'success' && 
                 preview.enriched?.success && 
                 preview.enriched.place
     );
 
-    // Vérifier les doublons avant de sauvegarder
     const placeIds = validPreviews
       .map(preview => preview.enriched?.place?.metadata.placeId)
       .filter((id): id is string => Boolean(id));
 
-    const existingPlaces = await this.repository.findByPlaceIds(placeIds);
+    const existingPlaces = await this.placeRepository.findByPlaceIds(placeIds);
     const existingPlaceIds = new Set(existingPlaces.map(p => p.metadata.placeId!));
 
-    // Sauvegarder chaque lieu
     for (const preview of validPreviews) {
       try {
         if (!preview.enriched?.place) {
           throw new Error('Données du lieu manquantes');
         }
 
-        // Vérifier si c'est un doublon
         if (preview.enriched.place.metadata.placeId && 
             existingPlaceIds.has(preview.enriched.place.metadata.placeId)) {
           duplicates.push(preview.enriched.place.metadata.placeId);
           continue;
         }
 
-        // Validation finale avant sauvegarde
-        const validation = await this.validationService.validatePlace(preview.enriched.place);
+        // Forcer le statut à 'publié' pour les nouveaux lieux
+        const placeToSave = {
+          ...preview.enriched.place,
+          metadata: {
+            ...preview.enriched.place.metadata,
+            status: 'publié' as const
+          }
+        };
+
+        const validation = await this.validationService.validatePlace(placeToSave);
         if (!validation.isValid) {
           throw new Error(`Validation échouée: ${validation.errors.join(', ')}`);
         }
 
-        const savedPlace = await this.repository.create(preview.enriched.place);
+        const savedPlace = await this.placeRepository.create(placeToSave);
         if (savedPlace) {
           savedCount++;
         } else {
@@ -91,10 +114,65 @@ export class StorageService {
     };
   }
 
-  async updatePlace(id: string, updates: Partial<Place>): Promise<UpdateResult> {
+  async updateStatus(id: string, status: Status): Promise<UpdateResult> {
+    try {
+      const existingPlace = await this.placeRepository.findById(id);
+      if (!existingPlace) {
+        return { success: false, error: 'Lieu non trouvé' };
+      }
+
+      const updatedPlace = await this.placeRepository.update(id, {
+        metadata: {
+          ...existingPlace.metadata,
+          status
+        },
+        updatedAt: new Date()
+      });
+
+      return {
+        success: Boolean(updatedPlace),
+        place: updatedPlace || undefined
+      };
+
+    } catch (error) {
+      console.error('Error updating status:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur inconnue'
+      };
+    }
+  }
+
+  async toggleGemStatus(id: string): Promise<UpdateResult> {
+    try {
+      const place = await this.placeRepository.findById(id);
+      if (!place) {
+        return { success: false, error: 'Lieu non trouvé' };
+      }
+
+      const updated = await this.placeRepository.update(id, {
+        isGem: !place.isGem,
+        updatedAt: new Date()
+      });
+
+      return {
+        success: true,
+        place: updated || undefined
+      };
+
+    } catch (error) {
+      console.error('Error toggling gem status:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur inconnue'
+      };
+    }
+  }
+
+  async updatePlace(id: string, updates: Partial<Place>): Promise<BulkUpdateResult> {
     try {
       // Récupérer le lieu existant
-      const existingPlace = await this.repository.findById(id);
+      const existingPlace = await this.placeRepository.findById(id);
       if (!existingPlace) {
         return { success: false, error: 'Lieu non trouvé' };
       }
@@ -116,116 +194,15 @@ export class StorageService {
       }
 
       // Sauvegarder les modifications
-      const saved = await this.repository.update(id, updatedPlace);
+      const saved = await this.placeRepository.update(id, updatedPlace);
       if (!saved) {
         return { success: false, error: 'Échec de la mise à jour' };
       }
 
-      return { success: true, place: saved };
+      return { success: true };
 
     } catch (error) {
       console.error('Error updating place:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Erreur inconnue'
-      };
-    }
-  }
-
-  async updateStatus(ids: string[], status: Status): Promise<{
-    success: boolean;
-    updated: number;
-    failed: string[];
-  }> {
-    const failed: string[] = [];
-    let updated = 0;
-
-    for (const id of ids) {
-      try {
-        const result = await this.repository.updateStatus(id, status);
-        if (result) {
-          updated++;
-        } else {
-          failed.push(id);
-        }
-      } catch (error) {
-        console.error(`Failed to update status for ${id}:`, error);
-        failed.push(id);
-      }
-    }
-
-    return {
-      success: failed.length === 0,
-      updated,
-      failed
-    };
-  }
-
-  async toggleGemStatus(id: string): Promise<UpdateResult> {
-    try {
-      const place = await this.repository.findById(id);
-      if (!place) {
-        return { success: false, error: 'Lieu non trouvé' };
-      }
-
-      const updated = await this.repository.update(id, {
-        ...place,
-        isGem: !place.isGem,
-        updatedAt: new Date()
-      });
-
-      return {
-        success: true,
-        place: updated || undefined
-      };
-
-    } catch (error) {
-      console.error('Error toggling gem status:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Erreur inconnue'
-      };
-    }
-  }
-
-  async deletePlace(id: string, soft = true): Promise<{ success: boolean; error?: string }> {
-    try {
-      if (soft) {
-        const updated = await this.repository.update(id, {
-          isActive: false,
-          updatedAt: new Date()
-        });
-        return {
-          success: Boolean(updated)
-        };
-      } else {
-        const deleted = await this.repository.delete(id);
-        return {
-          success: deleted
-        };
-      }
-    } catch (error) {
-      console.error('Error deleting place:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Erreur inconnue'
-      };
-    }
-  }
-
-  async restorePlace(id: string): Promise<UpdateResult> {
-    try {
-      const updated = await this.repository.update(id, {
-        isActive: true,
-        updatedAt: new Date()
-      });
-
-      return {
-        success: Boolean(updated),
-        place: updated || undefined
-      };
-    } catch (error) {
-      console.error('Error restoring place:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erreur inconnue'

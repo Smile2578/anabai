@@ -15,6 +15,7 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
+  Activity,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState } from 'react';
@@ -63,6 +64,12 @@ const navigation = [
     href: '/admin/settings',
     icon: Settings,
     description: 'Configuration du site',
+  },
+  {
+    name: 'Monitoring',
+    href: '/admin/monitoring',
+    icon: Activity,
+    description: 'Statistiques et monitoring',
   },
 ];
 

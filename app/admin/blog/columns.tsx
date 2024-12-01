@@ -2,6 +2,7 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { BlogPostPreview } from '@/types/blog';
+import { usePostActions } from '@/hooks/blog/usePostActions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -48,6 +49,72 @@ const getStatusText = (status: string) => {
     default:
       return status;
   }
+};
+
+const ActionCell = ({ post }: { post: BlogPostPreview }) => {
+  const isDraft = post.status === 'draft';
+  const isPublished = post.status === 'published';
+  const isArchived = post.status === 'archived';
+  const { updatePostStatus, isLoading } = usePostActions();
+
+  const handleAction = async (action: 'publish' | 'archive' | 'delete') => {
+    updatePostStatus({ postId: post._id, action });
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0" disabled={isLoading}>
+          <span className="sr-only">Ouvrir le menu</span>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/blog/${post._id}/edit`} className="flex items-center">
+            <Pencil className="mr-2 h-4 w-4" />
+            Modifier
+          </Link>
+        </DropdownMenuItem>
+        {(isDraft || isArchived) && (
+          <DropdownMenuItem 
+            onClick={() => handleAction('publish')}
+            className="flex items-center text-green-600"
+            disabled={isLoading}
+          >
+            <Send className="mr-2 h-4 w-4" />
+            Publier
+          </DropdownMenuItem>
+        )}
+        {isPublished && (
+          <DropdownMenuItem 
+            onClick={() => handleAction('archive')}
+            className="flex items-center text-orange-600"
+            disabled={isLoading}
+          >
+            <Archive className="mr-2 h-4 w-4" />
+            Archiver
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem asChild>
+          <Link href={`/blog/${post.slug}`} className="flex items-center" target="_blank">
+            <Eye className="mr-2 h-4 w-4" />
+            Voir
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem 
+          onClick={() => handleAction('delete')}
+          className="flex items-center text-destructive"
+          disabled={isLoading}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Supprimer
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 };
 
 export const columns: ColumnDef<BlogPostPreview>[] = [
@@ -101,83 +168,6 @@ export const columns: ColumnDef<BlogPostPreview>[] = [
   },
   {
     id: 'actions',
-    cell: ({ row }) => {
-      const post = row.original;
-      const isDraft = post.status === 'draft';
-      const isPublished = post.status === 'published';
-
-      const handleAction = async (action: 'publish' | 'archive' | 'delete') => {
-        try {
-          const response = await fetch(`/api/admin/blog/${post._id}/status`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ action }),
-          });
-
-          if (!response.ok) {
-            throw new Error('Erreur lors de la mise à jour du statut');
-          }
-
-          // Recharger la page pour mettre à jour la liste
-          window.location.reload();
-        } catch (error) {
-          console.error('Erreur:', error);
-        }
-      };
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Ouvrir le menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href={`/admin/blog/${post._id}/edit`} className="flex items-center">
-                <Pencil className="mr-2 h-4 w-4" />
-                Modifier
-              </Link>
-            </DropdownMenuItem>
-            {isDraft && (
-              <DropdownMenuItem 
-                onClick={() => handleAction('publish')}
-                className="flex items-center text-green-600"
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Publier
-              </DropdownMenuItem>
-            )}
-            {isPublished && (
-              <DropdownMenuItem 
-                onClick={() => handleAction('archive')}
-                className="flex items-center text-orange-600"
-              >
-                <Archive className="mr-2 h-4 w-4" />
-                Archiver
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem asChild>
-              <Link href={`/blog/${post.slug}`} className="flex items-center" target="_blank">
-                <Eye className="mr-2 h-4 w-4" />
-                Voir
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={() => handleAction('delete')}
-              className="flex items-center text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Supprimer
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    cell: ({ row }) => <ActionCell post={row.original} />
   },
 ]; 

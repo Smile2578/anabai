@@ -36,11 +36,13 @@ async function handleGetPlaces(req: Request, session: SessionWithUser) {
     const searchParams = new URLSearchParams(url.search);
     
     const search = searchParams.get('search') || undefined;
-    const categories = searchParams.getAll('categories') as Category[] | undefined;
+    const categories = searchParams.getAll('categories[]') as Category[] | undefined;
     const status = searchParams.get('status') as Status | undefined;
     const isGem = searchParams.get('isGem') === 'true';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
+
+    console.log('Filtres reçus:', { categories, status, search });
 
     const filter: PlaceFilter = { isActive: true };
 
@@ -52,8 +54,12 @@ async function handleGetPlaces(req: Request, session: SessionWithUser) {
       ];
     }
     
-    if (categories?.length) {
-      filter.category = { $in: categories };
+    if (categories && categories.length > 0) {
+      const validCategories = categories.filter(cat => cat && cat.trim().length > 0);
+      if (validCategories.length > 0) {
+        filter.category = { $in: validCategories };
+        console.log('Filtre de catégories appliqué:', filter.category);
+      }
     }
 
     if (status) {
@@ -63,6 +69,8 @@ async function handleGetPlaces(req: Request, session: SessionWithUser) {
     if (isGem) {
       filter.isGem = true;
     }
+
+    console.log('Filtre final:', JSON.stringify(filter, null, 2));
 
     const placesData = await placeRepository.find({
       filter,
@@ -120,6 +128,5 @@ async function handleCreatePlace(req: Request, session: SessionWithUser) {
     );
   }
 }
-
 export const GET = protectApiRoute(handleGetPlaces, 'admin');
 export const POST = protectApiRoute(handleCreatePlace, 'admin');

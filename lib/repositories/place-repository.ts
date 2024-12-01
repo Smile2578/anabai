@@ -335,6 +335,10 @@ export class PlaceRepository {
       updatedAt: new Date(place.updatedAt)
     };
   }
+
+  async count(filter: Record<string, unknown>): Promise<number> {
+    return Place.countDocuments(filter);
+  }
 }
 
 // Export singleton instance
