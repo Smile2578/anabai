@@ -1,12 +1,28 @@
 // lib/queue/config/redis.ts
-import { ConnectionOptions } from 'bullmq';
-import { QueueConfig } from '../types/queue.types';
+import { QueueOptions } from 'bullmq';
+import { Redis } from '@upstash/redis';
+import IORedis from 'ioredis';
 
-// Configuration de base Redis
-export const redisConfig: ConnectionOptions = {
-  url: process.env.REDIS_URL,
+if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+  throw new Error('Les variables d\'environnement Upstash Redis ne sont pas configurées');
+}
+
+// Client Upstash Redis
+export const upstashRedis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
+
+// Configuration IORedis pour BullMQ
+export const ioRedisClient = new IORedis({
+  host: 'solid-foal-48180.upstash.io',
+  port: 6379,
+  username: 'default',
+  password: process.env.UPSTASH_REDIS_REST_TOKEN,
+  tls: {
+    rejectUnauthorized: false
+  },
   maxRetriesPerRequest: null,
-  enableReadyCheck: false,
   retryStrategy: (times: number) => {
     if (times > 5) return null;
     return Math.min(times * 1000, 5000);
@@ -18,11 +34,22 @@ export const redisConfig: ConnectionOptions = {
     }
     return false;
   }
+});
+
+// Configuration Redis commune
+const redisConnection = {
+  host: 'solid-foal-48180.upstash.io',
+  port: 6379,
+  username: 'default',
+  password: process.env.UPSTASH_REDIS_REST_TOKEN,
+  tls: {
+    rejectUnauthorized: false
+  }
 };
 
 // Configuration par défaut pour les queues
-export const defaultQueueConfig: QueueConfig = {
-  redis: redisConfig,
+export const defaultQueueConfig: QueueOptions = {
+  connection: redisConnection,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
@@ -41,7 +68,7 @@ export const defaultQueueConfig: QueueConfig = {
 
 // Configuration par défaut pour les workers
 export const defaultWorkerConfig = {
-  connection: redisConfig,
+  connection: redisConnection,
   concurrency: 5,
   limiter: {
     max: 100,

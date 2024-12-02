@@ -103,15 +103,15 @@ export function ErrorStats() {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Aujourd&apos;hui</span>
-              <span>{stats.trends.daily}</span>
+              <span>{stats.trends?.daily ?? 0}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Cette semaine</span>
-              <span>{stats.trends.weekly}</span>
+              <span>{stats.trends?.weekly ?? 0}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Ce mois</span>
-              <span>{stats.trends.monthly}</span>
+              <span>{stats.trends?.monthly ?? 0}</span>
             </div>
           </div>
         </Card>
@@ -123,18 +123,23 @@ export function ErrorStats() {
             <h4 className="font-medium">Distribution</h4>
           </div>
           <div className="space-y-2">
-            {Object.entries(stats.errorsByQueue).map(([queue, count]) => (
+            {Object.entries(stats.errorsByQueue ?? {}).map(([queue, count]) => (
               <div key={queue} className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground capitalize">{queue}</span>
                   <span>{count}</span>
                 </div>
                 <Progress 
-                  value={(count / stats.totalErrors) * 100} 
+                  value={(count / (stats.totalErrors || 1)) * 100} 
                   className="h-1"
                 />
               </div>
             ))}
+            {(!stats.errorsByQueue || Object.keys(stats.errorsByQueue).length === 0) && (
+              <div className="text-center text-muted-foreground">
+                Aucune erreur par queue
+              </div>
+            )}
           </div>
         </Card>
       </div>
@@ -156,7 +161,7 @@ export function ErrorStats() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {stats.recentErrors.map((error) => (
+              {(stats.recentErrors ?? []).map((error) => (
                 <TableRow key={error.id}>
                   <TableCell className="capitalize">{error.queueName}</TableCell>
                   <TableCell className="font-mono text-sm text-red-500">
@@ -167,7 +172,7 @@ export function ErrorStats() {
                   </TableCell>
                 </TableRow>
               ))}
-              {stats.recentErrors.length === 0 && (
+              {(!stats.recentErrors || stats.recentErrors.length === 0) && (
                 <TableRow>
                   <TableCell 
                     colSpan={3} 

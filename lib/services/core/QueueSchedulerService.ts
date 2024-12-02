@@ -1,5 +1,5 @@
 import { Queue, Worker } from 'bullmq';
-import { redisConfig } from '@/lib/queue/config/redis';
+import { redisConnection } from '@/lib/services/core/RedisService';
 import { logger } from '@/lib/logger';
 
 export class QueueSchedulerService {
@@ -22,7 +22,7 @@ export class QueueSchedulerService {
 
       for (const config of queueConfigs) {
         const queue = new Queue(config.name, {
-          connection: redisConfig,
+          connection: redisConnection,
           defaultJobOptions: {
             attempts: 3,
             backoff: {
@@ -41,7 +41,7 @@ export class QueueSchedulerService {
             logger.info(`Processing job ${job.id} from queue ${config.name}`);
           },
           {
-            connection: redisConfig,
+            connection: redisConnection,
             concurrency: config.concurrency,
             autorun: true
           }

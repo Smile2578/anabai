@@ -1,7 +1,7 @@
 // lib/services/core/ImageService.ts
 import { Queue } from 'bullmq';
 import sharp from 'sharp';
-import { redisConfig } from '@/lib/queue/config/redis';
+import { redisConnection } from '@/lib/services/core/RedisService';
 import { logger } from '@/lib/logger';
 import { StorageService } from '../places/StorageService';
 import { PlaceRepository } from '@/lib/repositories/place-repository';
@@ -28,7 +28,7 @@ export class ImageService {
 
   constructor() {
     this.queue = new Queue('image', {
-      connection: redisConfig,
+      connection: redisConnection,
       defaultJobOptions: {
         attempts: 3,
         backoff: {

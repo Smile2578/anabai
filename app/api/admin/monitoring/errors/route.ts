@@ -2,20 +2,9 @@ import { NextResponse } from 'next/server';
 import { protectApiRoute } from '@/lib/auth/protect-api';
 import { QueueErrorHandlingService } from '@/lib/services/core/QueueErrorHandlingService';
 import { RedisMonitoringService } from '@/lib/services/core/RedisMonitoringService';
-import { Redis } from 'ioredis';
+import { ioRedisClient } from '@/lib/queue/config/redis';
 
-const redis = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD,
-  username: process.env.REDIS_USERNAME,
-  db: parseInt(process.env.REDIS_DB || '0'),
-  maxRetriesPerRequest: null,
-  retryStrategy: (times) => Math.min(times * 50, 2000),
-  reconnectOnError: (err) => err.message.includes('READONLY')
-});
-
-const monitoring = new RedisMonitoringService(redis);
+const monitoring = new RedisMonitoringService(ioRedisClient);
 const errorHandler = new QueueErrorHandlingService(monitoring, {
   maxRetries: 3,
   backoffDelay: 1000,
