@@ -18,7 +18,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
-import { Settings, LayoutDashboard, MapPinHouse, UserIcon } from "lucide-react"
+import { Settings, LayoutDashboard, MapPinHouse, UserIcon, BarChart3 } from "lucide-react"
 import { SignOutButton } from '@/components/auth/SignOutButton';
 import { useSessionManager } from "@/hooks/useSessionManager"
 
@@ -147,6 +147,14 @@ export function Header({ className }: { className?: string }) {
                     </Link>
                   </DropdownMenuItem>
                 )}
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/monitoring">
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      Monitoring
+                    </Link>
+                  </DropdownMenuItem>
+                ) }
               </>
             )}
           </DropdownMenuGroup>

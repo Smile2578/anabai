@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { QueueMetrics } from '@/types/queue';
-import { QueueStats } from './components/QueueStats';
-import { QueueJobs } from './components/QueueJobs';
-import { RedisStats } from './components/RedisStats';
-import { ErrorStats } from './components/ErrorStats';
+import { QueueStats } from '@/components/admin/monitoring/QueueStats';
+import { QueueJobs } from '@/components/admin/monitoring/QueueJobs';
+import { RedisStats } from '@/components/admin/monitoring/RedisStats';
+import { ErrorStats } from '@/components/admin/monitoring/ErrorStats';
 import { useToast } from '@/hooks/use-toast';
 
 export default function MonitoringPage() {
