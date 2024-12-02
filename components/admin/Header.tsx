@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Settings, MapPinHouse, UserIcon } from 'lucide-react';
+import { LayoutDashboard, Settings, MapPinHouse, UserIcon, BarChart3 } from 'lucide-react';
 import AnabaLogo from "../brand/AnabaLogo";
 import { SignOutButton } from '@/components/auth/SignOutButton';
 
@@ -136,6 +136,14 @@ export default function AdminHeader() {
                     <Link href="/admin/users">
                       <UserIcon className="mr-2 h-4 w-4" />
                       Gestion des utilisateurs
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/monitoring">
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      Monitoring
                     </Link>
                   </DropdownMenuItem>
                 )}
