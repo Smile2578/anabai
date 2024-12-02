@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { Session } from 'next-auth';
+import type { IUser } from '@/models/User';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ export function Providers({ children, session: initialSession }: ProvidersProps)
   useEffect(() => {
     // Synchroniser la session avec le store
     if (session) {
-      useAuthStore.setState({ user: session.user });
+      useAuthStore.setState({ user: session.user as IUser });
     }
   }, [session]);
 

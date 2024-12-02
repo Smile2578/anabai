@@ -44,6 +44,7 @@ export function PasswordInput<TFormValues extends Record<string, unknown>>({
         )}
         placeholder={placeholder}
         disabled={disabled}
+        name={name}
         {...registerProps}
         {...props}
       />

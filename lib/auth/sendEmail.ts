@@ -62,12 +62,48 @@ class EmailService {
         <h1 style="color: #333; margin-bottom: 24px;">Bienvenue sur Anaba.io, ${name} !</h1>
         <p style="color: #666; margin-bottom: 24px;">Pour commencer votre voyage au Japon, veuillez vérifier votre adresse email en cliquant sur le bouton ci-dessous :</p>
         <div style="text-align: center; margin: 32px 0;">
-          <a href="https://www.anaba.io/auth/verify-email?token=${token}"
+          <a href="https://anaba.io/auth/verify-email?token=${token}"
              style="display: inline-block; padding: 12px 24px; background-color: #4A3AFF; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
             Vérifier mon compte
           </a>
         </div>
         <p style="color: #666; font-size: 14px;">Ce lien expirera dans 24 heures. Si vous n'avez pas créé de compte sur Anaba.io, vous pouvez ignorer cet email.</p>
+      `)
+    }),
+    resetPassword: (name: string, token: string): EmailTemplate => ({
+      subject: 'Réinitialisation de votre mot de passe Anaba.io',
+      content: this.getBaseTemplate(`
+        <h1 style="color: #333; margin-bottom: 24px;">Bonjour ${name},</h1>
+        <p style="color: #666; margin-bottom: 24px;">Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe :</p>
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="https://anaba.io/auth/reset-password?token=${token}"
+             style="display: inline-block; padding: 12px 24px; background-color: #4A3AFF; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
+            Réinitialiser mon mot de passe
+          </a>
+        </div>
+        <p style="color: #666; font-size: 14px;">Ce lien expirera dans 1 heure. Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email.</p>
+      `)
+    }),
+    passwordChanged: (name: string): EmailTemplate => ({
+      subject: 'Confirmation de changement de mot de passe - Anaba.io',
+      content: this.getBaseTemplate(`
+        <h1 style="color: #333; margin-bottom: 24px;">Bonjour ${name},</h1>
+        <p style="color: #666; margin-bottom: 24px;">Votre mot de passe a été modifié avec succès.</p>
+        <p style="color: #666;">Si vous n'êtes pas à l'origine de ce changement, veuillez nous contacter immédiatement.</p>
+      `)
+    }),
+    suspiciousActivity: (name: string, activity: { activity: string; ip: string; timestamp: Date; location: string }): EmailTemplate => ({
+      subject: 'Activité suspecte détectée - Anaba.io',
+      content: this.getBaseTemplate(`
+        <h1 style="color: #333; margin-bottom: 24px;">Bonjour ${name},</h1>
+        <p style="color: #666; margin-bottom: 24px;">Nous avons détecté une activité inhabituelle sur votre compte :</p>
+        <ul style="color: #666; margin-bottom: 24px;">
+          <li>Action : ${activity.activity}</li>
+          <li>IP : ${activity.ip}</li>
+          <li>Localisation : ${activity.location}</li>
+          <li>Date : ${activity.timestamp.toLocaleString()}</li>
+        </ul>
+        <p style="color: #666;">Si vous n'êtes pas à l'origine de cette action, veuillez immédiatement changer votre mot de passe.</p>
       `)
     })
   };
@@ -94,6 +130,38 @@ class EmailService {
 
   async sendVerificationEmail(email: string, name: string, token: string): Promise<void> {
     const template = this.emailTemplates.verification(name, token);
+    await this.sendEmail({
+      to: email,
+      subject: template.subject,
+      content: template.content
+    });
+  }
+
+  async sendResetPasswordEmail(email: string, name: string, token: string): Promise<void> {
+    const template = this.emailTemplates.resetPassword(name, token);
+    await this.sendEmail({
+      to: email,
+      subject: template.subject,
+      content: template.content
+    });
+  }
+
+  async sendPasswordChangedEmail(email: string, name: string): Promise<void> {
+    const template = this.emailTemplates.passwordChanged(name);
+    await this.sendEmail({
+      to: email,
+      subject: template.subject,
+      content: template.content
+    });
+  }
+
+  async sendSuspiciousActivityEmail(email: string, name: string, activity: { 
+    activity: string; 
+    ip: string; 
+    timestamp: Date; 
+    location: string; 
+  }): Promise<void> {
+    const template = this.emailTemplates.suspiciousActivity(name, activity);
     await this.sendEmail({
       to: email,
       subject: template.subject,

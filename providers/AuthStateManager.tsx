@@ -4,6 +4,7 @@
 import { useEffect } from 'react'
 import { useAuthStore } from '@/store/useAuthStore'
 import type { Session } from 'next-auth'
+import type { IUser } from '@/models/User'
 
 interface AuthStateManagerProps {
   session: Session | null
@@ -22,7 +23,7 @@ export function AuthStateManager({ session }: AuthStateManagerProps) {
     
     // Utiliser setUser au lieu de setState directement
     if (session?.user) {
-      setUser(session.user)
+      setUser(session.user as IUser)
     } else {
       setUser(null)
     }

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest --config jest.config.ts",
-    "test:watch": "docker-compose up -d redis && jest --watch",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "test:cleanup": "docker-compose down",
     "test:redis": "cross-env NODE_ENV=development ts-node -r tsconfig-paths/register scripts/test-redis-connection.ts",
     "test-redis-connection": "ts-node scripts/test-redis-connection.ts"

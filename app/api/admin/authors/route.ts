@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connection';
 import User from '@/models/User';
+import type { IUser } from '@/models/User';
 import Place from '@/models/place.model';
 import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
 
@@ -15,12 +16,10 @@ async function handleGetAuthors(req: Request, session: SessionWithUser) {
 
     const authors = await User.find({
       role: { $in: ['admin', 'editor'] }
-    })
-    .select('_id name role email')
-    .sort('name');
+    }).lean() as unknown as (IUser & { _id: string })[];
 
     const formattedAuthors = authors.map(author => ({
-      id: author._id.toString(),
+      id: author._id,
       name: author.name,
       role: author.role,
       email: author.email
@@ -57,7 +56,7 @@ async function handleAddAuthor(req: Request, session: SessionWithUser) {
     const author = await User.findOne({
       _id: authorId,
       role: { $in: ['admin', 'editor'] }
-    });
+    }).lean() as unknown as (IUser & { _id: string });
 
     if (!author) {
       return NextResponse.json(
@@ -67,7 +66,7 @@ async function handleAddAuthor(req: Request, session: SessionWithUser) {
     }
 
     return NextResponse.json({ 
-      id: author._id.toString(),
+      id: author._id,
       name: author.name,
       role: author.role
     });

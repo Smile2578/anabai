@@ -1,3 +1,5 @@
+// lib/middleware/error-handler.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { AppError } from '@/lib/errors/AppError';
 import { env } from '@/lib/env.config';

@@ -1,12 +1,13 @@
 import type { Config } from 'jest';
 
 const config: Config = {
-  preset: 'ts-jest',
-  testEnvironment: 'jsdom',
+  preset: 'ts-jest/presets/default-esm',
+  testEnvironment: 'node',
   roots: ['<rootDir>'],
   moduleDirectories: ['node_modules', '<rootDir>'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   testMatch: [
@@ -14,16 +15,20 @@ const config: Config = {
     '**/?(*.)+(spec|test).[jt]s?(x)',
   ],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
-      tsconfig: 'tsconfig.json',
-    }],
+    '^.+\\.tsx?$': [
+      'ts-jest',
+      {
+        tsconfig: 'tsconfig.json',
+        useESM: true
+      }
+    ]
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(next|next-auth|@auth/core|@auth/core/providers)/.*)'
+  ],
   testTimeout: 30000,
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.json',
-    },
-  },
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node']
 };
 
 export default config; 

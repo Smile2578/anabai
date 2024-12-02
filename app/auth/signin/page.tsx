@@ -1,8 +1,8 @@
 // app/auth/signin/page.tsx
 'use client'
 
-import { signIn } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,15 +11,17 @@ import Image from 'next/image'
 import Link from 'next/link'
 import AnabaLogo from '@/components/brand/AnabaLogo'
 import { useAuthStore } from '@/store/useAuthStore'
-import { toast } from 'sonner';
-import { Toaster } from 'sonner';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner'
+import { Toaster } from 'sonner'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { useAuthError } from '@/hooks/useAuthError'
 
 export default function SignInPage() {
   // Hooks pour la navigation et la gestion des paramètres
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/'
+  const { message: authError } = useAuthError()
   
   // Sélecteurs optimisés du store d'authentification
   const setLoadingState = useAuthStore(state => state.setLoadingState)
@@ -39,7 +41,7 @@ export default function SignInPage() {
     setIsLoading(true)
     setLoadingState('loading')
     setError(null)
-  
+
     try {
       const result = await signIn('credentials', {
         redirect: false,
@@ -47,7 +49,7 @@ export default function SignInPage() {
         password,
         callbackUrl
       })
-  
+
       if (result?.error) {
         toast.error(result.error, {
           duration: 4000,
@@ -133,9 +135,9 @@ export default function SignInPage() {
             </div>
             
             {/* Affichage des erreurs */}
-            {error && (
+            {(error || authError) && (
               <Alert variant="destructive" className="mb-4">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{error || authError}</AlertDescription>
               </Alert>
             )}
             
