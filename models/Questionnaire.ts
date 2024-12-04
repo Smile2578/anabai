@@ -1,64 +1,97 @@
 // models/Questionnaire.ts
-import { Schema, model, models, Types, CallbackError } from 'mongoose';
+import { Schema, model, models } from 'mongoose';
+import { QuestionnaireStatus } from '@/types/questionnaire/questionnaire';
 
 const questionnaireSchema = new Schema({
   userId: {
-    type: Types.ObjectId,
-    ref: 'User',
+    type: String,
     required: true,
     index: true,
   },
-  userName: {
-    type: String,
-    required: true,
-  },
   status: {
     type: String,
-    enum: ['draft', 'completed', 'processing', 'error'],
+    enum: ['draft', 'completed', 'processing', 'error'] as QuestionnaireStatus[],
     default: 'draft',
   },
   basicInfo: {
-    duration: { type: Number, required: true },
-    startDate: { type: Date },
-    endDate: { type: Date },
-    groupSize: { type: Number, required: true },
+    duration: { type: Number, required: true, min: 1, max: 90 },
+    dateRange: {
+      from: { type: Date, required: true },
+      to: { type: Date, required: true },
+    },
+    groupSize: { type: Number, required: true, min: 1, max: 20 },
+    previousVisit: { type: Boolean, required: true },
+    visitCount: { type: Number },
+    groupType: { 
+      type: String, 
+      enum: ['solo', 'couple', 'friends', 'group', 'family', 'business'],
+      required: true 
+    },
+    travelType: { type: String, required: true },
+    hasChildren: { type: Boolean, required: true },
+    childrenCount: { type: Number },
   },
   travelStyle: {
-    pace: {
+    pace: { 
       type: String,
-      enum: ['relaxed', 'moderate', 'intensive'],
+      enum: ['slow', 'moderate', 'fast'],
       required: true,
     },
     comfort: {
       type: String,
-      enum: ['budget', 'standard', 'luxury'],
+      enum: ['backpacker', 'standard', 'comfort', 'luxury'],
       required: true,
     },
-    flexibility: { type: Number, required: true },
-    culturalImmersion: { type: Number, required: true },
+    flexibility: { 
+      type: Number, 
+      required: true,
+      min: 0,
+      max: 100
+    },
+    culturalImmersion: { 
+      type: Number, 
+      required: true,
+      min: 0,
+      max: 100
+    },
+    preferences: [{ type: String }],
   },
   interests: {
     mainInterests: [{ type: String }],
-    subcategories: [{ type: String }],
-    mustSeeSpots: [{ type: String }],
-    categories: [{ type: String }],
     specificInterests: [{ type: String }],
+    categories: [{ type: String }],
+    mustSeeSpots: [{ type: String }],
   },
   budget: {
-    total: { type: Number, required: true },
-    dailyLimit: { type: Number, required: true },
+    total: { type: Number, required: true, min: 0 },
+    dailyLimit: { type: Number, required: true, min: 0 },
     priority: {
       type: String,
-      enum: ['accommodation', 'food', 'activities'],
+      enum: ['accommodation', 'food', 'activities', 'undecided'],
       required: true,
     },
   },
   constraints: {
-    dietary: [{ type: String }],
-    mobility: { type: Boolean, default: false },
+    mobility: { type: Boolean, required: true },
     language: {
       type: String,
       enum: ['none', 'basic', 'intermediate', 'fluent'],
+      required: true,
+    },
+    dietary: [{ type: String }],
+    travelBudget: {
+      type: String,
+      enum: ['low', 'medium', 'high', 'higher', 'undecided'],
+      required: true,
+    },
+    dailyBudget: {
+      type: String,
+      enum: ['low', 'medium', 'high', 'higher', 'undecided'],
+      required: true,
+    },
+    budgetPriority: {
+      type: String,
+      enum: ['accommodation', 'food', 'activities', 'undecided'],
       required: true,
     },
   },
@@ -81,20 +114,28 @@ questionnaireSchema.pre('save', function(next) {
   next();
 });
 
-// Middleware pour peupler automatiquement le userName
-questionnaireSchema.pre('save', async function(next) {
-  if (this.isNew || this.isModified('userId')) {
-    try {
-      const User = models.User;
-      const user = await User.findById(this.userId);
-      if (user) {
-        this.userName = user.name;
-      }
-    } catch (error) {
-      next(error as CallbackError);
+// Middleware pour la validation des dates
+questionnaireSchema.pre('save', function(next) {
+  if (this.basicInfo?.dateRange) {
+    const { from, to } = this.basicInfo.dateRange;
+    if (from && to && from > to) {
+      next(new Error('La date de début doit être antérieure à la date de fin'));
     }
   }
   next();
 });
 
-export default models.Questionnaire || model('Questionnaire', questionnaireSchema);
+// Middleware pour calculer la durée
+questionnaireSchema.pre('save', function(next) {
+  if (this.basicInfo?.dateRange) {
+    const { from, to } = this.basicInfo.dateRange;
+    if (from && to) {
+      this.basicInfo.duration = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+    }
+  }
+  next();
+});
+
+const Questionnaire = models.Questionnaire || model('Questionnaire', questionnaireSchema);
+
+export default Questionnaire;

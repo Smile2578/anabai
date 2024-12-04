@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
-// Routes publiques qui ne nécessitent pas d'authentification
 const PUBLIC_ROUTES = [
   '/',
   '/auth/signin',
@@ -15,10 +14,14 @@ const PUBLIC_ROUTES = [
   '/blog'
 ];
 
-// Routes réservées aux administrateurs et éditeurs
 const ADMIN_ROUTES = [
   '/admin',
   '/api/admin'
+];
+
+const PROTECTED_ROUTES = [
+  '/questionnaire',
+  '/dashboard'
 ];
 
 const isPublicRoute = (path: string) => {
@@ -27,6 +30,10 @@ const isPublicRoute = (path: string) => {
 
 const isAdminRoute = (path: string) => {
   return ADMIN_ROUTES.some(route => path.startsWith(route));
+};
+
+const isProtectedRoute = (path: string) => {
+  return PROTECTED_ROUTES.some(route => path.startsWith(route));
 };
 
 export async function middleware(req: NextRequest) {
@@ -57,25 +64,34 @@ export async function middleware(req: NextRequest) {
       return NextResponse.next();
     }
 
-    // Pour toutes les routes non-publiques, vérifier l'authentification
-    if (!token) {
-      const signInUrl = new URL('/auth/signin', req.url);
-      signInUrl.searchParams.set('callbackUrl', pathname);
-      return NextResponse.redirect(signInUrl);
-    }
+    // Protection spécifique pour les routes protégées (dont le questionnaire)
+    if (isProtectedRoute(pathname)) {
+      if (!token) {
+        const signInUrl = new URL('/auth/signin', req.url);
+        signInUrl.searchParams.set('callbackUrl', pathname);
+        return NextResponse.redirect(signInUrl);
+      }
 
-    // Vérifications du statut utilisateur
-    if (token.status === 'pending_verification') {
-      return NextResponse.redirect(new URL('/auth/verify-email', req.url));
-    }
+      // Vérifications du statut utilisateur
+      if (token.status === 'pending_verification') {
+        return NextResponse.redirect(new URL('/auth/verify-email', req.url));
+      }
 
-    if (token.status === 'inactive') {
-      return NextResponse.redirect(new URL('/auth/inactive', req.url));
+      if (token.status === 'inactive') {
+        return NextResponse.redirect(new URL('/auth/inactive', req.url));
+      }
+
+      // Pour le questionnaire spécifiquement
+      if (pathname.startsWith('/questionnaire')) {
+        const response = NextResponse.next();
+        response.headers.set('x-user-id', token.sub || '');
+        return response;
+      }
     }
 
     // Vérifier les permissions pour les routes admin
     if (isAdminRoute(pathname)) {
-      if (!token.role || !['admin', 'editor'].includes(token.role as string)) {
+      if (!token?.role || !['admin', 'editor'].includes(token.role as string)) {
         return NextResponse.redirect(new URL('/', req.url));
       }
     }
@@ -90,13 +106,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * 1. /api/auth/* (authentication routes)
-     * 2. /_next/* (Next.js internals)
-     * 3. /static/* (static files)
-     * 4. /*.* (files with extensions)
-     */
     '/((?!api/auth|_next/static|_next/image|static|.*\\..*).*)',
   ],
 };

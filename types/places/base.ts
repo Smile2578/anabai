@@ -114,6 +114,7 @@ export interface PlaceContact {
   website?: string;
   bookingUrl?: string;
   googleMapsUrl?: string;
+  instagramUrl?: string;
   socialMedia?: Record<string, string>;
 }
 

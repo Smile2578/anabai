@@ -3,267 +3,409 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { z } from "zod";
 import { useQuestionnaireStore } from "@/store/useQuestionnaireStore";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  FormDescription,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Slider } from "@/components/ui/slider";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { Card } from "@/components/ui/card";
 import { 
-  Activity,
-  Hotel,
-  ArrowLeft,
-  ArrowRight,
-  Building,
-  Scale,
-  Mountain,
+  Hotel, Map, Compass, ArrowLeft, ArrowRight, Castle, Tent, Building2, Clock, Timer, Zap
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { z } from "zod";
+import { useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
+// Nous définissons d'abord les différents niveaux de confort avec leurs détails
+const comfortLevels = [
+  {
+    id: 'backpacker',
+    label: 'Économique',
+    icon: Tent,
+    description: 'Auberges de jeunesse, guesthouses et hébergements simples',
+    examples: ['Dortoirs', 'Hotels capsules', 'Airbnb partagés'],
+    color: 'bg-green-100 dark:bg-green-900',
+    iconColor: 'text-green-600 dark:text-green-400'
+  },
+  {
+    id: 'standard',
+    label: 'Standard',
+    icon: Building2,
+    description: 'Un bon équilibre entre confort et budget',
+    examples: ['Business hotels', 'Ryokans simples', 'Airbnb privés'],
+    color: 'bg-blue-100 dark:bg-blue-900',
+    iconColor: 'text-blue-600 dark:text-blue-400'
+  },
+  {
+    id: 'comfort',
+    label: 'Confort',
+    icon: Hotel,
+    description: 'Des hébergements de qualité supérieure',
+    examples: ['Hôtels 4★', 'Ryokans traditionnels', 'Boutique hotels'],
+    color: 'bg-purple-100 dark:bg-purple-900',
+    iconColor: 'text-purple-600 dark:text-purple-400'
+  },
+  {
+    id: 'luxury',
+    label: 'Luxe',
+    icon: Castle,
+    description: 'Le meilleur du Japon',
+    examples: ['Hôtels 5★', 'Ryokans de luxe', 'Séjours exclusifs'],
+    color: 'bg-amber-100 dark:bg-amber-900',
+    iconColor: 'text-amber-600 dark:text-amber-400'
+  },
+] as const;
 
-const travelStyleSchema = z.object({
-  pace: z.enum(['relaxed', 'moderate', 'intensive'], {
-    required_error: "Veuillez choisir un rythme de voyage",
-  }),
-  comfort: z.enum(['budget', 'standard', 'luxury'], {
-    required_error: "Veuillez choisir un niveau de confort",
-  }),
+// Nous définissons les différents rythmes de voyage avec leurs détails
+const paceOptions = [
+  {
+    id: 'slow',
+    label: 'Rythme tranquille',
+    icon: Clock,
+    description: 'Profitez pleinement de chaque endroit',
+    examples: ['2-3 activités/quartiers par jour', 'Temps libre pour explorer', 'Pauses fréquentes'],
+    color: 'bg-emerald-100 dark:bg-emerald-900',
+    iconColor: 'text-emerald-600 dark:text-emerald-400'
+  },
+  {
+    id: 'moderate',
+    label: 'Rythme modéré',
+    icon: Timer,
+    description: 'Un équilibre entre activités et repos',
+    examples: ['3-4 activités/quartiers par jour', 'Quelques temps libres', 'Pauses régulières'],
+    color: 'bg-blue-100 dark:bg-blue-900',
+    iconColor: 'text-blue-600 dark:text-blue-400'
+  },
+  {
+    id: 'fast',
+    label: 'Rythme soutenu',
+    icon: Zap,
+    description: 'Maximisez vos découvertes',
+    examples: ['4-5 activités/quartiers par jour', 'Planning optimisé', 'Journées bien remplies'],
+    color: 'bg-orange-100 dark:bg-orange-900',
+    iconColor: 'text-orange-600 dark:text-orange-400'
+  }
+] as const;
+
+// Schéma de validation avec des descriptions explicites
+const formSchema = z.object({
+  comfort: z.enum(['backpacker', 'standard', 'comfort', 'luxury']),
   flexibility: z.number().min(0).max(100),
   culturalImmersion: z.number().min(0).max(100),
+  pace: z.enum(['slow', 'moderate', 'fast']).default('moderate'),
+  preferences: z.array(z.string()).default([])
 });
 
-type TravelStyleValues = z.infer<typeof travelStyleSchema>;
-
-const containerVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, staggerChildren: 0.1 }
-  }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, x: -20 },
+// Définition des animations des cartes
+const cardVariants = {
+  hidden: { 
+    opacity: 0,
+    y: 20,
+    scale: 0.95
+  },
   visible: { 
     opacity: 1,
-    x: 0,
-    transition: { duration: 0.3 }
+    y: 0,
+    scale: 1,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 30
+    }
+  },
+  hover: {
+    scale: 1.02,
+    transition: { duration: 0.2 }
+  },
+  tap: {
+    scale: 0.98
   }
 };
 
 export function TravelStyleStep() {
   const router = useRouter();
-  const { answers, updateAnswers } = useQuestionnaireStore();
-  
-  const form = useForm<TravelStyleValues>({
-    resolver: zodResolver(travelStyleSchema),
+  const { updateAnswers, setCurrentStep, answers: savedAnswers } = useQuestionnaireStore();
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      pace: answers.travelStyle?.pace || 'moderate',
-      comfort: answers.travelStyle?.comfort || 'standard',
-      flexibility: answers.travelStyle?.flexibility || 50,
-      culturalImmersion: answers.travelStyle?.culturalImmersion || 50,
+      comfort: 'standard',
+      flexibility: 50,
+      culturalImmersion: 50,
+      pace: 'moderate',
+      preferences: []
     },
   });
 
-  const onSubmit = async (values: TravelStyleValues) => {
+  // Charger les données sauvegardées au montage
+  useEffect(() => {
+    if (savedAnswers?.travelStyle) {
+      const { comfort, flexibility, culturalImmersion, pace, preferences } = savedAnswers.travelStyle;
+      form.reset({
+        comfort: comfort as "backpacker" | "standard" | "comfort" | "luxury",
+        flexibility,
+        culturalImmersion,
+        pace: pace as "slow" | "moderate" | "fast",
+        preferences: preferences || []
+      });
+    }
+  }, [savedAnswers, form]);
+
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
     updateAnswers({
-      travelStyle: values,
-    });
+      travelStyle: {
+        comfort: data.comfort,
+        flexibility: data.flexibility,
+        culturalImmersion: data.culturalImmersion,
+        pace: data.pace,
+        preferences: data.preferences || [],
+      },
+    }, 2);
+
+    setCurrentStep(3);
     router.push('/questionnaire/3');
   };
 
+  // Fonction utilitaire pour obtenir le label du niveau de flexibilité
+  const getFlexibilityLabel = (value: number) => {
+    if (value <= 25) return "Planning très structuré";
+    if (value <= 50) return "Quelques plages de liberté";
+    if (value <= 75) return "Planning flexible";
+    return "Totalement libre";
+  };
+
+  // Fonction utilitaire pour obtenir le label du niveau d'immersion
+  const getImmersionLabel = (value: number) => {
+    if (value <= 25) return "Découverte classique";
+    if (value <= 50) return "Mix tourisme-local";
+    if (value <= 75) return "Immersion partielle";
+    return "Immersion totale";
+  };
+
   return (
-    <motion.div
-      className="space-y-8"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      <motion.div variants={itemVariants} className="space-y-2">
-        <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
-          <Scale className="h-6 w-6" />
-          Style de voyage
-        </h2>
-        <p className="text-secondary">
-          Définissez vos préférences pour un voyage qui vous correspond parfaitement
-        </p>
-      </motion.div>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            visible: {
+              transition: {
+                staggerChildren: 0.1
+              }
+            }
+          }}
+          className="space-y-8"
+        >
+           {/* En-tête */}
+           <div className="flex items-center justify-end mb-4">
+            <Badge variant="secondary" className="text-sm px-4 py-2 rounded-full">
+              Étape 2/5
+            </Badge>
+          </div>
+          
+          {/* Section Niveau de Confort */}
+          <motion.div variants={cardVariants}>
+            <Card className="p-6">
+              <FormField
+                control={form.control}
+                name="comfort"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2 text-lg font-medium mb-6">
+                      <Hotel className="h-5 w-5 text-primary" />
+                      Niveau de Confort Souhaité
+                    </FormLabel>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {comfortLevels.map((level) => {
+                        const Icon = level.icon;
+                        const isSelected = field.value === level.id;
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <motion.div variants={itemVariants}>
-            <Card className="border-primary/20">
-              <CardContent className="pt-6 space-y-6">
-                <div className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="pace"
-                    render={({ field }) => (
-                      <FormItem className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Activity className="h-5 w-5 text-primary" />
-                          <FormLabel className="text-lg font-medium">Rythme du voyage</FormLabel>
-                        </div>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="bg-background">
-                              <SelectValue placeholder="Sélectionnez un rythme" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="relaxed">
-                              <span className="flex items-center gap-2">
-                                🌿 Détendu
-                              </span>
-                            </SelectItem>
-                            <SelectItem value="moderate">
-                              <span className="flex items-center gap-2">
-                                ⚖️ Modéré
-                              </span>
-                            </SelectItem>
-                            <SelectItem value="intensive">
-                              <span className="flex items-center gap-2">
-                                ⚡ Intensif
-                              </span>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Choisissez le rythme qui correspond le mieux à votre style de voyage
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="comfort"
-                    render={({ field }) => (
-                      <FormItem className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Hotel className="h-5 w-5 text-primary" />
-                          <FormLabel className="text-lg font-medium">Niveau de confort</FormLabel>
-                        </div>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="bg-background">
-                              <SelectValue placeholder="Sélectionnez un niveau de confort" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="budget">
-                              <span className="flex items-center gap-2">
-                                🎒 Budget
-                              </span>
-                            </SelectItem>
-                            <SelectItem value="standard">
-                              <span className="flex items-center gap-2">
-                                🏡 Standard
-                              </span>
-                            </SelectItem>
-                            <SelectItem value="luxury">
-                              <span className="flex items-center gap-2">
-                                ✨ Luxe
-                              </span>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </CardContent>
+                        return (
+                          <motion.div
+                            key={level.id}
+                            variants={cardVariants}
+                            whileHover="hover"
+                            whileTap="tap"
+                            onClick={() => field.onChange(level.id)}
+                            className={`
+                              cursor-pointer rounded-xl p-6
+                              ${level.color}
+                              ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}
+                              transition-all duration-200
+                            `}
+                          >
+                            <div className="flex items-start gap-4">
+                              <Icon className={`h-8 w-8 ${level.iconColor}`} />
+                              <div className="flex-1">
+                                <h3 className="font-medium mb-1">{level.label}</h3>
+                                <p className="text-sm text-muted-foreground mb-2">
+                                  {level.description}
+                                </p>
+                                <ul className="text-xs text-muted-foreground">
+                                  {level.examples.map((example, index) => (
+                                    <li key={index}>• {example}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </Card>
           </motion.div>
 
-          <motion.div variants={itemVariants}>
-            <Card className="border-primary/20">
-              <CardContent className="pt-6 space-y-6">
-                <FormField
-                  control={form.control}
-                  name="flexibility"
-                  render={({ field }) => (
-                    <FormItem className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Building className="h-5 w-5 text-primary" />
-                        <FormLabel className="text-lg font-medium">Flexibilité du planning</FormLabel>
-                      </div>
-                      <FormControl>
-                        <Slider
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={[field.value]}
-                          onValueChange={(value) => field.onChange(value[0])}
-                          className="pt-4"
-                          defaultValue={[field.value]}
-                        />
-                      </FormControl>
-                      <div className="flex justify-between text-sm text-secondary">
-                        <span>Planning fixe</span>
-                        <span className="font-medium text-primary">{field.value}%</span>
-                        <span>Totalement flexible</span>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          {/* Section Rythme de Voyage */}
+          <motion.div variants={cardVariants}>
+            <Card className="p-6">
+              <FormField
+                control={form.control}
+                name="pace"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2 text-lg font-medium mb-6">
+                      <Timer className="h-5 w-5 text-primary" />
+                      Rythme de Voyage
+                    </FormLabel>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {paceOptions.map((option) => {
+                        const Icon = option.icon;
+                        const isSelected = field.value === option.id;
 
-                <FormField
-                  control={form.control}
-                  name="culturalImmersion"
-                  render={({ field }) => (
-                    <FormItem className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Mountain className="h-5 w-5 text-primary" />
-                        <FormLabel className="text-lg font-medium">Immersion culturelle</FormLabel>
+                        return (
+                          <motion.div
+                            key={option.id}
+                            variants={cardVariants}
+                            whileHover="hover"
+                            whileTap="tap"
+                            onClick={() => field.onChange(option.id)}
+                            className={`
+                              cursor-pointer rounded-xl p-6
+                              ${option.color}
+                              ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}
+                              transition-all duration-200
+                            `}
+                          >
+                            <div className="flex items-start gap-4">
+                              <Icon className={`h-8 w-8 ${option.iconColor}`} />
+                              <div className="flex-1">
+                                <h3 className="font-medium mb-1">{option.label}</h3>
+                                <p className="text-sm text-muted-foreground mb-2">
+                                  {option.description}
+                                </p>
+                                <ul className="text-xs text-muted-foreground">
+                                  {option.examples.map((example, index) => (
+                                    <li key={index}>• {example}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </Card>
+          </motion.div>
+
+          {/* Section Flexibilité */}
+          <motion.div variants={cardVariants}>
+            <Card className="p-6">
+              <FormField
+                control={form.control}
+                name="flexibility"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2 text-lg font-medium mb-6">
+                      <Map className="h-5 w-5 text-primary" />
+                      Flexibilité du Planning
+                    </FormLabel>
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <p className="text-lg font-medium">
+                          {getFlexibilityLabel(field.value)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {field.value <= 50 ? 
+                            "Nous planifierons votre voyage en détail" :
+                            "Vous aurez plus de liberté pour explorer"
+                          }
+                        </p>
                       </div>
-                      <FormControl>
-                        <Slider
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={[field.value]}
-                          onValueChange={(value) => field.onChange(value[0])}
-                          className="pt-4"
-                          defaultValue={[field.value]}
-                        />
-                      </FormControl>
-                      <div className="flex justify-between text-sm text-secondary">
+                      <Slider
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={[field.value]}
+                        onValueChange={(values) => field.onChange(values[0])}
+                        className="py-4"
+                      />
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Planning détaillé</span>
+                        <span>Planning libre</span>
+                      </div>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </Card>
+          </motion.div>
+
+          {/* Section Immersion Culturelle */}
+          <motion.div variants={cardVariants}>
+            <Card className="p-6">
+              <FormField
+                control={form.control}
+                name="culturalImmersion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2 text-lg font-medium mb-6">
+                      <Compass className="h-5 w-5 text-primary" />
+                      Niveau d&apos;Immersion Culturelle
+                    </FormLabel>
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <p className="text-lg font-medium">
+                          {getImmersionLabel(field.value)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {field.value <= 50 ? 
+                            "Focus sur les expériences touristiques classiques" :
+                            "Découverte approfondie de la culture japonaise"
+                          }
+                        </p>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={[field.value]}
+                        onValueChange={(values) => field.onChange(values[0])}
+                        className="py-4"
+                      />
+                      <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Tourisme classique</span>
-                        <span className="font-medium text-primary">{field.value}%</span>
                         <span>Immersion totale</span>
                       </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </Card>
           </motion.div>
 
-          <motion.div 
-            className="flex justify-between gap-4 pt-4"
-            variants={itemVariants}
-          >
+          {/* Boutons de Navigation */}
+          <motion.div variants={cardVariants} className="flex justify-between pt-4">
             <Button
               type="button"
               variant="outline"
@@ -273,16 +415,16 @@ export function TravelStyleStep() {
               <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
               Précédent
             </Button>
-            <Button 
+            <Button
               type="submit"
-              className="group"
+              className="group hover:scale-105 transition-all duration-200"
             >
               Suivant
               <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </Button>
           </motion.div>
-        </form>
-      </Form>
-    </motion.div>
+        </motion.div>
+      </form>
+    </Form>
   );
 }

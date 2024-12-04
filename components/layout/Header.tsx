@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { Book, FileText, Loader, Menu } from "lucide-react"
 import AnabaLogo from "@/components/brand/AnabaLogo"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,8 +62,6 @@ export function Header({ className }: { className?: string }) {
       .join("")
       .toUpperCase()
   }
-
-
 
   // Composant pour le menu utilisateur
   const UserMenu = () => {
@@ -177,7 +176,6 @@ export function Header({ className }: { className?: string }) {
       <div className="container mx-auto px-4 h-12 flex items-center justify-between">
         <AnabaLogo />
         
-        
         {/* Actions desktop */}
         <div className="flex items-center gap-4">
           {isAuthenticated && session ? (
@@ -204,6 +202,10 @@ export function Header({ className }: { className?: string }) {
             </>
           )}
 
+          <ThemeToggle />
+
+          
+
           {/* Menu mobile */}
           <Sheet>
             <SheetTrigger asChild>
@@ -211,12 +213,15 @@ export function Header({ className }: { className?: string }) {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+            <SheetContent side="right" className=" mr-2 w-[300px] sm:w-[400px]">
               <SheetHeader>
                 <SheetTitle className="text-secondary-main">Menu</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col space-y-4 mt-6">
-                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Changer le thème</span>
+                  <ThemeToggle />
+                </div>
                 <hr className="border-border" />
                 {!isAuthenticated ? (
                   <>

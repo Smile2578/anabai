@@ -217,6 +217,7 @@ const placeSchema = new Schema<PlaceDocument>(
       website: String,
       bookingUrl: String,
       googleMapsUrl: String,
+      instagramUrl: String,
       socialMedia: {
         type: Map,
         of: String,

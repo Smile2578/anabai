@@ -1,21 +1,30 @@
 // app/page.tsx
+"use client"
 
-import { Header } from "@/components/layout/Header"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Bot, MapPin, Compass, Calendar, Coffee, Hotel, Utensils, ShoppingBag, Navigation } from 'lucide-react'
 import Image from "next/image"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
+import { cn } from "@/lib/utils"
 
 export default function LandingPage() {
+  const { theme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <Header />
+      
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center">
+      <section className="relative min-h-screen flex items-center pb-16">
         <div className="absolute inset-0 z-0">
           <Image
             src="/images/pagode.jpg"
@@ -25,32 +34,37 @@ export default function LandingPage() {
             priority
             quality={100}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/50 to-transparent" />
+          <div className={cn(
+            "absolute inset-0",
+            mounted && theme === "dark" 
+              ? "bg-gradient-to-r from-background/90 via-background/50 to-transparent" 
+              : "bg-white/5"
+          )} />
         </div>
 
-        <div className="container mx-auto px-4 pt-24 pb-12 relative z-10">
-          <div className="max-w-2xl">
+        <div className="container mx-auto px-4 pt-6 pb-12 relative z-10">
+          <div className="max-w-2xl mx-auto text-center sm:text-left sm:mx-0">
             <span className="inline-block px-4 py-2 rounded-full bg-primary/10 text-primary mb-6">
               Votre assistant voyage intelligent
             </span>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-10">
               Découvrez le Japon 
               <span className="block text-primary">authentique</span>
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl">
+            <p className="text-lg md:text-xl text-foreground/80 mb-12 max-w-xl mx-auto sm:mx-0">
               Explorez les trésors cachés du Japon grâce à notre IA et nos recommandations d&apos;experts locaux
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-            <Link href="/trip-planner">
-              <Button size="lg" className="bg-primary hover:bg-primary/90">
-                Créer mon itinéraire
-              </Button>
-            </Link>
-            <Link href="/spots">
-              <Button size="lg" variant="outline">
-                Découvrir les spots secrets
-              </Button>
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center sm:justify-start">
+              <Link href="/trip-planner">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
+                  Créer mon itinéraire
+                </Button>
+              </Link>
+              <Link href="/spots">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                  Découvrir les spots secrets
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -69,11 +83,13 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8">
             {howItWorks.map((step, index) => (
               <Card key={index} className="hover-card">
-                <CardContent className="pt-6">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                    <step.icon className="h-6 w-6 text-primary" />
+                <CardContent className="pt-6 flex flex-col items-center text-center">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <step.icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold">{step.title}</h3>
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
                   <p className="text-muted-foreground">{step.description}</p>
                 </CardContent>
               </Card>
@@ -103,7 +119,7 @@ export default function LandingPage() {
                       fill
                       className="object-cover transition-transform group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+                    <div className="absolute inset-0 dark:bg-gradient-to-t dark:from-background/80 dark:to-transparent" />
                     <div className="absolute bottom-4 left-4 right-4">
                       <div className="flex items-center gap-2 text-white">
                         <category.icon className="h-5 w-5" />
@@ -168,13 +184,13 @@ export default function LandingPage() {
         <div className="absolute inset-0 japanese-pattern opacity-10" />
         <div className="container mx-auto px-4 relative">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            <h2 className="text-4xl md:text-5xl font-bold dark:text-white text-black mb-6">
               Prêt à découvrir le vrai Japon ?
             </h2>
-            <p className="text-xl text-white/90 mb-8">
+            <p className="text-xl dark:text-white/90 text-black mb-8">
               Commencez à planifier votre voyage unique avec AnabAI et explorez les trésors cachés du Japon
             </p>
-            <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-white/90">
+            <Button size="lg" variant="secondary" className="dark:bg-white bg-primary dark:text-primary text-white dark:hover:bg-white/90 hover:bg-primary/90">
               Créer mon itinéraire gratuitement
             </Button>
           </div>

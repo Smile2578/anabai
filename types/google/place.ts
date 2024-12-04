@@ -47,6 +47,7 @@ export interface GooglePlace {
   nationalPhoneNumber?: string;
   websiteUri?: string;
   googleMapsUri?: string;
+  instagramUri?: string;
   
   businessStatus?: string;
   iconBackgroundColor?: string;

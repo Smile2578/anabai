@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Phone, Globe, Calendar } from 'lucide-react';
+import { ExternalLink, Phone, Globe, Calendar, Instagram } from 'lucide-react';
 
 interface ContactSectionProps {
   data: Place;
@@ -120,6 +120,22 @@ export const ContactSection = ({ data, onChange, isSubmitting }: ContactSectionP
           {!validateUrl(contact.googleMapsUrl || '') && (
             <p className="text-sm text-destructive">URL invalide</p>
           )}
+        </div>
+
+        {/* Instagram */}
+        <div className="space-y-2">
+          <Label htmlFor="instagram" className="flex items-center gap-2">
+            <Instagram className="w-4 h-4" />
+            Lien Instagram
+          </Label>
+          <Input
+            id="instagram"
+            type="url"
+            value={contact.instagramUrl || ''}
+            onChange={(e) => handleChange('instagramUrl', e.target.value)}
+            placeholder="https://www.instagram.com/..."
+            disabled={isSubmitting}
+          />
         </div>
 
         {/* Aperçu des liens */}
