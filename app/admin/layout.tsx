@@ -4,7 +4,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import AdminHeader from '@/components/admin/Header';
+import { Header } from '@/components/dashboard/layout/Header';
 import Sidebar from '@/components/admin/Sidebar';
 import { Loader } from 'lucide-react';
 
@@ -42,7 +42,7 @@ export default function AdminLayout({
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1">
-        <AdminHeader />
+        <Header />
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
     </div>

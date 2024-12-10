@@ -46,7 +46,7 @@ export class StorageService {
   }
 
   // Méthodes de gestion des lieux
-  async saveImportedPlaces(previews: ImportPreview[]): Promise<StorageResult> {
+  async saveImportedPlaces(previews: ImportPreview[], user: { id: string; email: string; role: string }): Promise<StorageResult> {
     const errors: Array<{ title: string; error: string }> = [];
     const duplicates: string[] = [];
     let savedCount = 0;
@@ -76,13 +76,20 @@ export class StorageService {
           continue;
         }
 
-        // Forcer le statut à 'publié' pour les nouveaux lieux
+        // Forcer le statut à 'publié' pour les nouveaux lieux et ajouter l'auteur
         const placeToSave = {
           ...preview.enriched.place,
           metadata: {
             ...preview.enriched.place.metadata,
-            status: 'publié' as const
-          }
+            status: 'publié' as const,
+            authors: [{
+              id: user.id,
+              name: user.email.split('@')[0],
+              role: user.role as 'admin' | 'editor',
+              addedAt: new Date()
+            }]
+          },
+          author: user.id
         };
 
         const validation = await this.validationService.validatePlace(placeToSave);

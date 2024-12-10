@@ -82,26 +82,12 @@ export class ValidationService {
   private validateImages(place: Place): ValidationError[] {
     const errors: ValidationError[] = [];
 
-    // Vérifier présence d'images
+    // Les images sont maintenant optionnelles
     if (!place.images || place.images.length === 0) {
-      errors.push({
-        field: 'images',
-        message: 'Au moins une image est requise',
-        severity: 'error'
-      });
-      return errors;
+      return [];
     }
 
-    // Vérifier image de couverture
-    if (!place.images.some(img => img.isCover)) {
-      errors.push({
-        field: 'images',
-        message: 'Une image de couverture est requise',
-        severity: 'error'
-      });
-    }
-
-    // Vérifier le nombre maximum d'images
+    // Vérifier le nombre maximum d'images si présentes
     if (place.images.length > VALIDATION_RULES.images.maxCount) {
       errors.push({
         field: 'images',

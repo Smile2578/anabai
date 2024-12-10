@@ -19,6 +19,7 @@ export interface PlaceMetadata {
   rating?: number;
   ratingCount?: number;
   userRatingsTotal?: number;
+  visitCount?: number;
   seasonality?: {
     bestMonths?: number[];
     peakHours?: Record<string, string[]>;

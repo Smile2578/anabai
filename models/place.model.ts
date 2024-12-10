@@ -57,6 +57,7 @@ export interface PlaceDocument extends Document {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  author: mongoose.Types.ObjectId;
 }
 
 const LocalizedStringSchema = {
@@ -152,21 +153,17 @@ const placeSchema = new Schema<PlaceDocument>(
     },
     images: {
       type: [{
-        url: { type: String, required: true },
-        source: { type: String, required: true },
-        isCover: { type: Boolean, required: true },
+        url: { type: String },
+        source: { type: String },
+        isCover: { type: Boolean, default: false },
         caption: LocalizedStringSchema,
         name: {
           type: String,
           maxlength: 10
         }
       }],
-      validate: {
-        validator: function(v: { url: string; source: string; isCover: boolean; caption?: string; name?: string }[]) {
-          return v.length > 0;  
-        },
-        message: 'Au moins une image est requise'
-      }
+      required: false,
+      default: []
     },
     
     // Informations pratiques
@@ -309,15 +306,14 @@ const placeSchema = new Schema<PlaceDocument>(
       tags: [String],
       businessStatus: String,
       authors: [{
-        id: { type: String, required: true },
-        name: { type: String, required: true },
+        id: { type: String },
+        name: { type: String },
         role: { 
           type: String,
-          enum: ['admin', 'editor'],
-          required: true
+          enum: ['admin', 'editor']
         },
         addedAt: { type: Date, default: Date.now }
-      }],
+      }]
     },
     
     isActive: {
@@ -325,6 +321,19 @@ const placeSchema = new Schema<PlaceDocument>(
       default: true,
       index: true,
     },
+    author: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      validate: {
+        validator: async function(authorId: string) {
+          const User = mongoose.models.User;
+          const author = await User.findById(authorId);
+          return author && (author.role === 'admin' || author.role === 'editor');
+        },
+        message: 'L\'auteur doit avoir le rôle admin ou editor'
+      }
+    }
   },
   {
     timestamps: true,

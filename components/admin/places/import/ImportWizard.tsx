@@ -9,22 +9,22 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ImportPreview } from '@/types/import';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface ImportWizardProps {
   authorId: string;
   authorName: string;
   authorRole: 'admin' | 'editor';
-  onComplete: () => void;
   onCancel: () => void;
 }
 
 export function ImportWizard({ 
   authorId, 
   authorName, 
-  authorRole, 
-  onComplete, 
+  authorRole,  
   onCancel 
 }: ImportWizardProps) {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = React.useState<'upload' | 'processing' | 'enriching' | 'preview' | 'saving'>('upload');
   const [previews, setPreviews] = React.useState<ImportPreview[]>([]);
   const [selectedPreviews, setSelectedPreviews] = React.useState<string[]>([]);
@@ -157,7 +157,14 @@ export function ImportWizard({
         description: `${saveData.savedCount} lieu(x) importé(s) avec succès`
       });
 
-      onComplete();
+      // Fermer le wizard et forcer le rafraîchissement
+      onCancel();
+      router.refresh();
+      
+      // Attendre un court instant pour que le toast s'affiche
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
 
     } catch (error) {
       console.error('Save error:', error);

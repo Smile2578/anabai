@@ -2,6 +2,20 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+// Interface pour l'expertise utilisateur
+export interface UserExpertise {
+  category: string;
+  level: number;
+  description?: string;
+}
+
+// Interface pour les préférences utilisateur
+export interface UserPreference {
+  category: string;
+  weight: number;
+  subPreferences?: string[];
+}
+
 // Interface pour les données de liaison de compte en attente
 interface PendingLinkData {
   pendingLinkToken?: string;
@@ -18,6 +32,8 @@ interface UserMetadata extends PendingLinkData {
   lastPasswordChange?: Date;
   failedLoginAttempts?: number;
   lastFailedLogin?: Date;
+  expertise?: UserExpertise[];
+  preferences?: UserPreference[];
 }
 
 // Interface principale de l'utilisateur

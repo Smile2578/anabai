@@ -179,7 +179,7 @@ export class EnrichmentService {
 
       // Traitement des images
       const images = await Promise.all(
-        (detailsFr.photos || []).slice(0, 1).map(async (photo, index) => {
+        (detailsFr.photos || []).slice(0, 5).map(async (photo, index) => {
           try {
             const photoUrl = await this.googlePlacesService.getPhotoUrl(photo);
             const processedImage = await this.imageService.cacheImage(photoUrl);
@@ -187,7 +187,7 @@ export class EnrichmentService {
             return {
               url: processedImage,
               source: 'Google Places',
-              isCover: true,
+              isCover: index === 0,
               name: `img_${(index + 1).toString().padStart(2, '0')}`,
               caption: {
                 fr: photo.authorAttributions?.[0]?.displayName || 'Image du lieu',

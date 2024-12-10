@@ -36,10 +36,10 @@ export interface OpeningHours {
 }
 
 export interface PlaceImage {
-  url: string;
-  source: string;
-  isCover: boolean;
-  caption: LocalizedString;
+  url?: string;
+  source?: string;
+  isCover?: boolean;
+  caption?: LocalizedString;
   name?: string;
   blobId?: string;
   blobUrl?: string;
@@ -97,6 +97,12 @@ export interface PracticalInfo {
     wheelchairAccessibleEntrance: boolean;
     wheelchairAccessibleRestroom: boolean;
     wheelchairAccessibleSeating: boolean;
+  };
+  accessibility?: {
+    wheelchair?: boolean;
+    elevator?: boolean;
+    parking?: boolean;
+    restroom?: boolean;
   };
   foodAndDrinkOptions?: {
     servesBeer: boolean;

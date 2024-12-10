@@ -55,7 +55,7 @@ async function handleSavePlaces(req: Request, session: SessionWithUser) {
     }
 
     // Sauvegarder les lieux
-    const result = await storageService.saveImportedPlaces(validPreviews);
+    const result = await storageService.saveImportedPlaces(validPreviews, session.user);
 
     // Préparer les statistiques détaillées
     const stats: SaveStats = {

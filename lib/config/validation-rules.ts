@@ -32,9 +32,9 @@ export const VALIDATION_RULES = {
   },
 
   images: {
-    minCount: 1,
+    minCount: 0,
     maxCount: 10,
-    coverRequired: true,
+    coverRequired: false,
     formats: ['jpg', 'jpeg', 'png', 'webp'] as const,
     maxSize: 5 * 1024 * 1024, // 5MB
     dimensions: {

@@ -4,9 +4,18 @@ import { QuestionnaireStatus } from '@/types/questionnaire/questionnaire';
 
 const questionnaireSchema = new Schema({
   userId: {
-    type: String,
+    type: Schema.Types.ObjectId,
+    ref: 'User',
     required: true,
     index: true,
+    validate: {
+      validator: async function(userId: string) {
+        const User = models.User;
+        const user = await User.findById(userId);
+        return !!user;
+      },
+      message: 'L\'utilisateur spécifié n\'existe pas'
+    }
   },
   status: {
     type: String,

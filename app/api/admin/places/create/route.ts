@@ -59,8 +59,15 @@ async function handleCreatePlace(req: Request, session: SessionWithUser) {
         ...enriched.preview.enriched.place.metadata,
         ...initialMetadata,
         status: 'publié' // Statut par défaut
-      }
+      },
+      author: session.user.id // Ajouter l'auteur
     };
+
+    // Log pour déboguer
+    console.log('Place à créer:', {
+      author: place.author,
+      metadata: place.metadata
+    });
 
     // Sauvegarder le lieu
     const savedPlace = await placeRepository.create(place);

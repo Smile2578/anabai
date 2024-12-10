@@ -12,7 +12,8 @@
     "test:coverage": "jest --coverage",
     "test:cleanup": "docker-compose down",
     "test:redis": "cross-env NODE_ENV=development ts-node -r tsconfig-paths/register scripts/test-redis-connection.ts",
-    "test-redis-connection": "ts-node scripts/test-redis-connection.ts"
+    "test-redis-connection": "ts-node scripts/test-redis-connection.ts",
+    "check-db": "ts-node scripts/check-questionnaire.ts"
   },
   "dependencies": {
     "@bull-board/api": "^6.5.3",
@@ -85,6 +86,7 @@
     "next": "15.0.3",
     "next-auth": "^5.0.0-beta.25",
     "next-themes": "^0.4.3",
+    "pg": "^8.13.1",
     "react": "19.0.0-rc-66855b96-20241106",
     "react-day-picker": "^8.10.1",
     "react-dom": "19.0.0-rc-66855b96-20241106",
@@ -123,6 +125,7 @@
     "@types/memory-cache": "^0.2.6",
     "@types/node": "^20.17.6",
     "@types/nodemailer": "^6.4.16",
+    "@types/pg": "^8.11.10",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/react-leaflet": "^2.8.3",
