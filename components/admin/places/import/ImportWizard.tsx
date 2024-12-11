@@ -16,13 +16,15 @@ interface ImportWizardProps {
   authorName: string;
   authorRole: 'admin' | 'editor';
   onCancel: () => void;
+  onComplete: () => Promise<void>;
 }
 
 export function ImportWizard({ 
   authorId, 
   authorName, 
   authorRole,  
-  onCancel 
+  onCancel,
+  onComplete 
 }: ImportWizardProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = React.useState<'upload' | 'processing' | 'enriching' | 'preview' | 'saving'>('upload');
@@ -159,6 +161,7 @@ export function ImportWizard({
 
       // Fermer le wizard et forcer le rafraîchissement
       onCancel();
+      await onComplete();
       router.refresh();
       
       // Attendre un court instant pour que le toast s'affiche

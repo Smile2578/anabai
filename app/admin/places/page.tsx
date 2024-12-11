@@ -5,12 +5,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PlaceStats } from '@/components/admin/places/PlaceStats';
 import { PlaceList } from '@/components/admin/places/PlaceList';
 import { PlaceFilters } from '@/components/admin/places/PlaceFilters';
 import { CreatePlaceDialog } from '@/components/admin/places/create/CreatePlaceDialog';
-import { ImportWizard } from '@/components/admin/places/import/ImportWizard';
 import { useToast } from '@/hooks/use-toast';
 import { usePlaces } from '@/hooks/usePlaces';
 import { Category, Status } from '@/types/common';
@@ -43,7 +41,6 @@ export default function PlacesPage() {
   const { toast } = useToast();
 
   // États locaux pour la gestion des modales et des filtres
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -126,14 +123,6 @@ export default function PlacesPage() {
     });
   };
 
-  // Gestion de la fin de l'import
-  const handleImportComplete = async () => {
-    setIsImportModalOpen(false);
-    await refetch();
-    toast({
-      description: "Import terminé avec succès"
-    });
-  };
 
   // Affichage d'un message d'erreur si nécessaire
   if (error) {
@@ -193,19 +182,6 @@ export default function PlacesPage() {
         onOpenChange={setIsCreateModalOpen}
         onSuccess={handleCreateSuccess}
       />
-
-      {/* Modal d'import */}
-      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
-          <ImportWizard
-            onComplete={handleImportComplete}
-            onCancel={() => setIsImportModalOpen(false)} 
-            authorId={''}  // À remplacer par l'ID de l'utilisateur connecté
-            authorName={''} // À remplacer par le nom de l'utilisateur connecté
-            authorRole={'admin'}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

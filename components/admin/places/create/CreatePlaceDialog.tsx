@@ -40,7 +40,7 @@ export function CreatePlaceDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-8xl max-h-[95vh]">
+      <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Ajouter un lieu</DialogTitle>
           <DialogDescription>
@@ -116,7 +116,7 @@ export function CreatePlaceDialog({
               authorId={selectedAuthorId}
               authorName={authors.find(a => a.id === selectedAuthorId)?.name || ''}
               authorRole={authors.find(a => a.id === selectedAuthorId)?.role || 'editor'}
-              onComplete={() => {
+              onComplete={async () => {
                 onOpenChange(false);
                 onSuccess('import-completed');
               }}

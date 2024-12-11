@@ -37,8 +37,8 @@ export const ImagesSection = ({ data, onChange, isSubmitting }: ImagesSectionPro
           isCover: data.images.length === 0 && index === 0, // Premier upload = cover
           name: `img_${(data.images.length + index + 1).toString().padStart(2, '0')}`,
           caption: {
-            fr: file.name,
-            ja: file.name
+            fr: '',
+            en: ''
           }
         }))
       );
@@ -103,8 +103,7 @@ export const ImagesSection = ({ data, onChange, isSubmitting }: ImagesSectionPro
     newImages[index] = {
       ...newImages[index],
       caption: {
-        ...newImages[index].caption,
-        [lang]: value
+        fr: lang === 'fr' ? value : (newImages[index].caption?.fr || ''),
       }
     };
     onChange({ images: newImages });
@@ -177,7 +176,7 @@ export const ImagesSection = ({ data, onChange, isSubmitting }: ImagesSectionPro
                           {/* Prévisualisation */}
                           <div className="relative w-24 h-24 flex-shrink-0">
                             <Image
-                              src={image.url}
+                              src={image.url || '/images/placeholder.jpg'}
                               alt={image.caption?.fr || ''}
                               className="w-full h-full object-cover rounded-md"
                               width={96}

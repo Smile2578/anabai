@@ -2,7 +2,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { AppError } from '@/lib/errors/AppError';
-import { env } from '@/lib/env.config';
 
 export async function errorHandler(
   error: unknown
@@ -10,7 +9,7 @@ export async function errorHandler(
   const appError = AppError.fromError(error);
   
   // Log l'erreur en développement
-  if (env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'development') {
     console.error('🚨 Error:', {
       code: appError.code,
       message: appError.message,
@@ -25,7 +24,7 @@ export async function errorHandler(
     error: {
       code: appError.code,
       message: appError.message,
-      ...(env.NODE_ENV === 'development' && { context: appError.context })
+      ...(process.env.NODE_ENV === 'development' && { context: appError.context })
     }
   };
 

@@ -59,7 +59,7 @@ export function PlaceCard({ place }: PlaceCardProps) {
           <div className="relative h-48">
             {coverImage ? (
               <Image
-                src={coverImage.url}
+                src={coverImage.url || '/images/placeholder.jpg'}
                 alt={coverImage.caption?.fr || place.name.fr}
                 fill
                 className="object-cover"

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Redis } from 'ioredis';
-import { env } from '@/lib/env.config';
 import { createError, AppError } from '@/lib/errors/AppError';
 
-const redis = new Redis(env.REDIS_URL);
+if (!process.env.REDIS_URL) {
+  throw new Error('REDIS_URL is not defined');
+}
+
+const redis = new Redis(process.env.REDIS_URL);
 
 interface RateLimitConfig {
   window: number;  // en secondes
@@ -13,8 +16,8 @@ interface RateLimitConfig {
 export async function rateLimiter(
   req: NextRequest,
   config: RateLimitConfig = {
-    window: env.RATE_LIMIT_WINDOW,
-    max: env.RATE_LIMIT_MAX_REQUESTS
+    window: Number(process.env.RATE_LIMIT_WINDOW),
+    max: Number(process.env.RATE_LIMIT_MAX_REQUESTS)
   }
 ) {
   const forwardedFor = req.headers.get('x-forwarded-for');

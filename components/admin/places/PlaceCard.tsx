@@ -61,7 +61,7 @@ export function PlaceCard({
         <div className="relative aspect-video w-full">
           {coverImage ? (
             <Image
-              src={coverImage.url}
+              src={coverImage.url || '/images/placeholder.jpg'}
               alt={place.name.fr}
               fill
               className="object-cover"

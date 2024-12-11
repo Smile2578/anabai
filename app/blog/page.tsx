@@ -20,7 +20,22 @@ export const metadata: Metadata = {
   },
 };
 
+interface TimelinePost {
+  _id: string;
+  title: { fr: string };
+  slug: string;
+  publishedAt?: Date;
+  createdAt: Date;
+}
+
+interface TimelineGroup {
+  month: Date;
+  posts: TimelinePost[];
+}
+
 async function getInitialData() {
+  'use server';
+  
   await connectDB();
   
   const [featuredPost, recentPosts, timelinePosts] = await Promise.all([
@@ -50,19 +65,6 @@ async function getInitialData() {
     timelinePosts: JSON.parse(JSON.stringify(timelinePosts)),
     tags
   };
-  
-  interface TimelinePost {
-    _id: string;
-    title: { fr: string };
-    slug: string;
-    publishedAt?: Date;
-    createdAt: Date;
-  }
-
-  interface TimelineGroup {
-    month: Date;
-    posts: TimelinePost[];
-  }
 
   const timelineGroups = serializedData.timelinePosts.reduce((groups: TimelineGroup[], post: TimelinePost) => {
     const date = new Date(post.publishedAt || post.createdAt);
@@ -112,13 +114,13 @@ export default async function BlogPage() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div>
-            <span className="inline-block px-4 py-2 rounded-full bg-primary/10 text-primary mb-6">
-              Anablog
-            </span>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
-              Découvrez nos articles sur le Japon, sa culture et ses lieux
-              <span className="block text-primary">incontournables.</span>
-            </h1>
+              <span className="inline-block px-4 py-2 rounded-full bg-primary/10 text-primary mb-6">
+                Anablog
+              </span>
+              <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
+                Découvrez nos articles sur le Japon, sa culture et ses lieux
+                <span className="block text-primary">incontournables.</span>
+              </h1>
             </div>
             <div>
               <Suspense fallback={<div className="h-[60vh] min-h-[500px] bg-muted animate-pulse rounded-xl" />}>
