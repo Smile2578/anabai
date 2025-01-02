@@ -1,52 +1,57 @@
 // components/auth/SignOutButton.tsx
 'use client';
 
-import { useAuthStore } from '@/store/useAuthStore';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { signOut } from 'next-auth/react';
+import { createClient } from '@/lib/supabase/client';
 
 interface SignOutButtonProps {
-  className?: string;
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
-  fullWidth?: boolean;
   showIcon?: boolean;
+  fullWidth?: boolean;
+  className?: string;
 }
 
 export function SignOutButton({ 
-  className, 
-  variant = 'destructive',
+  variant = 'default',
+  showIcon = false,
   fullWidth = false,
-  showIcon = true
+  className
 }: SignOutButtonProps) {
-  const setLoadingState = useAuthStore(state => state.setLoadingState)
-
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
 
   const handleSignOut = async () => {
-    console.log('🚀 [SignOut] Starting logout process')
-    setLoadingState('loading')
-    
     try {
-      await signOut()
-      console.log('✅ [SignOut] Logout successful')
+      setIsLoading(true);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      router.push('/');
+      router.refresh();
     } catch (error) {
-      console.error('❌ [SignOut] Logout error:', error)
+      console.error('Erreur lors de la déconnexion:', error);
     } finally {
-      setLoadingState('idle')
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Button
       variant={variant}
       onClick={handleSignOut}
+      disabled={isLoading}
       className={cn(
-        fullWidth && "w-full",
+        'gap-2',
+        fullWidth && 'w-full',
         className
       )}
     >
-      {showIcon && <LogOut className="mr-2 h-4 w-4" />}
+      {showIcon && <LogOut className="h-4 w-4" />}
       Se déconnecter
     </Button>
   );

@@ -3,7 +3,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { Book, FileText, Loader, Menu } from "lucide-react"
+import { Book, FileText, Menu } from "lucide-react"
 import AnabaLogo from "@/components/brand/AnabaLogo"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
@@ -19,75 +19,97 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
-import { Settings, LayoutDashboard, MapPinHouse, UserIcon, BarChart3 } from "lucide-react"
-import { SignOutButton } from '@/components/auth/SignOutButton';
-import { useSessionManager } from "@/hooks/useSessionManager"
+import { Settings, LayoutDashboard, MapPinHouse, UserIcon, BarChart3, Loader } from "lucide-react"
+import { useSupabase } from "@/providers/SupabaseProvider"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
-
+// Fonction pour obtenir les initiales de l'utilisateur
+const getInitials = (name: string) => {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+}
 
 export function Header({ className }: { className?: string }) {
-  const { session, isLoading, isAuthenticated } = useSessionManager()
+  console.log('🎨 [Header] Rendu du composant')
+  
+  // États
   const [mounted, setMounted] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  
+  // Session Supabase et Router
+  const { user, isLoading, isInitialized, supabase } = useSupabase()
+  const router = useRouter()
 
-  // Effet unique pour le montage
+  console.log('📊 [Header] État actuel:', { 
+    user: user?.email, 
+    isLoading,
+    isInitialized,
+    mounted,
+    isSigningOut 
+  })
+
+  // Effet de montage
   useEffect(() => {
+    console.log('🔄 [Header] useEffect - mounted')
     setMounted(true)
+    console.log('✅ [Header] Component mounted')
+    return () => {
+      console.log('🧹 [Header] useEffect cleanup - mounted')
+    }
   }, [])
 
-  // Effet pour le logging, avec une protection contre les logs excessifs
-  useEffect(() => {
-    if (mounted && !isLoading) {
-      console.log('🔄 [Header] Session update:', {
-        isAuthenticated,
-        sessionData: session
-      })
+  // Gestion de la déconnexion
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true)
+      console.log('👋 [Header] Signing out user')
+      
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+
+      console.log('✅ [Header] Sign out successful')
+      toast.success('Déconnexion réussie')
+      
+      // Redirection vers la page de connexion
+      router.push('/auth/signin')
+      router.refresh()
+    } catch (error) {
+      console.error('❌ [Header] Error signing out:', error)
+      toast.error('Erreur lors de la déconnexion')
+    } finally {
+      setIsSigningOut(false)
     }
-  }, [mounted, session?.user?.id, isAuthenticated, isLoading, session]) // Dépendance plus précise
-
-  if (!mounted || isLoading) {
-    return (
-      <header className={cn("fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b", className)}>
-        <div className="container mx-auto px-4 h-12 flex items-center justify-center">
-          <Loader className="animate-spin h-5 w-5" />
-        </div>
-      </header>
-    )
-  }
-
-  // Fonction pour obtenir les initiales de l'utilisateur
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
   }
 
   // Composant pour le menu utilisateur
   const UserMenu = () => {
-    if (!isAuthenticated || !session?.user) return null;
+    if (!user) return null
     
-    const isPremium = session.user.role === "premium"
-    const isLuxury = session.user.role === "luxury"
-    const isAdmin = session.user.role === "admin"
-    const isEditor = session.user.role === "editor"
+    const isPremium = user.user_metadata?.role === "premium"
+    const isLuxury = user.user_metadata?.role === "luxury"
+    const isAdmin = user.user_metadata?.role === "admin"
+    const isEditor = user.user_metadata?.role === "editor"
 
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8 border-2 border-primary">
-              <AvatarImage src={session.user.image || undefined} alt={session.user.name || "Avatar"} />
-              <AvatarFallback>{getInitials(session.user.name || "User")}</AvatarFallback>
+              <AvatarImage src={user.user_metadata?.avatar_url || undefined} alt={user.user_metadata?.name || "Avatar"} />
+              <AvatarFallback>{getInitials(user.user_metadata?.name || user.email || "User")}</AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56 bg-background/95" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{session.user.name}</p>
+              <p className="text-sm font-medium leading-none">{user.user_metadata?.name || user.email}</p>
               <p className="text-xs leading-none text-muted-foreground">
-                {session.user.email}
+                {user.email}
               </p>
               {(isPremium || isLuxury) && (
                 <div className="flex items-center mt-1">
@@ -153,16 +175,55 @@ export function Header({ className }: { className?: string }) {
                       Monitoring
                     </Link>
                   </DropdownMenuItem>
-                ) }
+                )}
               </>
             )}
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <SignOutButton variant="destructive" showIcon={true} className="w-full justify-start" />
+          <DropdownMenuItem
+            className="cursor-pointer text-destructive focus:text-destructive"
+            disabled={isSigningOut}
+            onClick={handleSignOut}
+          >
+            {isSigningOut ? (
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                Déconnexion...
+              </>
+            ) : (
+              'Se déconnecter'
+            )}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+    )
+  }
+
+  // Log pour le rendu conditionnel
+  console.log('🎯 [Header] Rendu conditionnel:', { mounted, isLoading, isInitialized, hasUser: !!user })
+
+  // Ne rien afficher tant que le composant n'est pas monté
+  if (!mounted) {
+    console.log('⏳ [Header] Waiting for mount')
+    return null
+  }
+
+  // Afficher un loader pendant le chargement initial
+  if (!isInitialized) {
+    console.log('⌛ [Header] Loading state')
+    return (
+      <header className={cn(
+        "fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b",
+        className
+      )}>
+        <div className="container mx-auto px-4 h-12 flex items-center justify-between">
+          <AnabaLogo />
+          <Button variant="ghost" size="sm" disabled>
+            <Loader className="mr-2 h-4 w-4 animate-spin" />
+            Chargement...
+          </Button>
+        </div>
+      </header>
     )
   }
 
@@ -178,7 +239,7 @@ export function Header({ className }: { className?: string }) {
         
         {/* Actions desktop */}
         <div className="flex items-center gap-4">
-          {isAuthenticated && session ? (
+          {user ? (
             <>
               <UserMenu />
               <Link href="/dashboard">
@@ -204,8 +265,6 @@ export function Header({ className }: { className?: string }) {
 
           <ThemeToggle />
 
-          
-
           {/* Menu mobile */}
           <Sheet>
             <SheetTrigger asChild>
@@ -213,7 +272,7 @@ export function Header({ className }: { className?: string }) {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className=" mr-2 w-[300px] sm:w-[400px]">
+            <SheetContent side="right" className="mr-2 w-[300px] sm:w-[400px]">
               <SheetHeader>
                 <SheetTitle className="text-secondary-main">Menu</SheetTitle>
               </SheetHeader>
@@ -223,7 +282,7 @@ export function Header({ className }: { className?: string }) {
                   <ThemeToggle />
                 </div>
                 <hr className="border-border" />
-                {!isAuthenticated ? (
+                {!user ? (
                   <>
                     <Link href="/auth/signin">
                       <Button className="w-full" variant="secondary">Se connecter</Button>
@@ -234,74 +293,27 @@ export function Header({ className }: { className?: string }) {
                       </Button>
                     </Link>
                   </>
-                ) : session && (
+                ) : (
                   <div className="space-y-4">
                     <div className="flex items-center space-x-4 py-2">
                       <Avatar className="h-10 w-10 border-2 border-primary">
                         <AvatarImage 
-                          src={session.user.image || undefined} 
-                          alt={session.user.name || "Avatar"} 
+                          src={user.user_metadata?.avatar_url || undefined} 
+                          alt={user.user_metadata?.name || "Avatar"} 
                         />
                         <AvatarFallback>
-                          {getInitials(session.user.name || "User")}
+                          {getInitials(user.user_metadata?.name || user.email || "User")}
                         </AvatarFallback>
                       </Avatar>
                       <div className="space-y-1">
                         <p className="text-sm font-medium leading-none">
-                          {session.user.name}
+                          {user.user_metadata?.name || user.email}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {session.user.email}
+                          {user.email}
                         </p>
                       </div>
                     </div>
-                    
-                    <Link href="/dashboard">
-                      <Button variant="ghost" className="w-full justify-start">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Tableau de bord
-                      </Button>
-                    </Link>
-                    <Link href="/blog">
-                      <Button variant="ghost" className="w-full justify-start">
-                        <Book className="mr-2 h-4 w-4" />
-                        Anablog
-                      </Button>
-                    </Link>
-                    <Link href="/account">
-                      <Button variant="ghost" className="w-full justify-start">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Paramètres du compte
-                      </Button>
-                    </Link>
-                    {(session.user.role === "admin" || session.user.role === "editor") && (
-                      <>
-                        <div className="text-sm font-medium text-muted-foreground pt-2">
-                          Administration
-                        </div>
-                        <Link href="/admin/places">
-                          <Button variant="ghost" className="w-full justify-start">
-                            <MapPinHouse className="mr-2 h-4 w-4" />
-                            Gestion des lieux
-                          </Button>
-                        </Link>
-                        {session.user.role === "admin" && (
-                          <Link href="/admin/users">
-                            <Button variant="ghost" className="w-full justify-start">
-                              <UserIcon className="mr-2 h-4 w-4" />
-                              Gestion des utilisateurs
-                            </Button>
-                          </Link>
-                        )}
-                        <Link href="/admin/blog">
-                          <Button variant="ghost" className="w-full justify-start">
-                            <FileText className="mr-2 h-4 w-4" />
-                              Gestion des articles
-                          </Button>
-                        </Link>
-                      </>
-                    )}
-                    <SignOutButton fullWidth variant="destructive" className="mt-4" />
                   </div>
                 )}
               </nav>

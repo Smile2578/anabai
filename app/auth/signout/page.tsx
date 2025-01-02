@@ -3,21 +3,25 @@
 'use client';
 
 import { useEffect } from 'react';
-import { signOut } from '@/auth';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 export default function SignOutPage() {
   const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
     const handleSignOut = async () => {
-      await signOut({ redirect: false });
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Erreur lors de la déconnexion:', error);
+      }
       router.push('/');
       router.refresh();
     };
 
     handleSignOut();
-  }, [router]);
+  }, [router, supabase.auth]);
 
   return (
     <div className="flex items-center justify-center h-screen">

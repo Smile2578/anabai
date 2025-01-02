@@ -16,8 +16,8 @@ import Link from 'next/link';
 import { toast, Toaster } from 'sonner';
 import AnabaLogo from '@/components/brand/AnabaLogo';
 import { PasswordInput } from '@/components/auth/PasswordInput';
-import { signIn } from 'next-auth/react';
 import { cn } from "@/lib/utils";
+import { createClient } from '@/lib/supabase/client';
 
 // Schéma de validation Zod pour le formulaire
 const signupSchema = z.object({
@@ -77,6 +77,8 @@ export default function SignUpPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const supabase = createClient();
+
   const {
     register,
     handleSubmit,
@@ -95,19 +97,24 @@ export default function SignUpPage() {
     setError('');
 
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: data.name,
-          email: data.email,
-          password: data.password,
-        }),
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.name,
+            role: 'user',
+            status: 'pending_verification'
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
       });
 
-      const responseData = await res.json();
+      if (signUpError) {
+        throw signUpError;
+      }
 
-      if (res.ok) {
+      if (signUpData.user) {
         toast.success(
           'Inscription réussie ! Veuillez vérifier votre email pour activer votre compte.',
           TOAST_CONFIG
@@ -116,9 +123,6 @@ export default function SignUpPage() {
         // Attendre un peu avant la redirection pour que l'utilisateur puisse voir le message
         await new Promise(resolve => setTimeout(resolve, 1500));
         router.push('/auth/signin');
-      } else {
-        toast.error(responseData.error || 'Une erreur est survenue.', TOAST_CONFIG);
-        setError(responseData.error || 'Une erreur est survenue lors de l\'inscription.');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Une erreur est survenue';
@@ -132,12 +136,24 @@ export default function SignUpPage() {
   // Gestionnaire de connexion Google
   const handleGoogleSignIn = async () => {
     try {
-      await signIn('google', { callbackUrl: '/dashboard' });
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        }
+      })
+
+      if (error) {
+        toast.error(error.message, TOAST_CONFIG)
+      }
     } catch (error) {
-      console.error('Erreur lors de la connexion avec Google:', error);
-      toast.error('Erreur lors de la connexion avec Google', TOAST_CONFIG);
+      console.error('Erreur lors de la connexion avec Google:', error)
+      toast.error('Erreur lors de la connexion avec Google', TOAST_CONFIG)
     }
-  };
+  }
 
   return (
     <>

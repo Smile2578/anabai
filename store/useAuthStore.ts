@@ -1,34 +1,32 @@
 // store/useAuthStore.ts
 import { create } from 'zustand'
-import type { User } from 'next-auth'
+import { User } from '@supabase/supabase-js'
 
-// Définition des types d'états de chargement
-type LoadingState = 'idle' | 'loading' | 'error'
+type LoadingState = 'idle' | 'loading' | 'error' | 'success'
 
-// Interface pour l'état UI
-interface UIState {
+interface AuthState {
+  isAuthenticated: boolean
+  user: User | null
   loadingState: LoadingState
   error: string | null
-  user: User | null  // Ajout du type User
 }
 
-// Interface pour les actions
-interface UIActions {
+interface AuthActions {
   setLoadingState: (state: LoadingState) => void
   setError: (error: string | null) => void
-  setUser: (user: User | null) => void  // Nouvelle action
+  setUser: (user: User | null) => void
+  setAuthenticated: (isAuthenticated: boolean) => void
   reset: () => void
 }
 
-// État initial
-const initialState: UIState = {
+const initialState: AuthState = {
+  isAuthenticated: false,
+  user: null,
   loadingState: 'idle',
-  error: null,
-  user: null  // Initialisation de user
+  error: null
 }
 
-// Création du store
-export const useAuthStore = create<UIState & UIActions>((set) => ({
+export const useAuthStore = create<AuthState & AuthActions>((set) => ({
   // État initial
   ...initialState,
   
@@ -45,7 +43,12 @@ export const useAuthStore = create<UIState & UIActions>((set) => ({
 
   setUser: (user) => {
     console.log('👤 [AuthStore] Setting user:', user)
-    set({ user })
+    set({ user, isAuthenticated: !!user })
+  },
+
+  setAuthenticated: (isAuthenticated) => {
+    console.log('🔐 [AuthStore] Setting authenticated:', isAuthenticated)
+    set({ isAuthenticated })
   },
   
   reset: () => {
@@ -55,6 +58,6 @@ export const useAuthStore = create<UIState & UIActions>((set) => ({
 }))
 
 // Sélecteurs
-export const selectLoadingState = (state: UIState) => state.loadingState
-export const selectError = (state: UIState) => state.error
-export const selectUser = (state: UIState) => state.user
+export const selectLoadingState = (state: AuthState) => state.loadingState
+export const selectError = (state: AuthState) => state.error
+export const selectUser = (state: AuthState) => state.user

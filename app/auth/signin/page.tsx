@@ -1,8 +1,7 @@
 // app/auth/signin/page.tsx
 'use client'
 
-import { useEffect, useState } from 'react'
-import { signIn } from 'next-auth/react'
+import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,109 +13,125 @@ import { useAuthStore } from '@/store/useAuthStore'
 import { toast } from 'sonner'
 import { Toaster } from 'sonner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useAuthError } from '@/hooks/useAuthError'
+import { createClient } from '@/lib/supabase/client'
 
 export default function SignInPage() {
-  // Hooks pour la navigation et la gestion des paramètres
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/'
-  const { message: authError } = useAuthError()
   
-  // Sélecteurs optimisés du store d'authentification
-  const setLoadingState = useAuthStore(state => state.setLoadingState)
-  const setError = useAuthStore(state => state.setError)
-  const error = useAuthStore(state => state.error)
-  
-  // États locaux pour le formulaire
+  const { setLoadingState, setError, setUser, error } = useAuthStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  // Gestionnaire de soumission du formulaire avec gestion complète des erreurs
+  const supabase = createClient()
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('🚀 [SignIn] Starting login process')
+    console.log('🚀 [SignIn] Starting login process with email:', email)
     
     setIsLoading(true)
     setLoadingState('loading')
     setError(null)
 
     try {
-      const result = await signIn('credentials', {
-        redirect: false,
+      console.log('📡 [SignIn] Calling Supabase auth.signInWithPassword')
+      const { data: { user, session }, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
-        callbackUrl
       })
 
-      if (result?.error) {
-        toast.error(result.error, {
+      console.log('📦 [SignIn] Response:', { user, session, error: signInError })
+
+      if (signInError) {
+        console.error('❌ [SignIn] Authentication error:', signInError)
+        toast.error(signInError.message, {
           duration: 4000,
           position: 'top-center',
-        });
-        return;
+        })
+        setError(signInError.message)
+        setLoadingState('error')
+        return
       }
-  
-      toast.success('Connexion réussie !', {
-        duration: 4000,
-        position: 'top-center',
-      });
-  
-      // Attendre un peu plus longtemps pour la propagation de la session
-      await new Promise(resolve => setTimeout(resolve, 500))
-  
-      // Vérifier la session différemment
-      const session = await fetch('/api/auth/session')
-      const sessionData = await session.json()
-  
-      if (sessionData?.user) {
-        console.log('✅ [SignIn] Authentication successful')
-        router.push(callbackUrl)
+
+      if (user && session) {
+        console.log('✅ [SignIn] Authentication successful, user:', user)
+        setUser(user)
+        setLoadingState('success')
+        
+        toast.success('Connexion réussie !', {
+          duration: 4000,
+          position: 'top-center',
+        })
+
+        // Attendre que la session soit mise à jour avant de rediriger
+        console.log('⏳ [SignIn] Waiting for session update before redirect')
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        console.log('🔄 [SignIn] Refreshing router')
         router.refresh()
+        
+        console.log('➡️ [SignIn] Redirecting to:', callbackUrl)
+        router.replace(callbackUrl)
       } else {
-        throw new Error('Échec de l\'authentification')
+        console.error('❌ [SignIn] No user or session in response')
+        setError('Erreur lors de la connexion')
+        setLoadingState('error')
       }
-  
     } catch (error) {
-      console.error('❌ [SignIn] Authentication error:', error)
+      console.error('❌ [SignIn] Unexpected error:', error)
       setError(error instanceof Error ? error.message : 'Erreur de connexion')
+      setLoadingState('error')
     } finally {
       setIsLoading(false)
-      setLoadingState('idle')
     }
   }
-  
-  // Monitoring des cookies
-  useEffect(() => {
-    const checkCookies = () => {
-      const cookies = parseCookies(document.cookie)
-      console.log('🍪 [SignIn] Cookie status:', {
-        all: cookies,
-        sessionToken: cookies['next-auth.session-token' as keyof typeof cookies],
-        secureSessionToken: cookies['__Secure-next-auth.session-token' as keyof typeof cookies]
+
+  const handleGoogleSignIn = async () => {
+    console.log('🚀 [SignIn] Starting Google login process')
+    setLoadingState('loading')
+    
+    try {
+      console.log('📡 [SignIn] Calling Supabase auth.signInWithOAuth')
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `http://localhost:3000${callbackUrl}`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          },
+        }
       })
-    }
 
-    const parseCookies = (cookieStr: string) => {
-      return cookieStr.split(';')
-        .map(pair => pair.trim().split('='))
-        .reduce((acc, [key, value]) => ({
-          ...acc,
-          [key]: value
-        }), {})
-    }
+      console.log('📦 [SignIn] Google OAuth response:', { data, error })
 
-    checkCookies()
-    // Vérification périodique des cookies pendant 5 secondes
-    const interval = setInterval(checkCookies, 1000)
-    const timeout = setTimeout(() => clearInterval(interval), 5000)
-
-    return () => {
-      clearInterval(interval)
-      clearTimeout(timeout)
+      if (error) {
+        console.error('❌ [SignIn] Google authentication error:', error)
+        toast.error(error.message, {
+          duration: 4000,
+          position: 'top-center',
+        })
+        setError(error.message)
+        setLoadingState('error')
+        return
+      }
+      
+      console.log('✅ [SignIn] Google authentication initiated successfully')
+      setLoadingState('success')
+    } catch (error) {
+      console.error('❌ [SignIn] Unexpected Google authentication error:', error)
+      toast.error('Erreur lors de la connexion avec Google', {
+        duration: 4000,
+        position: 'top-center',
+      })
+      setError(error instanceof Error ? error.message : 'Erreur de connexion avec Google')
+      setLoadingState('error')
+    } finally {
+      setIsLoading(false)
     }
-  }, [])
+  }
 
   return (
     <>
@@ -135,9 +150,9 @@ export default function SignInPage() {
             </div>
             
             {/* Affichage des erreurs */}
-            {(error || authError) && (
+            {error && (
               <Alert variant="destructive" className="mb-4">
-                <AlertDescription>{error || authError}</AlertDescription>
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
             
@@ -205,7 +220,8 @@ export default function SignInPage() {
               <button 
                 className="auth-social-button w-full h-11 px-4 flex items-center justify-center gap-2 border border-input rounded-md hover:bg-accent/50 transition-colors"
                 type="button"
-                onClick={() => signIn('google', { callbackUrl })}
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
               >
                 <Image 
                   src="/google-icon.png" 

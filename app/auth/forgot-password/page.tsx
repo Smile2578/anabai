@@ -6,8 +6,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
-import { Loader } from 'react-feather';
+import { Loader } from 'lucide-react';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
 
 export default function ForgotPasswordPage() {
 
@@ -17,6 +18,8 @@ export default function ForgotPasswordPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const supabase = createClient();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -24,20 +27,17 @@ export default function ForgotPasswordPage() {
     setSuccess('');
 
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
-        headers: { 'Content-Type': 'application/json' },
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
       });
 
-      if (res.ok) {
-        setSuccess('Un email a été envoyé pour réinitialiser votre mot de passe.');
-      } else {
-        const responseData = await res.json();
-        setError(responseData.error || 'Une erreur est survenue.');
+      if (error) {
+        throw error;
       }
-    } catch {
-      setError('Une erreur est survenue. Veuillez réessayer.');
+
+      setSuccess('Un email a été envoyé pour réinitialiser votre mot de passe.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Une erreur est survenue. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }

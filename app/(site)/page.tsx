@@ -1,4 +1,4 @@
-// app/page.tsx
+// app/(site)/page.tsx
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
@@ -117,6 +117,7 @@ export default function LandingPage() {
                       src={category.image}
                       alt={category.title}
                       fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       className="object-cover transition-transform group-hover:scale-105"
                     />
                     <div className="absolute inset-0 dark:bg-gradient-to-t dark:from-background/80 dark:to-transparent" />

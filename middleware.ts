@@ -1,111 +1,102 @@
 // middleware.ts
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = [
-  '/',
-  '/auth/signin',
-  '/auth/signup',
-  '/auth/verify-email',
-  '/auth/forgot-password',
-  '/auth/reset-password',
-  '/api/auth',
-  '/blog'
-];
+export async function middleware(request: NextRequest) {
+  const response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
-const ADMIN_ROUTES = [
-  '/admin',
-  '/api/admin'
-];
-
-const PROTECTED_ROUTES = [
-  '/questionnaire',
-  '/dashboard'
-];
-
-const isPublicRoute = (path: string) => {
-  return PUBLIC_ROUTES.some(route => path.startsWith(route));
-};
-
-const isAdminRoute = (path: string) => {
-  return ADMIN_ROUTES.some(route => path.startsWith(route));
-};
-
-const isProtectedRoute = (path: string) => {
-  return PROTECTED_ROUTES.some(route => path.startsWith(route));
-};
-
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-
-  // Ignorer les assets statiques et les routes d'API publiques
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api/auth') ||
-    pathname.startsWith('/static') ||
-    pathname.includes('favicon.ico')
-  ) {
-    return NextResponse.next();
-  }
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => {
+          const cookieStore = new Map(request.cookies)
+          return Array.from(cookieStore).map(([name, value]) => ({
+            name,
+            value: value.value,
+          }))
+        },
+        setAll: (cookiesList) => {
+          cookiesList.forEach((cookie) => {
+            response.cookies.set({
+              name: cookie.name,
+              value: cookie.value,
+              ...cookie.options,
+            })
+          })
+        },
+      },
+    }
+  )
 
   try {
-    const token = await getToken({ 
-      req,
-      secret: process.env.NEXTAUTH_SECRET
-    });
-
-    // Permettre l'accès aux routes publiques sans token
-    if (isPublicRoute(pathname)) {
-      // Si l'utilisateur est déjà connecté et actif, le rediriger vers le dashboard
-      if (token?.status === 'active' && pathname.startsWith('/auth')) {
-        return NextResponse.redirect(new URL('/dashboard', req.url));
-      }
-      return NextResponse.next();
+    // Rafraîchir la session si nécessaire
+    const { data: { session }, error } = await supabase.auth.getSession()
+    
+    if (error) {
+      throw error
     }
 
-    // Protection spécifique pour les routes protégées (dont le questionnaire)
-    if (isProtectedRoute(pathname)) {
-      if (!token) {
-        const signInUrl = new URL('/auth/signin', req.url);
-        signInUrl.searchParams.set('callbackUrl', pathname);
-        return NextResponse.redirect(signInUrl);
-      }
+    // Vérifier si l'URL actuelle est une route protégée
+    const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') ||
+                            request.nextUrl.pathname.startsWith('/admin')
 
-      // Vérifications du statut utilisateur
-      if (token.status === 'pending_verification') {
-        return NextResponse.redirect(new URL('/auth/verify-email', req.url));
-      }
-
-      if (token.status === 'inactive') {
-        return NextResponse.redirect(new URL('/auth/inactive', req.url));
-      }
-
-      // Pour le questionnaire spécifiquement
-      if (pathname.startsWith('/questionnaire')) {
-        const response = NextResponse.next();
-        response.headers.set('x-user-id', token.sub || '');
-        return response;
-      }
+    // Si c'est une route protégée et qu'il n'y a pas de session
+    if (isProtectedRoute && !session) {
+      const redirectUrl = new URL('/auth/signin', request.url)
+      redirectUrl.searchParams.set('callbackUrl', request.nextUrl.pathname)
+      return NextResponse.redirect(redirectUrl)
     }
 
-    // Vérifier les permissions pour les routes admin
-    if (isAdminRoute(pathname)) {
-      if (!token?.role || !['admin', 'editor'].includes(token.role as string)) {
-        return NextResponse.redirect(new URL('/', req.url));
-      }
+    // Si c'est une route d'authentification et qu'il y a une session
+    if ((request.nextUrl.pathname.startsWith('/auth/signin') || 
+         request.nextUrl.pathname.startsWith('/auth/signup')) && 
+         session) {
+      return NextResponse.redirect(new URL('/', request.url))
     }
 
-    // Si toutes les vérifications sont passées, permettre l'accès
-    return NextResponse.next();
+    return response
+
   } catch (error) {
-    console.error('❌ [Middleware] Error:', error);
-    return NextResponse.redirect(new URL('/auth/error', req.url));
+    console.error('❌ [Middleware] Error:', error)
+    
+    // En cas d'erreur d'authentification, on nettoie les cookies et on redirige
+    if (error instanceof Error && (error.name === 'AuthSessionMissingError' || error.name === 'AuthApiError')) {
+      response.cookies.set({
+        name: 'supabase-auth-token',
+        value: '',
+        maxAge: 0,
+        path: '/',
+      })
+
+      // Si c'est une route protégée, rediriger vers la connexion
+      if (request.nextUrl.pathname.startsWith('/dashboard') || 
+          request.nextUrl.pathname.startsWith('/admin')) {
+        const redirectUrl = new URL('/auth/signin', request.url)
+        redirectUrl.searchParams.set('callbackUrl', request.nextUrl.pathname)
+        return NextResponse.redirect(redirectUrl)
+      }
+    }
+
+    return response
   }
 }
 
+// Configurer les routes qui doivent passer par le middleware
 export const config = {
   matcher: [
-    '/((?!api/auth|_next/static|_next/image|static|.*\\..*).*)',
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-};
+}

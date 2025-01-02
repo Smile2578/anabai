@@ -2,25 +2,19 @@
 'use client';
 
 import { ThemeProvider } from 'next-themes';
-import { SessionProvider } from 'next-auth/react';
-import { Session } from 'next-auth';
+import SupabaseProvider from './SupabaseProvider';
 
-interface ProvidersProps {
-  children: React.ReactNode;
-  session: Session | null;
-}
-
-export function Providers({ children, session }: ProvidersProps) {
+export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider session={session}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="dark"
-        enableSystem
-        disableTransitionOnChange
-      >
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <SupabaseProvider>
         {children}
-      </ThemeProvider>
-    </SessionProvider>
+      </SupabaseProvider>
+    </ThemeProvider>
   );
 }

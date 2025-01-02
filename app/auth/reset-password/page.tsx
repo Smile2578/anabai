@@ -2,15 +2,17 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
-import { Loader } from 'react-feather';
+import { Loader } from 'lucide-react';
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 const resetPasswordSchema = z
   .object({
@@ -35,11 +37,10 @@ type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get('token');
-
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const supabase = createClient();
 
   const {
     register,
@@ -54,34 +55,22 @@ export default function ResetPasswordPage() {
     setError('');
 
     try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        body: JSON.stringify({
-          password: data.password,
-          token,
-        }),
-        headers: { 'Content-Type': 'application/json' },
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: data.password
       });
 
-      if (res.ok) {
-        alert('Mot de passe réinitialisé avec succès ! Vous pouvez maintenant vous connecter.');
-        router.push('/auth/signin');
-      } else {
-        const responseData = await res.json();
-        setError(responseData.error || 'Une erreur est survenue.');
+      if (updateError) {
+        throw updateError;
       }
-    } catch {
-      setError('Une erreur est survenue. Veuillez réessayer.');
+
+      toast.success('Mot de passe réinitialisé avec succès ! Vous pouvez maintenant vous connecter.');
+      router.push('/auth/signin');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Une erreur est survenue.');
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (!token) {
-      setError('Token invalide ou manquant.');
-    }
-  }, [token]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-6">
