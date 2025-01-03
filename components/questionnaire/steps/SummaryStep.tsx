@@ -250,20 +250,21 @@ export function SummaryStep() {
     try {
       setIsSubmitting(true);
       await submitQuestionnaire();
+      
       toast({
-        title: "Félicitations ! 🎉",
-        description: "Votre profil de voyage a été créé avec succès. Préparez-vous à découvrir le Japon !",
-        duration: 5000,
+        title: "Questionnaire soumis avec succès ! 🎉",
+        description: "Votre profil de voyage a été créé. Préparez-vous à découvrir le Japon !",
       });
+
+      // Redirection vers la page de résultats
       router.push('/dashboard');
     } catch (error) {
+      console.error('Erreur lors de la soumission:', error);
       toast({
         variant: "destructive",
-        title: "Une erreur est survenue",
-        description: "Impossible de finaliser votre profil pour le moment. Veuillez réessayer.",
-        duration: 5000,
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la soumission.",
       });
-      console.error('Erreur lors de la soumission:', error);
     } finally {
       setIsSubmitting(false);
     }

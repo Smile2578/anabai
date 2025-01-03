@@ -15,12 +15,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SignOutButton } from '@/components/auth/SignOutButton';
-import { useSessionManager } from "@/hooks/useSessionManager";
+import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 export function Header() {
-  const { session, isLoading } = useSessionManager();
+  const { user, loadingState } = useAuthStore();
 
   // Fonction pour obtenir les initiales de l'utilisateur
   const getInitials = (name: string) => {
@@ -31,11 +31,10 @@ export function Header() {
       .toUpperCase()
   }
 
-  if (isLoading || !session?.user) {
+  if (loadingState === 'loading' || !user) {
     return null; // Ou un loader si vous préférez
   }
 
-  const user = session.user;
   const isPremium = user.role === "premium";
   const isLuxury = user.role === "luxury";
   const isAdmin = user.role === "admin";
@@ -69,15 +68,20 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8 border-2 border-primary">
-                  <AvatarImage src={user.image || undefined} alt={user.name || "Avatar"} />
-                  <AvatarFallback>{getInitials(user.name || "User")}</AvatarFallback>
+                  <AvatarImage 
+                    src={user.user_metadata?.avatar_url} 
+                    alt={user.user_metadata?.name || "Avatar"} 
+                  />
+                  <AvatarFallback>{getInitials(user.user_metadata?.name || "User")}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user.name}</p>
+                  <p className="text-sm font-medium leading-none">
+                    {user.user_metadata?.name || user.email}
+                  </p>
                   <p className="text-xs leading-none text-muted-foreground">
                     {user.email}
                   </p>

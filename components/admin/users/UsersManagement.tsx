@@ -44,16 +44,23 @@ export default function UsersManagement() {
   
     return matchesSearch && matchesRole && matchesStatus;
   });
-  
 
   const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/admin/users');
+      const response = await fetch('/api/admin/users', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': process.env.NEXT_PUBLIC_CSRF_SECRET || ''
+        },
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Erreur lors du chargement des utilisateurs');
       const data = await response.json();
       setUsers(data);
-    } catch {
+    } catch (error) {
+      console.error('Erreur lors du chargement:', error);
       toast({
         variant: "destructive",
         title: "Erreur",
@@ -64,7 +71,6 @@ export default function UsersManagement() {
     }
   }, [toast]);
 
-  // Charger les utilisateurs au montage du composant
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
@@ -83,7 +89,11 @@ export default function UsersManagement() {
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
-        credentials: 'include' // Ajout des credentials pour l'authentification
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': process.env.NEXT_PUBLIC_CSRF_SECRET || ''
+        },
+        credentials: 'include'
       });
   
       if (!response.ok) {
@@ -91,7 +101,6 @@ export default function UsersManagement() {
         throw new Error(error.error || 'Erreur lors de la suppression');
       }
   
-      // Mettre à jour la liste des utilisateurs
       setUsers(users.filter(user => user.id !== userId));
       
       toast({
@@ -122,7 +131,9 @@ export default function UsersManagement() {
         method,
         headers: {
           'Content-Type': 'application/json',
+          'x-csrf-token': process.env.NEXT_PUBLIC_CSRF_SECRET || ''
         },
+        credentials: 'include',
         body: JSON.stringify(userData),
       });
 
@@ -133,7 +144,6 @@ export default function UsersManagement() {
 
       const savedUser = await response.json();
 
-      // Mettre à jour la liste des utilisateurs
       if (isEditing) {
         setUsers(users.map(user => 
           user.id === savedUser.id ? savedUser : user
@@ -151,6 +161,7 @@ export default function UsersManagement() {
       
       setIsDialogOpen(false);
     } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
       toast({
         variant: "destructive",
         title: "Erreur",

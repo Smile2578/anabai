@@ -3,7 +3,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { Book, FileText, Menu } from "lucide-react"
+import { Book, FileText, HelpCircle, Menu } from "lucide-react"
 import AnabaLogo from "@/components/brand/AnabaLogo"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
@@ -34,31 +34,22 @@ const getInitials = (name: string) => {
 }
 
 export function Header({ className }: { className?: string }) {
-  console.log('🎨 [Header] Rendu du composant')
+
   
   // États
   const [mounted, setMounted] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   
   // Session Supabase et Router
-  const { user, isLoading, isInitialized, supabase } = useSupabase()
+  const { user, isInitialized, supabase } = useSupabase()
   const router = useRouter()
 
-  console.log('📊 [Header] État actuel:', { 
-    user: user?.email, 
-    isLoading,
-    isInitialized,
-    mounted,
-    isSigningOut 
-  })
 
   // Effet de montage
   useEffect(() => {
-    console.log('🔄 [Header] useEffect - mounted')
     setMounted(true)
-    console.log('✅ [Header] Component mounted')
     return () => {
-      console.log('🧹 [Header] useEffect cleanup - mounted')
+      setMounted(false)
     }
   }, [])
 
@@ -66,12 +57,10 @@ export function Header({ className }: { className?: string }) {
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true)
-      console.log('👋 [Header] Signing out user')
       
       const { error } = await supabase.auth.signOut()
       if (error) throw error
 
-      console.log('✅ [Header] Sign out successful')
       toast.success('Déconnexion réussie')
       
       // Redirection vers la page de connexion
@@ -139,6 +128,12 @@ export function Header({ className }: { className?: string }) {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
+              <Link href="/questionnaire">
+                <HelpCircle className="mr-2 h-4 w-4" />
+                Questionnaire
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
               <Link href="/account">
                 <Settings className="mr-2 h-4 w-4" />
                 Paramètres du compte
@@ -199,18 +194,13 @@ export function Header({ className }: { className?: string }) {
     )
   }
 
-  // Log pour le rendu conditionnel
-  console.log('🎯 [Header] Rendu conditionnel:', { mounted, isLoading, isInitialized, hasUser: !!user })
-
   // Ne rien afficher tant que le composant n'est pas monté
   if (!mounted) {
-    console.log('⏳ [Header] Waiting for mount')
     return null
   }
 
   // Afficher un loader pendant le chargement initial
   if (!isInitialized) {
-    console.log('⌛ [Header] Loading state')
     return (
       <header className={cn(
         "fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b",

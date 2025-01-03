@@ -1,8 +1,7 @@
 // app/api/questionnaire/queue/route.ts
 import { NextResponse } from 'next/server';
 import { auth } from "@/auth";
-import { initializeQueues } from '@/lib/queue/config/bullmq.server';
-import { upstashRedis } from '@/lib/queue/config/redis';
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   try {
@@ -12,19 +11,23 @@ export async function POST(request: Request) {
     }
 
     const data = await request.json();
-    const { questionnaireQueue } = initializeQueues();
+    const supabase = await createClient();
 
-    await questionnaireQueue.add('process-questionnaire', {
-      userId: session.user.id,
-      data
-    });
+    // Sauvegarder les données dans la table questionnaires_queue
+    const { error } = await supabase
+      .from('questionnaires_queue')
+      .insert([{
+        user_id: session.user.id,
+        data,
+        status: 'pending',
+        created_at: new Date(),
+        updated_at: new Date()
+      }]);
 
-    // Mise en cache des données
-    await upstashRedis.set(
-      `questionnaire:${session.user.id}`,
-      JSON.stringify(data),
-      { ex: 3600 }
-    );
+    if (error) {
+      console.error('Queue Error:', error);
+      return NextResponse.json({ error: "Erreur lors de l'ajout à la file d'attente" }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

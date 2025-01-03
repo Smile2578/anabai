@@ -2,9 +2,9 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { QuestionnaireData, QuestionnaireStatus } from "@/types/questionnaire/questionnaire";
-import { saveQuestionnaire, getQuestionnaire } from "@/lib/queue/services/questionnaireService";
 import { questionnaireSchema } from "@/lib/validations/questionnaire";
 import { ZodError } from "zod";
+import { createClient } from "@/lib/supabase/server";
 
 async function validateQuestionnaireData(data: unknown): Promise<{ 
   success: boolean; 
@@ -57,8 +57,8 @@ export async function POST(request: Request) {
             preferences: data.travelStyle.preferences?.length ? 
               data.travelStyle.preferences : ['default']
           } : undefined,
-          createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
-          updatedAt: new Date()
+          created_at: data.createdAt ? new Date(data.createdAt) : new Date(),
+          updated_at: new Date()
         };
 
         rawData = processedData;
@@ -120,15 +120,24 @@ export async function POST(request: Request) {
     }
 
     // Enrichissement des données
-    const enrichedData: QuestionnaireData = {
+    const enrichedData = {
       ...data,
+      user_id: session.user.id,
       status: 'completed' as QuestionnaireStatus,
-      updatedAt: new Date(),
+      updated_at: new Date(),
     };
 
-    // Sauvegarde des données
-    const result = await saveQuestionnaire(session.user.id, enrichedData);
-    if (!result.success) {
+    // Sauvegarde dans Supabase
+    const supabase = await createClient();
+
+    const { data: savedQuestionnaire, error } = await supabase
+      .from('questionnaires')
+      .insert([enrichedData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[POST] Erreur Supabase:", error);
       return NextResponse.json(
         { error: "Erreur lors de la sauvegarde" },
         { status: 500 }
@@ -138,7 +147,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: "Questionnaire enregistré avec succès",
-      data: result.data
+      data: savedQuestionnaire
     });
 
   } catch (error) {
@@ -160,7 +169,24 @@ export async function GET() {
       );
     }
 
-    const questionnaire = await getQuestionnaire(session.user.id);
+    const supabase = await createClient();
+
+    const { data: questionnaire, error } = await supabase
+      .from('questionnaires')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      console.error("[GET] Erreur Supabase:", error);
+      return NextResponse.json(
+        { error: "Erreur lors de la récupération du questionnaire" },
+        { status: 500 }
+      );
+    }
+
     if (!questionnaire) {
       return NextResponse.json(
         { message: "Aucun questionnaire trouvé" },
@@ -218,8 +244,8 @@ export async function PATCH(request: Request) {
             preferences: data.travelStyle.preferences?.length ? 
               data.travelStyle.preferences : ['default']
           } : undefined,
-          createdAt: data.createdAt ? new Date(data.createdAt) : undefined,
-          updatedAt: data.updatedAt ? new Date(data.updatedAt) : undefined
+          created_at: data.createdAt ? new Date(data.createdAt) : undefined,
+          updated_at: new Date()
         };
 
         rawData = processedData;
@@ -241,17 +267,26 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const enrichedData: QuestionnaireData = {
+    const enrichedData = {
       ...validation.data,
+      user_id: session.user.id,
       status: validation.data.status || 'completed' as QuestionnaireStatus,
-      updatedAt: new Date(),
+      updated_at: new Date(),
     };
 
-    const result = await saveQuestionnaire(session.user.id, enrichedData);
-    if (!result.success) {
-      console.error("[PATCH] Échec de la sauvegarde");
+    const supabase = await createClient();
+
+    const { data: updatedQuestionnaire, error } = await supabase
+      .from('questionnaires')
+      .update(enrichedData)
+      .eq('user_id', session.user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[PATCH] Erreur Supabase:", error);
       return NextResponse.json(
-        { error: "Erreur lors de la sauvegarde" },
+        { error: "Erreur lors de la mise à jour" },
         { status: 500 }
       );
     }
@@ -259,7 +294,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({
       success: true,
       message: "Questionnaire mis à jour avec succès",
-      data: result.data
+      data: updatedQuestionnaire
     });
 
   } catch (error) {

@@ -1,4 +1,4 @@
-// app/questionnaire/page.tsx
+// app/(auth)/questionnaire/page.tsx
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 

@@ -1,30 +1,47 @@
 // app/api/admin/users/route.ts
 import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
 import { NextResponse } from 'next/server';
-import { hash } from 'bcryptjs';
-import connectDB from '@/lib/db/connection';
-import User, { IUser } from '@/models/User';
+import { supabaseAdmin } from '@/lib/supabase/admin-client';
+import { SupabaseUser } from '@/types/supabase';
 
 async function handleGetUsers(req: Request, session: SessionWithUser) {
   try {
     console.log("👥 [API/Users] GET request by:", session.user.email);
-    await connectDB();
     
-    const users = await User.find({})
-      .select('_id name email role status createdAt lastLogin')
-      .sort('-createdAt')
-      .lean();
+    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers();
 
-    // Transformer les données pour garantir le format correct de l'ID
-    const formattedUsers = users.map(user => ({
-      ...user,
-      id: user._id.toString(),
-      _id: undefined
-    }));
+    if (error) {
+      console.error('❌ [API/Users] Supabase error:', error);
+      throw error;
+    }
 
+    console.log('✅ [API/Users] Users fetched:', users.users.length);
+
+    // Transformer les données pour correspondre à notre format
+    const formattedUsers = users.users.map((user: SupabaseUser) => {
+      console.log('🔄 [API/Users] Processing user:', {
+        id: user.id,
+        email: user.email,
+        metadata: user.user_metadata,
+        role: user.role,
+        ban_duration: user.ban_duration
+      });
+
+      return {
+        id: user.id,
+        name: user.user_metadata?.name || user.email?.split('@')[0] || 'Sans nom',
+        email: user.email || '',
+        role: user.role || 'user',
+        status: user.ban_duration ? 'inactive' : 'active',
+        createdAt: user.created_at,
+        lastLogin: user.last_sign_in_at
+      };
+    });
+
+    console.log('✅ [API/Users] Users formatted:', formattedUsers.length);
     return NextResponse.json(formattedUsers);
   } catch (error) {
-    console.error('Error fetching users:', error);
+    console.error('❌ [API/Users] Error fetching users:', error);
     return NextResponse.json(
       { 
         error: "Erreur lors de la récupération des utilisateurs",
@@ -49,7 +66,6 @@ async function handleCreateUser(req: Request, session: SessionWithUser) {
       );
     }
 
-    await connectDB();
     const body = await req.json();
     const { email, name, role, status, password } = body;
 
@@ -61,34 +77,35 @@ async function handleCreateUser(req: Request, session: SessionWithUser) {
       );
     }
 
-    // Vérification de l'email
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "Un utilisateur avec cet email existe déjà" },
-        { status: 400 }
-      );
+    // Créer l'utilisateur dans Supabase
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: email.toLowerCase(),
+      password,
+      email_confirm: true,
+      user_metadata: { name, role },
+      role: role
+    });
+
+    if (createError) {
+      throw createError;
     }
 
-    // Création de l'utilisateur
-    const hashedPassword = await hash(password, 10);
-    const user = await User.create({
-      email: email.toLowerCase(),
-      name,
-      role,
-      status,
-      password: hashedPassword,
-      provider: "credentials",
-    }) as IUser;
+    // Si le statut est inactif, bannir l'utilisateur
+    if (status === 'inactive') {
+      await supabaseAdmin.auth.admin.updateUserById(newUser.user.id, {
+        ban_duration: '87600h' // 10 ans
+      });
+    }
 
-    // Retourner les données sans le mot de passe
+    // Retourner les données formatées
     const userData = {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-      createdAt: user.createdAt
+      id: newUser.user.id,
+      name: newUser.user.user_metadata?.name || newUser.user.email?.split('@')[0] || 'Sans nom',
+      email: newUser.user.email || '',
+      role: newUser.user.role || 'user',
+      status: status,
+      createdAt: newUser.user.created_at,
+      lastLogin: newUser.user.last_sign_in_at
     };
 
     return NextResponse.json(userData);

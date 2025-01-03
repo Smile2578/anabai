@@ -1,40 +1,30 @@
 // hooks/useSessionManager.ts
-import { useSession, signOut } from 'next-auth/react'
 import { useAuthStore } from '@/store/useAuthStore'
-import { useEffect, useCallback } from 'react'
-import { signIn } from 'next-auth/react'
+import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 export function useSessionManager() {
-  const { data: session, status, update } = useSession({
-    required: false,
-    onUnauthenticated() {
-      console.log('🚫 [SessionManager] Session not authenticated')
-    },
-  })
   const router = useRouter()
-  const setLoadingState = useAuthStore(state => state.setLoadingState)
-  const setError = useAuthStore(state => state.setError)
+  const { user, loadingState, setLoadingState, setError } = useAuthStore()
+  const supabase = createClient()
 
   const login = useCallback(async (email: string, password: string, callbackUrl: string) => {
     try {
       console.log('🚀 [SessionManager] Login attempt:', { email, callbackUrl })
       setLoadingState('loading')
 
-      const result = await signIn('credentials', {
-        redirect: false,
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password,
-        callbackUrl
+        password
       })
 
-      console.log('📦 [SessionManager] SignIn result:', result)
-
-      if (result?.error) {
-        throw new Error(result.error)
+      if (error) {
+        throw error
       }
 
-      await update()
+      console.log('📦 [SessionManager] SignIn result:', data)
+      
       await new Promise(resolve => setTimeout(resolve, 500))
       
       router.push(callbackUrl)
@@ -48,17 +38,18 @@ export function useSessionManager() {
     } finally {
       setLoadingState('idle')
     }
-  }, [router, update, setLoadingState, setError])
+  }, [router, setLoadingState, setError, supabase])
 
   const logout = useCallback(async () => {
     try {
       console.log('🚪 [SessionManager] Logout attempt')
       setLoadingState('loading')
 
-      await signOut({ 
-        redirect: false,
-        callbackUrl: '/' 
-      })
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+        throw error
+      }
 
       console.log('✅ [SessionManager] Logout successful')
       router.push('/')
@@ -69,63 +60,31 @@ export function useSessionManager() {
     } finally {
       setLoadingState('idle')
     }
-  }, [router, setLoadingState, setError])
+  }, [router, setLoadingState, setError, supabase])
 
   const refreshSession = useCallback(async () => {
     try {
       console.log('🔄 [SessionManager] Refreshing session')
-      await update()
+      const { data: { session }, error } = await supabase.auth.refreshSession()
+      
+      if (error) {
+        throw error
+      }
+      
       console.log('✅ [SessionManager] Session refreshed successfully')
+      return session
     } catch (error) {
-      console.error(' [SessionManager] Session refresh failed:', error)
-      // Si l'erreur indique une session expirée, déconnexion
+      console.error('❌ [SessionManager] Session refresh failed:', error)
       if (error instanceof Error && error.message.includes('expired')) {
         await logout()
       }
     }
-  }, [update, logout])
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      console.log('🔄 [SessionManager] Session status:', {
-        status,
-        hasSession: !!session,
-        sessionData: session?.user?.id // Log minimal
-      })
-    }, 1000) // Délai pour éviter les logs excessifs
-
-    return () => clearTimeout(timeoutId)
-  }, [session?.user?.id, status, session])
-
-  useEffect(() => {
-    if (status === 'authenticated') {
-      console.log('⏰ [SessionManager] Setting up session refresh interval')
-      
-      // Éviter le rafraîchissement immédiat si la session est récente
-      const lastRefresh = sessionStorage.getItem('lastSessionRefresh')
-      const now = Date.now()
-      
-      if (!lastRefresh || now - parseInt(lastRefresh) > 5 * 60 * 1000) { // 5 minutes
-        refreshSession()
-        sessionStorage.setItem('lastSessionRefresh', now.toString())
-      }
-
-      const interval = setInterval(() => {
-        refreshSession()
-        sessionStorage.setItem('lastSessionRefresh', Date.now().toString())
-      }, 15 * 60 * 1000) // 15 minutes
-      
-      return () => {
-        console.log('🛑 [SessionManager] Clearing session refresh interval')
-        clearInterval(interval)
-      }
-    }
-  }, [status, refreshSession])
+  }, [logout, supabase])
 
   return {
-    session,
-    isLoading: status === 'loading',
-    isAuthenticated: status === 'authenticated',
+    session: user ? { user } : null,
+    isLoading: loadingState === 'loading',
+    isAuthenticated: !!user,
     login,
     logout,
     refreshSession

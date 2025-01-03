@@ -1,10 +1,7 @@
 // app/api/admin/users/[userId]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db/connection';
-import User from '@/models/User';
 import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
-import mongoose from 'mongoose';
-
+import { supabaseAdmin } from '@/lib/supabase/admin-client';
 
 function getUserIdFromRequest(req: NextRequest): string | null {
   try {
@@ -13,12 +10,6 @@ function getUserIdFromRequest(req: NextRequest): string | null {
 
     if (!userId || userId === 'undefined') {
       console.log('❌ [API/Users] ID manquant dans l\'URL');
-      return null;
-    }
-
-    // Vérifions que l'ID est un ObjectId MongoDB valide
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      console.log('❌ [API/Users] ID non valide:', userId);
       return null;
     }
 
@@ -33,10 +24,18 @@ function getUserIdFromRequest(req: NextRequest): string | null {
 // PUT - Modifier un utilisateur
 async function handleUpdateUser(req: NextRequest, session: SessionWithUser) {
   try {
-    await connectDB();
     const userId = getUserIdFromRequest(req);
     const body = await req.json();
     const { email, name, role, status } = body;
+
+    console.log('📝 [API/Users] Tentative de modification:', {
+      userId,
+      email,
+      name,
+      role,
+      status,
+      by: session.user.email
+    });
 
     if (!userId) {
       return NextResponse.json(
@@ -46,45 +45,88 @@ async function handleUpdateUser(req: NextRequest, session: SessionWithUser) {
     }
 
     // Vérifier l'existence de l'utilisateur
-    const existingUser = await User.findById(userId);
-    if (!existingUser) {
+    const { data: existingUser, error: fetchError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (fetchError || !existingUser.user) {
       return NextResponse.json(
         { error: "Utilisateur non trouvé" },
         { status: 404 }
       );
     }
 
+    console.log('✅ [API/Users] Utilisateur existant:', {
+      id: existingUser.user.id,
+      email: existingUser.user.email,
+      currentRole: existingUser.user.role,
+      newRole: role
+    });
+
     // Empêcher la modification d'un admin par un non-admin
-    if (existingUser.role === 'admin' && session.user.role !== 'admin') {
+    if (existingUser.user.role === 'admin' && session.user.role !== 'admin') {
       return NextResponse.json(
         { error: "Vous n'avez pas les droits pour modifier un administrateur" },
         { status: 403 }
       );
     }
 
-    // Vérifier si l'email existe déjà pour un autre utilisateur
-    const duplicateEmail = await User.findOne({
-      email,
-      _id: { $ne: userId }
-    });
+    // Préserver les métadonnées existantes
+    const currentMetadata = existingUser.user.user_metadata || {};
+    const updatedMetadata = {
+      ...currentMetadata,
+      name,
+      role,
+      status
+    };
 
-    if (duplicateEmail) {
-      return NextResponse.json(
-        { error: "Cet email est déjà utilisé" },
-        { status: 400 }
-      );
-    }
+    console.log('📝 [API/Users] Métadonnées à mettre à jour:', updatedMetadata);
 
     // Mise à jour de l'utilisateur
-    const updatedUser = await User.findByIdAndUpdate(
+    const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
       userId,
-      { email, name, role, status },
-      { new: true }
-    ).select('id name email role status createdAt lastLogin');
+      {
+        email,
+        user_metadata: updatedMetadata,
+        role: role
+      }
+    );
 
-    return NextResponse.json(updatedUser);
+    if (updateError) {
+      console.error('❌ [API/Users] Erreur lors de la mise à jour:', updateError);
+      throw updateError;
+    }
+
+    console.log('✅ [API/Users] Utilisateur mis à jour:', {
+      id: updatedUser.user.id,
+      email: updatedUser.user.email,
+      metadata: updatedUser.user.user_metadata,
+      role: updatedUser.user.role
+    });
+
+    // Gérer le statut (actif/inactif) via le bannissement
+    if (status === 'inactive') {
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        ban_duration: '87600h' // 10 ans
+      });
+    } else {
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        ban_duration: '0' // Débannir
+      });
+    }
+
+    // Retourner les données formatées
+    const userData = {
+      id: updatedUser.user.id,
+      name: updatedUser.user.user_metadata?.name || updatedUser.user.email?.split('@')[0] || 'Sans nom',
+      email: updatedUser.user.email || '',
+      role: updatedUser.user.role || 'user',
+      status: status,
+      createdAt: updatedUser.user.created_at,
+      lastLogin: updatedUser.user.last_sign_in_at
+    };
+
+    console.log('✅ [API/Users] Données formatées retournées:', userData);
+    return NextResponse.json(userData);
   } catch (error) {
-    console.error('Erreur lors de la modification:', error);
+    console.error('❌ [API/Users] Erreur lors de la modification:', error);
     return NextResponse.json(
       { error: "Erreur lors de la modification de l'utilisateur" },
       { status: 500 }
@@ -100,10 +142,8 @@ async function handleDeleteUser(req: NextRequest, session: SessionWithUser) {
       role: session.user.role
     });
 
-    await connectDB();
     const userId = getUserIdFromRequest(req);
 
-    // Validation plus stricte de l'ID
     if (!userId) {
       console.log('❌ [API/Users] ID utilisateur invalide ou manquant');
       return NextResponse.json(
@@ -112,18 +152,9 @@ async function handleDeleteUser(req: NextRequest, session: SessionWithUser) {
       );
     }
 
-    // Vérification de la validité de l'ID pour MongoDB
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      console.log('❌ [API/Users] ID non valide pour MongoDB:', userId);
-      return NextResponse.json(
-        { error: "Format d'ID utilisateur invalide" },
-        { status: 400 }
-      );
-    }
-
     // Vérifier l'existence de l'utilisateur
-    const user = await User.findById(userId);
-    if (!user) {
+    const { data: user, error: fetchError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (fetchError || !user.user) {
       console.log('❌ [API/Users] Utilisateur non trouvé:', userId);
       return NextResponse.json(
         { error: "Utilisateur non trouvé" },
@@ -132,13 +163,13 @@ async function handleDeleteUser(req: NextRequest, session: SessionWithUser) {
     }
 
     console.log('✅ [API/Users] Utilisateur trouvé:', {
-      id: user._id,
-      email: user.email,
-      role: user.role
+      id: user.user.id,
+      email: user.user.email,
+      role: user.user.role
     });
 
     // Empêcher la suppression d'un admin
-    if (user.role === 'admin') {
+    if (user.user.role === 'admin') {
       console.log('🚫 [API/Users] Tentative de suppression d\'un admin');
       return NextResponse.json(
         { error: "Impossible de supprimer un administrateur" },
@@ -146,31 +177,22 @@ async function handleDeleteUser(req: NextRequest, session: SessionWithUser) {
       );
     }
 
-    await User.findByIdAndDelete(userId);
-    console.log('✅ [API/Users] Suppression réussie:', userId);
+    // Supprimer l'utilisateur
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (deleteError) {
+      throw deleteError;
+    }
 
-    return NextResponse.json({ 
-      success: true,
-      message: "Utilisateur supprimé avec succès" 
-    });
+    console.log('✅ [API/Users] Suppression réussie:', userId);
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('❌ [API/Users] Erreur lors de la suppression:', error);
     return NextResponse.json(
-      { 
-        error: "Erreur lors de la suppression de l'utilisateur",
-        details: error instanceof Error ? error.message : 'Erreur inconnue'
-      },
+      { error: "Erreur lors de la suppression de l'utilisateur" },
       { status: 500 }
     );
   }
 }
 
-export const PUT = protectApiRoute(
-  (req: Request, session: SessionWithUser) => handleUpdateUser(req as NextRequest, session),
-  'admin'
-);
-
-export const DELETE = protectApiRoute(
-  (req: Request, session: SessionWithUser) => handleDeleteUser(req as NextRequest, session),
-  'admin'
-);
+export const PUT = protectApiRoute(handleUpdateUser, 'admin');
+export const DELETE = protectApiRoute(handleDeleteUser, 'admin');

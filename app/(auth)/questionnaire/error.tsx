@@ -1,4 +1,4 @@
-// app/questionnaire/error.tsx
+// app/(auth)/questionnaire/error.tsx
 'use client';
 
 import { useEffect } from "react";

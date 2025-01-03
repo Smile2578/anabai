@@ -1,7 +1,5 @@
-// app/(site)/questionnaire/layout.tsx
+// app/(auth)/questionnaire/layout.tsx
 import { Metadata } from "next";
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
 import { QuestionnaireProgress } from "@/components/questionnaire/QuestionnaireProgress";
 import Image from "next/image";
 import { QuestionnaireSyncProvider } from "@/components/questionnaire/QuestionnaireSyncProvider";
@@ -15,17 +13,9 @@ interface QuestionnaireLayoutProps {
   children: React.ReactNode;
 }
 
-// Le composant principal reste un composant serveur
-export default async function QuestionnaireLayout({
+export default function QuestionnaireLayout({
   children,
 }: QuestionnaireLayoutProps) {
-  // Vérification de l'authentification côté serveur
-  const session = await auth();
-
-  if (!session) {
-    redirect('/auth/signin?callbackUrl=/questionnaire');
-  }
-
   return (
     <div className="relative min-h-screen overflow-hidden">
       {/* Fond avec image et superposition */}

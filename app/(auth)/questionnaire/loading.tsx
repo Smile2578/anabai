@@ -1,4 +1,4 @@
-// app/questionnaire/loading.tsx
+// app/(auth)/questionnaire/loading.tsx
 import { Loader } from "lucide-react";
 
 export default function QuestionnaireLoading() {

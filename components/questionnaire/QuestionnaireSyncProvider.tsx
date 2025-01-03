@@ -1,109 +1,94 @@
 // components/questionnaire/QuestionnaireSyncProvider.tsx
 'use client';
 
-import { useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useEffect, useState } from 'react';
 import { useQuestionnaireStore } from '@/store/useQuestionnaireStore';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import type { 
+  QuestionnaireApiResponse, 
+  QuestionnaireProviderData 
+} from '@/types/api/questionnaire';
+import type {
+  BudgetPriority,
+  BudgetType,
+  Language,
+  TravelStyle
+} from '@/types/questionnaire/questionnaire';
 
-interface QuestionnaireSyncProviderProps {
-  children: React.ReactNode;
-}
+export const QuestionnaireSyncProvider = ({ children }: { children: React.ReactNode }) => {
+  const store = useQuestionnaireStore();
+  const [isLoading, setIsLoading] = useState(true);
 
-export function QuestionnaireSyncProvider({ 
-  children 
-}: QuestionnaireSyncProviderProps): JSX.Element {
-  const { data: session } = useSession();
-  const { 
-    initializeFromCache, 
-    status, 
-    isSyncing,
-    answers,
-    currentStep
-  } = useQuestionnaireStore();
-  const { toast } = useToast();
-
-  // Initialisation des données du questionnaire au chargement
   useEffect(() => {
-    async function syncQuestionnaire() {
-      if (session?.user?.id) {
-        try {
-          console.log('Tentative de synchronisation...');
-          const response = await fetch('/api/questionnaire/current');
-          const { success, data } = await response.json();
-          
-          if (success && data) {
-            console.log('Données récupérées:', data);
-            await initializeFromCache();
-            toast({
-              title: "Synchronisation réussie",
-              description: "Vos réponses précédentes ont été restaurées",
-            });
-          }
-        } catch (error) {
-          console.error('Erreur de synchronisation initiale:', error);
-          toast({
-            title: "Erreur de synchronisation",
-            description: "Impossible de récupérer vos réponses précédentes. Veuillez rafraîchir la page.",
-            variant: "destructive",
-          });
+    const loadQuestionnaire = async () => {
+      try {
+        const response = await fetch('/api/questionnaire');
+        const result = await response.json() as QuestionnaireApiResponse;
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Erreur lors du chargement du questionnaire');
         }
-      }
-    }
 
-    syncQuestionnaire();
-  }, [session?.user?.id, initializeFromCache, toast]);
-
-  // Sauvegarde automatique des réponses toutes les 30 secondes
-  useEffect(() => {
-    let syncInterval: NodeJS.Timeout;
-
-    if (session?.user?.id && status === 'draft' && !isSyncing && Object.keys(answers).length > 0) {
-      syncInterval = setInterval(async () => {
-        try {
-          // Préparer les données avec les dates converties
-          const processedData = {
-            ...answers,
-            basicInfo: answers.basicInfo ? {
-              ...answers.basicInfo,
-              dateRange: answers.basicInfo.dateRange ? {
-                from: new Date(answers.basicInfo.dateRange.from),
-                to: new Date(answers.basicInfo.dateRange.to)
-              } : undefined
-            } : undefined,
-            createdAt: answers.createdAt ? new Date(answers.createdAt) : new Date(),
-            updatedAt: new Date()
+        if (result.data) {
+          const data: QuestionnaireProviderData = {
+            basicInfo: {
+              duration: result.data.duration || 0,
+              dateRange: {
+                from: new Date(result.data.date_range_from),
+                to: new Date(result.data.date_range_to)
+              },
+              groupSize: result.data.group_size,
+              previousVisit: result.data.previous_visit,
+              visitCount: result.data.visit_count ?? undefined,
+              groupType: result.data.group_type as QuestionnaireProviderData['basicInfo']['groupType'],
+              travelType: result.data.travel_type,
+              hasChildren: result.data.has_children,
+              childrenCount: result.data.children_count ?? undefined
+            },
+            travelStyle: {
+              pace: result.data.pace as TravelStyle['pace'],
+              comfort: result.data.comfort as TravelStyle['comfort'],
+              flexibility: result.data.flexibility,
+              culturalImmersion: result.data.cultural_immersion,
+              preferences: result.data.preferences || []
+            },
+            interests: {
+              mainInterests: result.data.main_interests || [],
+              specificInterests: result.data.specific_interests || [],
+              categories: result.data.categories || [],
+              mustSeeSpots: result.data.must_see_spots || []
+            },
+            budget: {
+              total: result.data.total_budget,
+              dailyLimit: result.data.daily_limit,
+              priority: result.data.budget_priority as BudgetPriority
+            },
+            constraints: {
+              mobility: result.data.mobility,
+              language: result.data.language as Language,
+              dietary: result.data.dietary || [],
+              travelBudget: result.data.travel_budget as BudgetType,
+              dailyBudget: result.data.daily_budget as BudgetType,
+              budgetPriority: result.data.budget_priority as BudgetPriority
+            }
           };
 
-          const response = await fetch('/api/questionnaire/current', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(processedData),
-          });
-
-          if (!response.ok) {
-            throw new Error('Erreur lors de la sauvegarde automatique');
-          }
-
-          const { data } = await response.json();
-          console.log('Sauvegarde automatique réussie:', data);
-        } catch (error) {
-          console.error('Erreur de sauvegarde automatique:', error);
-          toast({
-            title: "Erreur de sauvegarde",
-            description: "Impossible de sauvegarder automatiquement vos réponses. Vos données seront conservées localement.",
-            variant: "destructive",
-          });
+          await store.updateAnswers(data, 1);
         }
-      }, 30000);
-    }
-
-    return () => {
-      if (syncInterval) {
-        clearInterval(syncInterval);
+      } catch (error) {
+        console.error('❌ [QuestionnaireSyncProvider] Erreur:', error);
+        toast.error('Erreur lors du chargement du questionnaire');
+      } finally {
+        setIsLoading(false);
       }
     };
-  }, [session?.user?.id, status, isSyncing, answers, toast, currentStep]);
+
+    loadQuestionnaire();
+  }, [store]);
+
+  if (isLoading) {
+    return <div>Chargement...</div>;
+  }
 
   return <>{children}</>;
-}
+};

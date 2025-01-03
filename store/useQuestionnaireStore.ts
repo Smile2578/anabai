@@ -20,6 +20,7 @@ interface QuestionnaireStore {
   lastSavedStep: number;
   steps: QuestionnaireStep[];
   isSyncing: boolean;
+  currentQuestionnaireId: string | null;
   
   // Actions pour la navigation
   setCurrentStep: (step: number) => void;
@@ -38,6 +39,7 @@ interface QuestionnaireStore {
   validateAnswers: () => boolean;
   canNavigateToStep: (targetStep: number) => boolean;
   getSavedAnswersForStep: (step: number) => Partial<QuestionnaireData>;
+  setCurrentQuestionnaireId: (id: string) => void;
 }
 
 /**
@@ -53,6 +55,7 @@ export const useQuestionnaireStore = create<QuestionnaireStore>()(
       lastSavedStep: 0,
       steps: [],
       isSyncing: false,
+      currentQuestionnaireId: null,
       
       setCurrentStep: (step) => {
         console.log('🚀 setCurrentStep appelé avec step:', step);
@@ -345,6 +348,8 @@ export const useQuestionnaireStore = create<QuestionnaireStore>()(
         const savedStep = steps.find(s => s.step === step);
         return savedStep?.data || {};
       },
+
+      setCurrentQuestionnaireId: (id) => set({ currentQuestionnaireId: id }),
     }),
     {
       name: 'questionnaire-storage',

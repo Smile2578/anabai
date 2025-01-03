@@ -18,6 +18,7 @@ import AnabaLogo from '@/components/brand/AnabaLogo';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { cn } from "@/lib/utils";
 import { createClient } from '@/lib/supabase/client';
+import { handleAuthError } from '@/lib/errors/auth-errors';
 
 // Schéma de validation Zod pour le formulaire
 const signupSchema = z.object({
@@ -111,7 +112,10 @@ export default function SignUpPage() {
       });
 
       if (signUpError) {
-        throw signUpError;
+        const { message } = handleAuthError(signUpError);
+        toast.error(message, TOAST_CONFIG);
+        setError(message);
+        return;
       }
 
       if (signUpData.user) {
@@ -125,9 +129,9 @@ export default function SignUpPage() {
         router.push('/auth/signin');
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Une erreur est survenue';
-      toast.error(errorMessage, TOAST_CONFIG);
-      setError(errorMessage);
+      const { message } = handleAuthError(error as Error);
+      toast.error(message, TOAST_CONFIG);
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -139,19 +143,24 @@ export default function SignUpPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
           },
         }
-      })
+      });
 
       if (error) {
-        toast.error(error.message, TOAST_CONFIG)
+        const { message } = handleAuthError(error);
+        toast.error(message, TOAST_CONFIG);
+        setError(message);
       }
     } catch (error) {
-      console.error('Erreur lors de la connexion avec Google:', error)
-      toast.error('Erreur lors de la connexion avec Google', TOAST_CONFIG)
+      console.error('Erreur lors de la connexion avec Google:', error);
+      const { message } = handleAuthError(error as Error);
+      toast.error(message, TOAST_CONFIG);
+      setError(message);
     }
   }
 

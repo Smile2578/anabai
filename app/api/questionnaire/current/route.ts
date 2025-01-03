@@ -1,7 +1,7 @@
 // app/api/questionnaire/current/route.ts
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-import { getQuestionnaire, setQuestionnaireCache } from "@/lib/queue/services/questionnaireService";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
   try {
@@ -13,17 +13,34 @@ export async function GET() {
       );
     }
 
-    const questionnaire = await getQuestionnaire(session.user.id);
-    if (questionnaire) {
+    const supabase = await createClient();
+
+    const { data: questionnaire, error } = await supabase
+      .from('questionnaires')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      console.error("[Questionnaire API Error]:", error);
+      return NextResponse.json(
+        { error: "Erreur lors de la récupération du questionnaire" },
+        { status: 500 }
+      );
+    }
+
+    if (!questionnaire) {
       return NextResponse.json({
-        success: true,
-        data: questionnaire
+        success: false,
+        message: "Aucun questionnaire trouvé"
       });
     }
 
     return NextResponse.json({
-      success: false,
-      message: "Aucun questionnaire trouvé"
+      success: true,
+      data: questionnaire
     });
 
   } catch (error) {
@@ -54,6 +71,7 @@ export async function POST(request: Request) {
     // Convertir les dates
     const processedData = {
       ...data,
+      user_id: session.user.id,
       basicInfo: data.basicInfo ? {
         ...data.basicInfo,
         dateRange: data.basicInfo.dateRange ? {
@@ -61,15 +79,29 @@ export async function POST(request: Request) {
           to: new Date(data.basicInfo.dateRange.to)
         } : undefined
       } : undefined,
-      createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
-      updatedAt: new Date()
+      created_at: data.createdAt ? new Date(data.createdAt) : new Date(),
+      updated_at: new Date()
     };
 
-    await setQuestionnaireCache(session.user.id, processedData);
+    const supabase = await createClient();
+
+    const { data: savedQuestionnaire, error } = await supabase
+      .from('questionnaires')
+      .insert([processedData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[Questionnaire API Error]:", error);
+      return NextResponse.json(
+        { error: "Erreur lors de la sauvegarde du questionnaire" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ 
       success: true,
-      data: processedData
+      data: savedQuestionnaire
     });
   } catch (error) {
     console.error("[Questionnaire API Error]:", error);

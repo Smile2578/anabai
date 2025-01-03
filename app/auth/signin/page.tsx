@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { Toaster } from 'sonner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createClient } from '@/lib/supabase/client'
+import { handleAuthError } from '@/lib/errors/auth-errors'
 
 export default function SignInPage() {
   const router = useRouter()
@@ -46,11 +47,12 @@ export default function SignInPage() {
 
       if (signInError) {
         console.error('❌ [SignIn] Authentication error:', signInError)
-        toast.error(signInError.message, {
+        const { message } = handleAuthError(signInError)
+        toast.error(message, {
           duration: 4000,
           position: 'top-center',
         })
-        setError(signInError.message)
+        setError(message)
         setLoadingState('error')
         return
       }
@@ -76,12 +78,14 @@ export default function SignInPage() {
         router.replace(callbackUrl)
       } else {
         console.error('❌ [SignIn] No user or session in response')
-        setError('Erreur lors de la connexion')
+        const { message } = handleAuthError(new Error('No user or session'))
+        setError(message)
         setLoadingState('error')
       }
     } catch (error) {
       console.error('❌ [SignIn] Unexpected error:', error)
-      setError(error instanceof Error ? error.message : 'Erreur de connexion')
+      const { message } = handleAuthError(error as Error)
+      setError(message)
       setLoadingState('error')
     } finally {
       setIsLoading(false)
@@ -97,7 +101,7 @@ export default function SignInPage() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `http://localhost:3000${callbackUrl}`,
+          redirectTo: `${window.location.origin}${callbackUrl}`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent'
@@ -109,11 +113,12 @@ export default function SignInPage() {
 
       if (error) {
         console.error('❌ [SignIn] Google authentication error:', error)
-        toast.error(error.message, {
+        const { message } = handleAuthError(error)
+        toast.error(message, {
           duration: 4000,
           position: 'top-center',
         })
-        setError(error.message)
+        setError(message)
         setLoadingState('error')
         return
       }
@@ -122,11 +127,12 @@ export default function SignInPage() {
       setLoadingState('success')
     } catch (error) {
       console.error('❌ [SignIn] Unexpected Google authentication error:', error)
-      toast.error('Erreur lors de la connexion avec Google', {
+      const { message } = handleAuthError(error as Error)
+      toast.error(message, {
         duration: 4000,
         position: 'top-center',
       })
-      setError(error instanceof Error ? error.message : 'Erreur de connexion avec Google')
+      setError(message)
       setLoadingState('error')
     } finally {
       setIsLoading(false)

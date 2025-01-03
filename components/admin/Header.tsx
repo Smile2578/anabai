@@ -1,7 +1,6 @@
 // components/admin/Header.tsx
 'use client';
 
-import { useSession} from "next-auth/react";
 import { useState, useEffect } from 'react';
 import { Bell, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,20 +20,18 @@ import { cn } from '@/lib/utils';
 import { LayoutDashboard, Settings, MapPinHouse, UserIcon, BarChart3 } from 'lucide-react';
 import AnabaLogo from "../brand/AnabaLogo";
 import { SignOutButton } from '@/components/auth/SignOutButton';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function AdminHeader() {
-  const { data: session, status } = useSession();
+  const { user, loadingState } = useAuthStore();
   const { theme, setTheme } = useTheme();
-
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-
-
-  if (!mounted || status === "loading") {
+  if (!mounted || loadingState === 'loading') {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95">
         <div className="flex h-16 items-center justify-center">
@@ -53,12 +50,12 @@ export default function AdminHeader() {
       .toUpperCase();
   };
 
-  if (!session?.user) return null
+  if (!user) return null;
     
-    const isPremium = session.user.role === "premium"
-    const isLuxury = session.user.role === "luxury"
-    const isAdmin = session.user.role === "admin"
-    const isEditor = session.user.role === "editor"
+  const isPremium = user.role === "premium";
+  const isLuxury = user.role === "luxury";
+  const isAdmin = user.role === "admin";
+  const isEditor = user.role === "editor";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur overflow-visible">
@@ -66,7 +63,7 @@ export default function AdminHeader() {
         <div>
           <h2 className="text-lg font-semibold">Administration AnabAI</h2>
           <p className="text-sm text-muted-foreground">
-            Bienvenue, {session?.user?.name}
+            Bienvenue, {user.user_metadata?.name || user.email}
           </p>
         </div>
 
@@ -79,82 +76,86 @@ export default function AdminHeader() {
           </Button>
 
           <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={session.user.image || undefined} alt={session.user.name || "Avatar"} />
-              <AvatarFallback>{getInitials(session.user.name || "User")}</AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{session.user.name}</p>
-              <p className="text-xs leading-none text-muted-foreground">
-                {session.user.email}
-              </p>
-              {(isPremium || isLuxury) && (
-                <div className="flex items-center mt-1">
-                  <span className={cn(
-                    "text-xs px-2 py-0.5 rounded-full",
-                    isPremium && "bg-primary/10 text-primary",
-                    isLuxury && "bg-amber-500/10 text-amber-500"
-                  )}>
-                    {isPremium ? "Premium" : "Luxury"}
-                  </span>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage 
+                    src={user.user_metadata?.avatar_url} 
+                    alt={user.user_metadata?.name || "Avatar"} 
+                  />
+                  <AvatarFallback>{getInitials(user.user_metadata?.name)}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {user.user_metadata?.name || user.email}
+                  </p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user.email}
+                  </p>
+                  {(isPremium || isLuxury) && (
+                    <div className="flex items-center mt-1">
+                      <span className={cn(
+                        "text-xs px-2 py-0.5 rounded-full",
+                        isPremium && "bg-primary/10 text-primary",
+                        isLuxury && "bg-amber-500/10 text-amber-500"
+                      )}>
+                        {isPremium ? "Premium" : "Luxury"}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard">
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                Tableau de bord
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/account">
-                <Settings className="mr-2 h-4 w-4" />
-                Paramètres du compte
-              </Link>
-            </DropdownMenuItem>
-            {(isAdmin || isEditor) && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel>Administration</DropdownMenuLabel>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
-                  <Link href="/admin/places">
-                    <MapPinHouse className="mr-2 h-4 w-4" />
-                    Gestion des lieux
+                  <Link href="/dashboard">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Tableau de bord
                   </Link>
                 </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin/users">
-                      <UserIcon className="mr-2 h-4 w-4" />
-                      Gestion des utilisateurs
-                    </Link>
-                  </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/account">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Paramètres du compte
+                  </Link>
+                </DropdownMenuItem>
+                {(isAdmin || isEditor) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Administration</DropdownMenuLabel>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin/places">
+                        <MapPinHouse className="mr-2 h-4 w-4" />
+                        Gestion des lieux
+                      </Link>
+                    </DropdownMenuItem>
+                    {isAdmin && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/users">
+                          <UserIcon className="mr-2 h-4 w-4" />
+                          Gestion des utilisateurs
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {isAdmin && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/monitoring">
+                          <BarChart3 className="mr-2 h-4 w-4" />
+                          Monitoring
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                  </>
                 )}
-                {isAdmin && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin/monitoring">
-                      <BarChart3 className="mr-2 h-4 w-4" />
-                      Monitoring
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-              </>
-                  )}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-                    Thème: {theme === 'dark' ? 'Clair' : 'Sombre'}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                Thème: {theme === 'dark' ? 'Clair' : 'Sombre'}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <SignOutButton variant="ghost" showIcon={true} className="w-full justify-start" />

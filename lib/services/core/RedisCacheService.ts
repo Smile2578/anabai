@@ -10,11 +10,11 @@ export interface RedisCacheOptions {
 export interface RedisCacheService {
   get<T>(key: string): Promise<T | null>;
   set<T>(key: string, value: T, ttl?: number): Promise<void>;
-  delete(key: string): Promise<void>;
+  remove(key: string): Promise<void>;
   exists(key: string): Promise<boolean>;
   getTtl(key: string): Promise<number>;
   increment(key: string): Promise<number>;
-  deleteMultiple(...keys: string[]): Promise<void>;
+  removeMultiple(...keys: string[]): Promise<void>;
   clearPattern(pattern: string): Promise<void>;
   keys(pattern: string): Promise<string[]>;
 }
@@ -40,13 +40,11 @@ export async function createRedisCacheService(options: RedisCacheOptions): Promi
 
   return {
     async get<T>(key: string): Promise<T | null> {
-      'use server';
       const data = await getClient().get(getKey(key));
       return data ? JSON.parse(data) : null;
     },
 
     async set<T>(key: string, value: T, ttl: number = defaultTtl): Promise<void> {
-      'use server';
       await getClient().set(
         getKey(key),
         JSON.stringify(value),
@@ -55,36 +53,30 @@ export async function createRedisCacheService(options: RedisCacheOptions): Promi
       );
     },
 
-    async delete(key: string): Promise<void> {
-      'use server';
+    async remove(key: string): Promise<void> {
       await getClient().del(getKey(key));
     },
 
     async exists(key: string): Promise<boolean> {
-      'use server';
       const result = await getClient().exists(getKey(key));
       return result === 1;
     },
 
     async getTtl(key: string): Promise<number> {
-      'use server';
       return await getClient().ttl(getKey(key));
     },
 
     async increment(key: string): Promise<number> {
-      'use server';
       return await getClient().incr(getKey(key));
     },
 
-    async deleteMultiple(...keys: string[]): Promise<void> {
-      'use server';
+    async removeMultiple(...keys: string[]): Promise<void> {
       if (keys.length > 0) {
         await getClient().del(...keys.map(getKey));
       }
     },
 
     async clearPattern(pattern: string): Promise<void> {
-      'use server';
       const keys = await getClient().keys(getKey(pattern));
       if (keys.length > 0) {
         await getClient().del(...keys);
@@ -92,7 +84,6 @@ export async function createRedisCacheService(options: RedisCacheOptions): Promi
     },
 
     async keys(pattern: string): Promise<string[]> {
-      'use server';
       return await getClient().keys(getKey(pattern));
     }
   };
