@@ -15,7 +15,6 @@ export interface BasicInfo {
   previousVisit: boolean;
   visitCount?: number;
   groupType: 'solo' | 'couple' | 'friends' | 'group' | 'family' | 'business';
-  travelType: string;
   hasChildren: boolean;
   childrenCount?: number;
 }

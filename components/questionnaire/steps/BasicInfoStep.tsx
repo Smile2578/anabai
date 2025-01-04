@@ -90,7 +90,7 @@ const formSchema = z.object({
   }),
   previousVisit: z.boolean(),
   visitCount: z.number().optional(),
-  travelType: z.enum(['solo', 'couple', 'friends', 'family', 'group', 'business']),
+  groupType: z.enum(['solo', 'couple', 'friends', 'family', 'group', 'business']),
   groupSize: z.number().min(1).max(10),
   hasChildren: z.boolean().optional(),
   childrenCount: z.number().optional(),
@@ -116,7 +116,7 @@ export function BasicInfoStep() {
       },
       previousVisit: false,
       visitCount: 0,
-      travelType: 'solo',
+      groupType: 'solo',
       groupSize: 1,
       hasChildren: false,
       childrenCount: 0,
@@ -126,13 +126,13 @@ export function BasicInfoStep() {
   // Charger les données sauvegardées au montage
   useEffect(() => {
     if (savedAnswers?.basicInfo) {
-      const { dateRange, travelType, groupSize, previousVisit, visitCount, hasChildren, childrenCount } = savedAnswers.basicInfo;
+      const { dateRange, groupType, groupSize, previousVisit, visitCount, hasChildren, childrenCount } = savedAnswers.basicInfo;
       form.reset({
         dateRange: {
           from: new Date(dateRange.from),
           to: new Date(dateRange.to)
         },
-        travelType: travelType as "solo" | "couple" | "friends" | "family" | "group" | "business",
+        groupType,
         groupSize,
         previousVisit,
         visitCount,
@@ -142,8 +142,8 @@ export function BasicInfoStep() {
     }
   }, [savedAnswers, form]);
 
-  const watchTravelType = form.watch('travelType');
-  const selectedType = travelTypes.find(type => type.id === watchTravelType);
+  const watchGroupType = form.watch('groupType');
+  const selectedType = travelTypes.find(type => type.id === watchGroupType);
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     console.log('Submitting data:', data);
@@ -160,8 +160,7 @@ export function BasicInfoStep() {
         groupSize: data.groupSize,
         previousVisit: data.previousVisit,
         visitCount: data.visitCount,
-        groupType: data.travelType,
-        travelType: data.travelType,
+        groupType: data.groupType,
         hasChildren: childrenCount > 0,
         childrenCount,
       },
@@ -174,24 +173,7 @@ export function BasicInfoStep() {
     router.push('/questionnaire/2');
   };
 
-  const handleTravelTypeChange = (type: string) => {
-    const selectedType = travelTypes.find(t => t.id === type);
-    if (selectedType) {
-      form.setValue('travelType', type as 'solo' | 'couple' | 'friends' | 'family' | 'group' | 'business');
-      form.setValue('groupSize', selectedType.defaultSize);
-      if (!selectedType.hasChildren) {
-        form.setValue('hasChildren', false);
-        form.setValue('childrenCount', 0);
-      }
-    }
-  };
-
   const watchGroupSize = form.watch('groupSize');
-
-  // Ajout d'un useEffect pour le debug
-  useEffect(() => {
-    console.log('🔄 BasicInfoStep monté avec savedAnswers:', savedAnswers);
-  }, [savedAnswers]);
 
   return (
     <Form {...form}>
@@ -261,27 +243,20 @@ export function BasicInfoStep() {
                       name="visitCount"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium">
-                            Combien de fois ?
-                          </FormLabel>
+                          <FormLabel>Combien de fois ?</FormLabel>
                           <FormControl>
-                            <div className="space-y-4">
-                              <Slider
-                                min={1}
-                                max={4}
-                                step={1}
-                                value={[field.value || 1]}
-                                onValueChange={(value) => field.onChange(value[0])}
-                                className="mt-6 cursor-grab active:cursor-grabbing"
-                              />
-                              <div className="flex justify-between text-sm text-secondary px-1">
-                                <span>1 fois</span>
-                                <span>2 fois</span>
-                                <span>3 fois</span>
-                                <span>4+ fois</span>
-                              </div>
-                            </div>
+                            <Slider
+                              min={1}
+                              max={10}
+                              step={1}
+                              value={[field.value || 1]}
+                              onValueChange={(value) => field.onChange(value[0])}
+                              className="w-[200px]"
+                            />
                           </FormControl>
+                          <div className="text-sm text-muted-foreground">
+                            {field.value || 1} fois
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -304,13 +279,12 @@ export function BasicInfoStep() {
                       <Calendar className="h-5 w-5 text-primary" />
                       Dates du voyage
                     </FormLabel>
-                    <DatePickerWithRange
-                      date={field.value}
-                      setDate={(newDate) => field.onChange(newDate)}
-                      minDate={addDays(new Date(), 7)} // Minimum 1 semaine à l'avance
-                      maxDate={addDays(new Date(), 365)} // Maximum 1 an à l'avance
-                      numberOfMonths={2}
-                    />
+                    <FormControl>
+                      <DatePickerWithRange
+                        date={field.value}
+                        setDate={field.onChange}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -318,143 +292,139 @@ export function BasicInfoStep() {
             </Card>
           </motion.div>
 
-          {/* Section Type de voyage */}
+          {/* Section Type de Voyage */}
           <motion.div variants={cardVariants}>
             <Card className="p-6">
-              <FormLabel className="flex items-center gap-2 text-lg font-medium mb-4">
-                <Users className="h-5 w-5 text-primary" />
-                Type de voyage
-              </FormLabel>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {travelTypes.map((type) => {
-                  const Icon = type.icon;
-                  const isSelected = watchTravelType === type.id;
-
-                  return (
-                    <motion.div
-                      key={type.id}
-                      variants={cardVariants}
-                      whileHover="hover"
-                      whileTap="tap"
-                      onClick={() => handleTravelTypeChange(type.id)}
-                      className={`
-                        cursor-pointer rounded-xl p-4
-                        ${isSelected ? 
-                          'bg-primary text-primary-foreground shadow-lg' : 
-                          'bg-card hover:bg-accent'
-                        }
-                        transition-colors duration-200
-                      `}
-                    >
-                      <div className="flex flex-col items-center text-center space-y-2">
-                        <Icon className={`h-8 w-8 ${isSelected ? 'text-primary-foreground' : 'text-primary'}`} />
-                        <h3 className="font-medium">{type.label}</h3>
-                        <p className="text-sm opacity-80">{type.description}</p>
+              <FormField
+                control={form.control}
+                name="groupType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2 text-lg font-medium mb-4">
+                      <Users className="h-5 w-5 text-primary" />
+                      Type de voyage
+                    </FormLabel>
+                    <FormControl>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {travelTypes.map((type) => {
+                          const Icon = type.icon;
+                          return (
+                            <motion.div
+                              key={type.id}
+                              variants={cardVariants}
+                              whileHover="hover"
+                              whileTap="tap"
+                              onClick={() => {
+                                field.onChange(type.id);
+                                const selectedType = travelTypes.find(t => t.id === type.id);
+                                if (selectedType) {
+                                  form.setValue('groupSize', selectedType.defaultSize);
+                                  if (!selectedType.hasChildren) {
+                                    form.setValue('hasChildren', false);
+                                    form.setValue('childrenCount', 0);
+                                  }
+                                }
+                              }}
+                              className={`
+                                cursor-pointer rounded-xl p-4
+                                ${field.value === type.id ? 
+                                  'bg-primary text-primary-foreground shadow-lg' : 
+                                  'bg-card hover:bg-accent'
+                                }
+                                transition-colors duration-200
+                              `}
+                            >
+                              <div className="flex flex-col items-center text-center space-y-2">
+                                <Icon className={`h-8 w-8 ${field.value === type.id ? 'text-primary-foreground' : 'text-primary'}`} />
+                                <h3 className="font-medium">{type.label}</h3>
+                                <p className="text-sm opacity-80">{type.description}</p>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
                       </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </Card>
           </motion.div>
 
-          {/* Section Taille du groupe (conditionnelle) */}
+          {/* Section Taille du Groupe */}
           {selectedType && !selectedType.fixedSize && (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={watchTravelType}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
-              >
-                <Card className="p-6">
-                  <FormField
-                    control={form.control}
-                    name="groupSize"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-lg font-medium mb-4">
-                          <User className="h-5 w-5 text-primary" />
-                          Nombre de voyageurs
-                        </FormLabel>
-                        <div className="space-y-4">
-                          <Slider
-                            min={selectedType.defaultSize}
-                            max={10}
-                            step={1}
-                            value={[field.value]}
-                            onValueChange={(values) => field.onChange(values[0])}
-                            className="cursor-grab active:cursor-grabbing"
-                          />
-                          <div className="flex justify-between text-sm text-muted-foreground px-1">
-                            <span className="text-secondary">Sélectionné : {field.value} personne{field.value > 1 ? 's' : ''}</span>
-                            <span className="text-red-500">Maximum : 10 personnes</span>
-                          </div>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </Card>
-              </motion.div>
-            </AnimatePresence>
+            <motion.div variants={cardVariants}>
+              <Card className="p-6">
+                <FormField
+                  control={form.control}
+                  name="groupSize"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2 text-lg font-medium mb-4">
+                        <Users2 className="h-5 w-5 text-primary" />
+                        Nombre de voyageurs
+                      </FormLabel>
+                      <FormControl>
+                        <Slider
+                          min={selectedType.defaultSize}
+                          max={10}
+                          step={1}
+                          value={[field.value]}
+                          onValueChange={(value) => field.onChange(value[0])}
+                          className="w-[200px]"
+                        />
+                      </FormControl>
+                      <div className="text-sm text-muted-foreground">
+                        {watchGroupSize} {watchGroupSize > 1 ? 'personnes' : 'personne'}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </Card>
+            </motion.div>
           )}
 
-          {/* Section Nombre d'enfants (conditionnelle) */}
-          {selectedType?.hasChildren && (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key="children-slider"
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
-              >
-                <Card className="p-6">
-                  <FormField
-                    control={form.control}
-                    name="childrenCount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-lg font-medium mb-4">
-                          <Baby className="h-5 w-5 text-primary" />
-                          Nombre d&apos;enfants parmi les {watchGroupSize} voyageurs
-                        </FormLabel>
-                        <div className="space-y-4">
-                          <Slider
-                            min={0}
-                            max={6}
-                            step={1}
-                            value={[field.value || 0]}
-                            onValueChange={(values) => field.onChange(values[0])}
-                            className="cursor-grab active:cursor-grabbing"
-                          />
-                          <div className="flex justify-between text-sm text-muted-foreground px-1">
-                            <span className="text-secondary">Sélectionné : {field.value || 0} enfant{(field.value || 0) > 1 ? 's' : ''}</span>
-                            <span className="text-red-500">Maximum : 6 enfants</span>
-                          </div>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </Card>
-              </motion.div>
-            </AnimatePresence>
+          {/* Section Enfants */}
+          {selectedType && selectedType.hasChildren && (
+            <motion.div variants={cardVariants}>
+              <Card className="p-6">
+                <FormField
+                  control={form.control}
+                  name="childrenCount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2 text-lg font-medium mb-4">
+                        <Baby className="h-5 w-5 text-primary" />
+                        Nombre d&apos;enfants
+                      </FormLabel>
+                      <FormControl>
+                        <Slider
+                          min={0}
+                          max={5}
+                          step={1}
+                          value={[field.value || 0]}
+                          onValueChange={(value) => field.onChange(value[0])}
+                          className="w-[200px]"
+                        />
+                      </FormControl>
+                      <div className="text-sm text-muted-foreground">
+                        {field.value || 0} {(field.value || 0) > 1 ? 'enfants' : 'enfant'}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </Card>
+            </motion.div>
           )}
 
-          {/* Section Navigation */}
-          <motion.div variants={cardVariants} className="flex justify-between pt-4">
-            <div className="flex justify-end w-full">
-              <Button
-                type="submit"
-                className="group hover:scale-105 transition-all duration-200"
-              >
-                Suivant
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </div>
+          {/* Bouton de soumission */}
+          <motion.div variants={cardVariants} className="flex justify-end">
+            <Button type="submit" className="w-full md:w-auto">
+              Continuer
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </motion.div>
         </motion.div>
       </form>

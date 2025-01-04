@@ -92,8 +92,10 @@ export function protectApiRoute(
 
       // Vérifier si l'utilisateur a le rôle requis
       const hasRequiredRole = requiredRole === 'editor' 
-        ? ['admin', 'editor'].includes(userRole)
-        : userRole === requiredRole;
+        ? ['admin', 'editor', 'user'].includes(userRole)
+        : requiredRole === 'admin'
+          ? userRole === 'admin'
+          : true; // Si pas de rôle requis, accepter tout utilisateur authentifié
 
       if (!hasRequiredRole) {
         console.log('🚫 [API Protection] Accès refusé:', {

@@ -1,4 +1,4 @@
-// app/(auth)/questionnaire/[step]/page.tsx
+// app/(protected)/questionnaire/[step]/page.tsx
 import { redirect } from "next/navigation";
 
 import { BasicInfoStep } from "@/components/questionnaire/steps/BasicInfoStep";

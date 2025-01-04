@@ -17,25 +17,6 @@ export const createClient = () => {
       global: {
         headers: {
           'X-Client-Info': 'supabase-js-web'
-        },
-        fetch: (url, options = {}) => {
-          // Supprimer le rôle du JWT
-          if (options.headers) {
-            const headers = new Headers(options.headers as HeadersInit);
-            const auth = headers.get('Authorization');
-            if (auth) {
-              const token = auth.split(' ')[1];
-              const [header, payload, signature] = token.split('.');
-              const decodedPayload = JSON.parse(atob(payload));
-              // Supprimer le rôle du payload
-              delete decodedPayload.role;
-              // Reconstruire le token sans le rôle
-              const newPayload = btoa(JSON.stringify(decodedPayload));
-              headers.set('Authorization', `Bearer ${header}.${newPayload}.${signature}`);
-              options.headers = Object.fromEntries(headers.entries());
-            }
-          }
-          return fetch(url, options);
         }
       },
       db: {

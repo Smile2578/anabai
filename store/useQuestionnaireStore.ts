@@ -88,94 +88,24 @@ export const useQuestionnaireStore = create<QuestionnaireStore>()(
       },
       
       updateAnswers: async (stepData, step) => {
-        console.log('🔄 updateAnswers appelé avec:', { step, stepData });
         const { currentStep, answers } = get();
         
-        // Mise à jour locale
+        // Mise à jour locale uniquement
         const updatedAnswers = { ...answers, ...stepData };
         const updatedSteps = [...get().steps];
         const stepIndex = updatedSteps.findIndex(s => s.step === step);
         
-        console.log('État actuel:', {
-          currentStep,
-          answers,
-          steps: get().steps
-        });
-
         if (stepIndex >= 0) {
-          updatedSteps[stepIndex] = {
-            step,
-            isCompleted: true,
-            data: stepData
-          };
+          updatedSteps[stepIndex] = { step, isCompleted: true, data: stepData };
         } else {
-          updatedSteps.push({
-            step,
-            isCompleted: true,
-            data: stepData
-          });
+          updatedSteps.push({ step, isCompleted: true, data: stepData });
         }
-
-        console.log('Mise à jour du state avec:', {
-          updatedAnswers,
-          updatedSteps
-        });
 
         set({
           answers: updatedAnswers,
           lastSavedStep: currentStep,
-          steps: updatedSteps,
-          isSyncing: true
+          steps: updatedSteps
         });
-
-        try {
-          // Préparer les données avec les dates converties
-          const processedData = {
-            ...updatedAnswers,
-            basicInfo: updatedAnswers.basicInfo ? {
-              ...updatedAnswers.basicInfo,
-              dateRange: updatedAnswers.basicInfo.dateRange ? {
-                from: new Date(updatedAnswers.basicInfo.dateRange.from),
-                to: new Date(updatedAnswers.basicInfo.dateRange.to)
-              } : undefined
-            } : undefined,
-            createdAt: updatedAnswers.createdAt ? new Date(updatedAnswers.createdAt) : new Date(),
-            updatedAt: new Date()
-          };
-
-          console.log('📤 Envoi des données à l\'API:', processedData);
-
-          const response = await fetch('/api/questionnaire/current', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(processedData),
-          });
-
-          const responseData = await response.json();
-          console.log('📥 Réponse de l\'API:', responseData);
-
-          if (!response.ok) {
-            throw new Error(responseData.error || 'Erreur lors de la sauvegarde');
-          }
-
-          if (responseData.success && responseData.data) {
-            console.log('✅ Mise à jour du state avec les données de l\'API');
-            set({
-              answers: responseData.data,
-              isSyncing: false
-            });
-          } else {
-            throw new Error('Données invalides retournées par l\'API');
-          }
-        } catch (error) {
-          console.error('❌ Erreur lors de la sauvegarde:', error);
-          set({ isSyncing: false });
-          toast({
-            title: "Erreur de sauvegarde",
-            description: error instanceof Error ? error.message : "Impossible de sauvegarder vos réponses",
-            variant: "destructive",
-          });
-        }
       },
       
       submitQuestionnaire: async () => {
@@ -192,44 +122,80 @@ export const useQuestionnaireStore = create<QuestionnaireStore>()(
         try {
           set({ status: 'processing' });
           
-          // Calculer le budget total en fonction des contraintes
-          const budget = {
-            total: store.answers?.constraints?.travelBudget === 'higher' ? 4000 :
-                   store.answers?.constraints?.travelBudget === 'high' ? 2500 :
-                   store.answers?.constraints?.travelBudget === 'medium' ? 1500 : 1000,
-            dailyLimit: store.answers?.constraints?.dailyBudget === 'higher' ? 400 :
-                        store.answers?.constraints?.dailyBudget === 'high' ? 300 :
-                        store.answers?.constraints?.dailyBudget === 'medium' ? 200 : 100,
-            priority: store.answers?.constraints?.budgetPriority || 'undecided'
-          };
-
-          // Préparer les données avec les dates converties et les préférences par défaut
-          const dataToSubmit = {
+          // Préparer les données avec les dates converties
+          const processedData = {
             ...store.answers,
-            budget,
+            basicInfo: store.answers.basicInfo ? {
+              ...store.answers.basicInfo,
+              dateRange: store.answers.basicInfo.dateRange ? {
+                from: new Date(store.answers.basicInfo.dateRange.from),
+                to: new Date(store.answers.basicInfo.dateRange.to)
+              } : undefined
+            } : undefined,
+            budget: {
+              total: store.answers.constraints?.travelBudget === 'low' ? 1000 : 
+                     store.answers.constraints?.travelBudget === 'medium' ? 2000 :
+                     store.answers.constraints?.travelBudget === 'high' ? 3000 : 4000,
+              dailyLimit: store.answers.constraints?.dailyBudget === 'low' ? 100 :
+                         store.answers.constraints?.dailyBudget === 'medium' ? 200 :
+                         store.answers.constraints?.dailyBudget === 'high' ? 300 : 400,
+              priority: store.answers.constraints?.budgetPriority || 'undecided'
+            },
+            createdAt: new Date(),
+            updatedAt: new Date(),
             status: 'completed' as const
           };
 
-          const response = await fetch('/api/questionnaire/submit', {
-            method: 'PATCH',
+          console.log("Données traitées:", processedData);
+
+          // Vérifier si un questionnaire existe déjà
+          const response = await fetch('/api/questionnaire/current', {
+            method: 'GET',
             headers: {
-              'Content-Type': 'application/json',
+              'Accept': 'application/json'
             },
-            body: JSON.stringify(dataToSubmit),
+            credentials: 'include',
           });
 
-          const result = await response.json();
-
           if (!response.ok) {
-            throw new Error(result.error || 'Erreur lors de la soumission');
+            console.error("Erreur lors de la vérification du questionnaire existant:", await response.text());
+            throw new Error('Erreur lors de la vérification du questionnaire existant');
           }
+
+          const result = await response.json();
+          console.log("Résultat de la vérification:", result);
+
+          const method = result.data ? 'PATCH' : 'POST';
+          const endpoint = result.data ? `/api/questionnaire/submit?id=${result.data.id}` : '/api/questionnaire/submit';
+
+          console.log(`Envoi des données via ${method} à ${endpoint}`);
+
+          const submitResponse = await fetch(endpoint, {
+            method,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(processedData),
+          });
+
+          if (!submitResponse.ok) {
+            const errorText = await submitResponse.text();
+            console.error(`Erreur ${submitResponse.status} lors de la soumission:`, errorText);
+            throw new Error(errorText || 'Erreur lors de la soumission');
+          }
+
+          const submitResult = await submitResponse.json();
+          console.log("Résultat de la soumission:", submitResult);
 
           set({ status: 'completed' });
           toast({
             title: "Questionnaire soumis",
-            description: result.message || "Vos réponses ont été enregistrées avec succès",
+            description: submitResult.message || "Vos réponses ont été enregistrées avec succès",
           });
         } catch (error) {
+          console.error("Erreur lors de la soumission:", error);
           set({ status: 'error' });
           toast({
             title: "Erreur",

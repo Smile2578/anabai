@@ -1,4 +1,4 @@
-// app/(auth)/questionnaire/layout.tsx
+// app/(protected)/questionnaire/layout.tsx
 import { Metadata } from "next";
 import { QuestionnaireProgress } from "@/components/questionnaire/QuestionnaireProgress";
 import Image from "next/image";

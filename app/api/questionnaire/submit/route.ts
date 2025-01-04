@@ -1,5 +1,4 @@
 // app/api/questionnaire/submit/route.ts
-import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { QuestionnaireData, QuestionnaireStatus } from "@/types/questionnaire/questionnaire";
 import { questionnaireSchema } from "@/lib/validations/questionnaire";
@@ -25,10 +24,12 @@ async function validateQuestionnaireData(data: unknown): Promise<{
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json(
-        { error: "Non autorisé" },
+        { error: "Non authentifié" },
         { status: 401 }
       );
     }
@@ -121,15 +122,54 @@ export async function POST(request: Request) {
 
     // Enrichissement des données
     const enrichedData = {
-      ...data,
-      user_id: session.user.id,
+      user_id: user.id,
       status: 'completed' as QuestionnaireStatus,
+      created_at: new Date(),
       updated_at: new Date(),
+      
+      // Basic Info
+      duration: data.basicInfo.duration,
+      date_range_from: data.basicInfo.dateRange.from,
+      date_range_to: data.basicInfo.dateRange.to,
+      group_size: data.basicInfo.groupSize,
+      previous_visit: data.basicInfo.previousVisit,
+      visit_count: data.basicInfo.visitCount || null,
+      group_type: data.basicInfo.groupType,
+      has_children: data.basicInfo.hasChildren,
+      children_count: data.basicInfo.childrenCount || null,
+
+      // Travel Style
+      pace: data.travelStyle.pace,
+      comfort: data.travelStyle.comfort,
+      flexibility: data.travelStyle.flexibility,
+      cultural_immersion: data.travelStyle.culturalImmersion,
+      preferences: data.travelStyle.preferences,
+
+      // Interests
+      main_interests: data.interests.mainInterests,
+      specific_interests: data.interests.specificInterests || null,
+      categories: data.interests.categories,
+      must_see_spots: data.interests.mustSeeSpots || null,
+
+      // Budget
+      total_budget: Number(data.budget.total),
+      daily_limit: Number(data.budget.dailyLimit),
+      budget_priority: data.budget.priority,
+
+      // Constraints
+      mobility: data.constraints.mobility,
+      language: data.constraints.language,
+      dietary: data.constraints.dietary || [],
+      travel_budget: data.constraints.travelBudget,
+      daily_budget: data.constraints.dailyBudget,
+
+      // Metadata (simplifié)
+      metadata: {
+        categories: data.interests.categories
+      }
     };
 
     // Sauvegarde dans Supabase
-    const supabase = await createClient();
-
     const { data: savedQuestionnaire, error } = await supabase
       .from('questionnaires')
       .insert([enrichedData])
@@ -161,20 +201,20 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json(
-        { error: "Non autorisé" },
+        { error: "Non authentifié" },
         { status: 401 }
       );
     }
 
-    const supabase = await createClient();
-
     const { data: questionnaire, error } = await supabase
       .from('questionnaires')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -213,10 +253,21 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
       return NextResponse.json(
-        { error: "Non autorisé" },
+        { error: "ID du questionnaire manquant" },
+        { status: 400 }
+      );
+    }
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Non authentifié" },
         { status: 401 }
       );
     }
@@ -224,6 +275,7 @@ export async function PATCH(request: Request) {
     let rawData: unknown;
     try {
       rawData = await request.json();
+      console.log("[PATCH] Données reçues:", JSON.stringify(rawData, null, 2));
 
       // Conversion des données
       if (typeof rawData === 'object' && rawData !== null) {
@@ -244,7 +296,6 @@ export async function PATCH(request: Request) {
             preferences: data.travelStyle.preferences?.length ? 
               data.travelStyle.preferences : ['default']
           } : undefined,
-          created_at: data.createdAt ? new Date(data.createdAt) : undefined,
           updated_at: new Date()
         };
 
@@ -267,19 +318,59 @@ export async function PATCH(request: Request) {
       );
     }
 
+    const { data } = validation;
     const enrichedData = {
-      ...validation.data,
-      user_id: session.user.id,
-      status: validation.data.status || 'completed' as QuestionnaireStatus,
+      user_id: user.id,
+      status: 'completed' as QuestionnaireStatus,
       updated_at: new Date(),
-    };
+      
+      // Basic Info
+      duration: data.basicInfo.duration,
+      date_range_from: data.basicInfo.dateRange.from,
+      date_range_to: data.basicInfo.dateRange.to,
+      group_size: data.basicInfo.groupSize,
+      previous_visit: data.basicInfo.previousVisit,
+      visit_count: data.basicInfo.visitCount || null,
+      group_type: data.basicInfo.groupType,
+      has_children: data.basicInfo.hasChildren,
+      children_count: data.basicInfo.childrenCount || null,
 
-    const supabase = await createClient();
+      // Travel Style
+      pace: data.travelStyle.pace,
+      comfort: data.travelStyle.comfort,
+      flexibility: data.travelStyle.flexibility,
+      cultural_immersion: data.travelStyle.culturalImmersion,
+      preferences: data.travelStyle.preferences,
+
+      // Interests
+      main_interests: data.interests.mainInterests,
+      specific_interests: data.interests.specificInterests || null,
+      categories: data.interests.categories,
+      must_see_spots: data.interests.mustSeeSpots || null,
+
+      // Budget
+      total_budget: Number(data.budget.total),
+      daily_limit: Number(data.budget.dailyLimit),
+      budget_priority: data.budget.priority,
+
+      // Constraints
+      mobility: data.constraints.mobility,
+      language: data.constraints.language,
+      dietary: data.constraints.dietary || [],
+      travel_budget: data.constraints.travelBudget,
+      daily_budget: data.constraints.dailyBudget,
+
+      // Metadata (simplifié)
+      metadata: {
+        categories: data.interests.categories
+      }
+    };
 
     const { data: updatedQuestionnaire, error } = await supabase
       .from('questionnaires')
       .update(enrichedData)
-      .eq('user_id', session.user.id)
+      .eq('id', id)
+      .eq('user_id', user.id)  // Sécurité supplémentaire
       .select()
       .single();
 

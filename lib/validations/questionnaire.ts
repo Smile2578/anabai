@@ -1,9 +1,14 @@
 // lib/validations/questionnaire.ts
 import { z } from "zod";
 
+const dateSchema = z.union([
+  z.string().transform((str) => new Date(str)),
+  z.date()
+]);
+
 const dateRangeSchema = z.object({
-  from: z.date(),
-  to: z.date(),
+  from: dateSchema,
+  to: dateSchema,
 });
 
 export const basicInfoSchema = z.object({
@@ -13,7 +18,6 @@ export const basicInfoSchema = z.object({
   previousVisit: z.boolean(),
   visitCount: z.number().optional(),
   groupType: z.enum(['solo', 'couple', 'friends', 'group', 'family', 'business']),
-  travelType: z.string(),
   hasChildren: z.boolean(),
   childrenCount: z.number().optional(),
 });
@@ -55,6 +59,6 @@ export const questionnaireSchema = z.object({
   budget: budgetSchema,
   constraints: constraintsSchema,
   status: z.enum(['draft', 'completed', 'processing', 'error']).optional(),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
+  createdAt: dateSchema.optional(),
+  updatedAt: dateSchema.optional(),
 });

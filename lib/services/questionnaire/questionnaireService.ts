@@ -14,7 +14,7 @@ import {
 } from '@/types/questionnaire/questionnaire';
 
 type DbQuestionnaire = Database['public']['Tables']['questionnaires']['Row'];
-type QuestionnaireMetadata = {
+type DbMetadata = {
   duration?: number;
   totalTravelers?: number;
   categories?: string[];
@@ -98,7 +98,6 @@ export class QuestionnaireService {
       previousVisit: db.previous_visit,
       visitCount: db.visit_count ?? undefined,
       groupType: db.group_type as BasicInfo['groupType'],
-      travelType: db.travel_type,
       hasChildren: db.has_children,
       childrenCount: db.children_count ?? undefined
     };
@@ -144,7 +143,7 @@ export class QuestionnaireService {
       createdAt: new Date(db.created_at),
       updatedAt: new Date(db.updated_at),
       userId: db.user_id,
-      metadata: db.metadata as QuestionnaireMetadata
+      metadata: (db.metadata || {}) as DbMetadata
     };
   }
 
@@ -159,7 +158,6 @@ export class QuestionnaireService {
       previous_visit: data.basicInfo.previousVisit,
       visit_count: data.basicInfo.visitCount ?? null,
       group_type: data.basicInfo.groupType,
-      travel_type: data.basicInfo.travelType,
       has_children: data.basicInfo.hasChildren,
       children_count: data.basicInfo.childrenCount ?? null,
       
@@ -185,7 +183,7 @@ export class QuestionnaireService {
       daily_budget: data.constraints?.dailyBudget,
       
       status: data.status,
-      metadata: data.metadata as any
+      metadata: data.metadata || {}
     };
   }
 } 

@@ -1,27 +1,25 @@
 // app/api/questionnaire/current/route.ts
-import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json(
         { error: "Non autorisé" },
         { status: 401 }
       );
     }
 
-    const supabase = await createClient();
-
-    const { data: questionnaire, error } = await supabase
+    const { data: questionnaires, error } = await supabase
       .from('questionnaires')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
 
     if (error) {
       console.error("[Questionnaire API Error]:", error);
@@ -31,16 +29,16 @@ export async function GET() {
       );
     }
 
-    if (!questionnaire) {
+    if (!questionnaires || questionnaires.length === 0) {
       return NextResponse.json({
-        success: false,
-        message: "Aucun questionnaire trouvé"
+        success: true,
+        data: null
       });
     }
 
     return NextResponse.json({
       success: true,
-      data: questionnaire
+      data: questionnaires[0]
     });
 
   } catch (error) {
@@ -58,8 +56,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json(
         { error: "Non autorisé" },
         { status: 401 }
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     // Convertir les dates
     const processedData = {
       ...data,
-      user_id: session.user.id,
+      user_id: user.id,
       basicInfo: data.basicInfo ? {
         ...data.basicInfo,
         dateRange: data.basicInfo.dateRange ? {
@@ -82,8 +82,6 @@ export async function POST(request: Request) {
       created_at: data.createdAt ? new Date(data.createdAt) : new Date(),
       updated_at: new Date()
     };
-
-    const supabase = await createClient();
 
     const { data: savedQuestionnaire, error } = await supabase
       .from('questionnaires')
