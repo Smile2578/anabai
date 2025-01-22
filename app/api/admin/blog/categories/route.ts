@@ -1,23 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import BlogCategory from '@/models/blog-category.model';
-import connectDB from '@/lib/db/connection';
+import { createClient } from '@/lib/supabase/server';
+
+interface BlogCategory {
+  id: string;
+  parent_id: string | null;
+  name: { fr: string; en?: string };
+  order_index: number;
+  children?: BlogCategory[];
+}
 
 export async function GET() {
   try {
-    const session = await auth();
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user?.user_metadata?.role || !['admin', 'editor'].includes(user.user_metadata.role)) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 401 }
       );
     }
 
-    await connectDB();
-    const categories = await BlogCategory.getTree();
+    const { data: categories, error } = await supabase
+      .from('blog_categories')
+      .select('*')
+      .order('order_index', { ascending: true });
 
-    return NextResponse.json(categories);
+    if (error) {
+      throw error;
+    }
+
+    // Fonction pour construire l'arbre des catégories
+    const buildCategoryTree = (categories: BlogCategory[], parentId: string | null = null): BlogCategory[] => {
+      return categories
+        .filter(cat => cat.parent_id === parentId)
+        .map(cat => ({
+          ...cat,
+          children: buildCategoryTree(categories, cat.id)
+        }));
+    };
+
+    return NextResponse.json(buildCategoryTree(categories));
   } catch (error) {
     console.error('Error in GET /api/admin/blog/categories:', error);
     return NextResponse.json(
@@ -29,20 +52,32 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user?.user_metadata?.role || !['admin', 'editor'].includes(user.user_metadata.role)) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 401 }
       );
     }
 
-    await connectDB();
     const data = await request.json();
 
-    const category = new BlogCategory(data);
-    await category.save();
+    const { data: category, error } = await supabase
+      .from('blog_categories')
+      .insert({
+        ...data,
+        slug: data.name.fr.toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, ''),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json(category, { status: 201 });
   } catch (error) {

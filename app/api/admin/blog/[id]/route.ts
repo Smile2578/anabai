@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import BlogPost from '@/models/blog.model';
-import connectDB from '@/lib/db/connection';
+import { createClient } from '@/lib/supabase/server';
 
 type RouteContext = {
   params: Promise<{
@@ -10,33 +8,77 @@ type RouteContext = {
 };
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: RouteContext
 ) {
+  console.log('🔍 GET /api/admin/blog/[id] - Début de la requête');
+  console.log('Params reçus:', params);
+
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    console.log('✅ Client Supabase créé');
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('👤 Utilisateur:', user);
+
     const resolvedParams = await params;
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
+    console.log('🔑 ID de l\'article:', resolvedParams.id);
+
+    if (authError) {
+      console.error('❌ Erreur d\'authentification:', authError);
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 401 }
       );
     }
 
-    await connectDB();
+    if (!user?.user_metadata?.role || !['admin', 'editor'].includes(user.user_metadata.role)) {
+      console.error('❌ Rôle non autorisé:', user?.user_metadata?.role);
+      return NextResponse.json(
+        { error: 'Non autorisé' },
+        { status: 401 }
+      );
+    }
 
-    const post = await BlogPost.findById(resolvedParams.id);
-    if (!post) {
+    console.log('🔍 Recherche de l\'article dans la base de données');
+    const { data: post, error } = await supabase
+      .from('blogs')
+      .select(`
+        *,
+        author:users!blogs_author_id_fkey (
+          id,
+          name,
+          email
+        ),
+        category:blog_categories!blogs_category_id_fkey (
+          id,
+          name,
+          slug
+        )
+      `)
+      .eq('id', resolvedParams.id)
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur lors de la récupération de l\'article:', error);
       return NextResponse.json(
         { error: 'Article non trouvé' },
         { status: 404 }
       );
     }
 
+    if (!post) {
+      console.error('❌ Article non trouvé avec l\'ID:', resolvedParams.id);
+      return NextResponse.json(
+        { error: 'Article non trouvé' },
+        { status: 404 }
+      );
+    }
+
+    console.log('✅ Article trouvé:', post);
     return NextResponse.json(post);
   } catch (error) {
-    console.error('Error in GET /api/admin/blog/[id]:', error);
+    console.error('❌ Erreur serveur:', error);
     return NextResponse.json(
       { error: 'Erreur serveur interne' },
       { status: 500 }
@@ -48,55 +90,146 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteContext
 ) {
+  console.log('🔄 PATCH /api/admin/blog/[id] - Début de la requête');
+  console.log('Params reçus:', params);
+
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    console.log('✅ Client Supabase créé');
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('👤 Utilisateur:', user);
+
     const resolvedParams = await params;
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
+    console.log('🔑 ID de l\'article:', resolvedParams.id);
+
+    if (authError) {
+      console.error('❌ Erreur d\'authentification:', authError);
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 401 }
       );
     }
 
-    await connectDB();
+    if (!user?.user_metadata?.role || !['admin', 'editor'].includes(user.user_metadata.role)) {
+      console.error('❌ Rôle non autorisé:', user?.user_metadata?.role);
+      return NextResponse.json(
+        { error: 'Non autorisé' },
+        { status: 401 }
+      );
+    }
 
-    const data = await request.json();
-    const post = await BlogPost.findById(resolvedParams.id);
+    const body = await request.json();
+    console.log('📝 Données reçues:', body);
+
+    const { data: post, error } = await supabase
+      .from('blogs')
+      .update({
+        title: body.title,
+        content: body.content,
+        excerpt: body.excerpt,
+        category_id: body.category_id,
+        cover_image: body.cover_image,
+        status: body.status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', resolvedParams.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur lors de la mise à jour de l\'article:', error);
+      return NextResponse.json(
+        { error: 'Erreur lors de la mise à jour de l\'article' },
+        { status: 500 }
+      );
+    }
 
     if (!post) {
+      console.error('❌ Article non trouvé avec l\'ID:', resolvedParams.id);
       return NextResponse.json(
         { error: 'Article non trouvé' },
         { status: 404 }
       );
     }
 
-    // Mise à jour des champs
-    Object.assign(post, {
-      title: data.title,
-      content: data.content,
-      excerpt: data.excerpt,
-      coverImage: data.coverImage,
-      category: data.category,
-      tags: data.tags,
-      seo: {
-        title: {
-          fr: data.seo?.title?.fr || data.title.fr,
-          en: data.seo?.title?.en || data.title.en,
-        },
-        description: {
-          fr: data.seo?.description?.fr || data.excerpt.fr,
-          en: data.seo?.description?.en || data.excerpt.en,
-        },
-        keywords: data.seo?.keywords || [],
-      },
-    });
-
-    await post.save();
-
+    console.log('✅ Article mis à jour avec succès:', post);
     return NextResponse.json(post);
   } catch (error) {
-    console.error('Error in PATCH /api/admin/blog/[id]:', error);
+    console.error('❌ Erreur serveur:', error);
+    return NextResponse.json(
+      { error: 'Erreur serveur interne' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: RouteContext
+) {
+  console.log('🗑️ DELETE /api/admin/blog/[id] - Début de la requête');
+  console.log('Params reçus:', params);
+
+  try {
+    const supabase = await createClient();
+    console.log('✅ Client Supabase créé');
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('👤 Utilisateur:', user);
+
+    const resolvedParams = await params;
+    console.log('🔑 ID de l\'article:', resolvedParams.id);
+
+    if (authError) {
+      console.error('❌ Erreur d\'authentification:', authError);
+      return NextResponse.json(
+        { error: 'Non autorisé' },
+        { status: 401 }
+      );
+    }
+
+    if (!user?.user_metadata?.role || !['admin'].includes(user.user_metadata.role)) {
+      console.error('❌ Rôle non autorisé:', user?.user_metadata?.role);
+      return NextResponse.json(
+        { error: 'Non autorisé - Seuls les administrateurs peuvent supprimer des articles' },
+        { status: 401 }
+      );
+    }
+
+    // Vérifier si l'article existe avant de le supprimer
+    const { data: existingPost, error: checkError } = await supabase
+      .from('blogs')
+      .select('id')
+      .eq('id', resolvedParams.id)
+      .single();
+
+    if (checkError || !existingPost) {
+      console.error('❌ Article non trouvé:', checkError || 'Aucun article avec cet ID');
+      return NextResponse.json(
+        { error: 'Article non trouvé' },
+        { status: 404 }
+      );
+    }
+
+    // Supprimer l'article
+    const { error: deleteError } = await supabase
+      .from('blogs')
+      .delete()
+      .eq('id', resolvedParams.id);
+
+    if (deleteError) {
+      console.error('❌ Erreur lors de la suppression:', deleteError);
+      return NextResponse.json(
+        { error: 'Erreur lors de la suppression de l\'article' },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ Article supprimé avec succès');
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('❌ Erreur serveur:', error);
     return NextResponse.json(
       { error: 'Erreur serveur interne' },
       { status: 500 }

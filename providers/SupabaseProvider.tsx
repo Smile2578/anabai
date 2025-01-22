@@ -39,15 +39,14 @@ export default function SupabaseProvider({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 [SupabaseProvider] Changement d\'état auth:', event)
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        console.log('🔄 [SupabaseProvider] État auth:', event)
+      }
+      
       setUser(session?.user ?? null)
       
-      if (session?.user) {
-        console.log('👤 [SupabaseProvider] Utilisateur connecté:', session.user.email)
-        // Réinitialiser le client avec le nouveau token
+      if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
         supabase.realtime.setAuth(session.access_token)
-      } else {
-        console.log('👤 [SupabaseProvider] Utilisateur déconnecté')
       }
     })
 

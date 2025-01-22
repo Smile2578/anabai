@@ -5,8 +5,9 @@ import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
+import SupabaseProvider from '@/providers/SupabaseProvider';
 
-export default function PlacesLayout({
+export default function BlogLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -23,18 +24,20 @@ export default function PlacesLayout({
   }));
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="container mx-auto px-4 py-6 space-y-8">
-        <Suspense
-          fallback={
-            <div className="flex h-screen items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          }
-        >
-          {children}
-        </Suspense>
-      </div>
-    </QueryClientProvider>
+    <SupabaseProvider>
+      <QueryClientProvider client={queryClient}>
+        <div className="container mx-auto px-4 py-6 space-y-8">
+          <Suspense
+            fallback={
+              <div className="flex h-screen items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            }
+          >
+            {children}
+          </Suspense>
+        </div>
+      </QueryClientProvider>
+    </SupabaseProvider>
   );
 }

@@ -1,31 +1,50 @@
 // app/api/admin/authors/route.ts
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/db/connection';
-import User from '@/models/User';
-import type { IUser } from '@/models/User';
-import Place from '@/models/place.model';
-import { protectApiRoute, SessionWithUser } from '@/lib/auth/protect-api';
+import { createClient } from '@/lib/supabase/server';
 
-async function handleGetAuthors(req: Request, session: SessionWithUser) {
+export async function GET() {
   try {
-    console.log('👤 [API/Places] GET request by:', {
-      user: session.user.email,
-      role: session.user.role
+    const supabase = await createClient();
+
+    // Vérifier l'authentification
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Non autorisé' },
+        { status: 401 }
+      );
+    }
+
+    // Vérifier le rôle de l'utilisateur
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userError || !userData || !['admin', 'editor'].includes(userData.role)) {
+      return NextResponse.json(
+        { error: 'Non autorisé' },
+        { status: 403 }
+      );
+    }
+
+    console.log('👤 [API/Authors] GET request by:', {
+      user: user.email,
+      role: userData.role
     });
-    await connectDB();
 
-    const authors = await User.find({
-      role: { $in: ['admin', 'editor'] }
-    }).lean() as unknown as (IUser & { _id: string })[];
+    // Récupérer les auteurs (admin et editor)
+    const { data: authors, error: authorsError } = await supabase
+      .from('users')
+      .select('id, name, email, role')
+      .in('role', ['admin', 'editor']);
 
-    const formattedAuthors = authors.map(author => ({
-      id: author._id,
-      name: author.name,
-      role: author.role,
-      email: author.email
-    }));
+    if (authorsError) {
+      throw authorsError;
+    }
 
-    return NextResponse.json(formattedAuthors);
+    return NextResponse.json(authors);
     
   } catch (error) {
     console.error('Error fetching authors:', error);
@@ -36,12 +55,38 @@ async function handleGetAuthors(req: Request, session: SessionWithUser) {
   }
 }
 
-async function handleAddAuthor(req: Request, session: SessionWithUser) {
+export async function POST(req: Request) {
   try {
-    console.log('👤 [API/Places] POST request by:', {
-      user: session.user.email,
-      role: session.user.role
+    const supabase = await createClient();
+
+    // Vérifier l'authentification
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Non autorisé' },
+        { status: 401 }
+      );
+    }
+
+    // Vérifier le rôle de l'utilisateur
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userError || !userData || !['admin', 'editor'].includes(userData.role)) {
+      return NextResponse.json(
+        { error: 'Non autorisé' },
+        { status: 403 }
+      );
+    }
+
+    console.log('👤 [API/Authors] POST request by:', {
+      user: user.email,
+      role: userData.role
     });
+
     const { placeId, authorId } = await req.json();
 
     if (!placeId || !authorId) {
@@ -51,25 +96,41 @@ async function handleAddAuthor(req: Request, session: SessionWithUser) {
       );
     }
 
-    await connectDB();
+    // Vérifier que l'auteur existe et a le bon rôle
+    const { data: author, error: authorError } = await supabase
+      .from('users')
+      .select('id, name, role')
+      .eq('id', authorId)
+      .in('role', ['admin', 'editor'])
+      .single();
 
-    const author = await User.findOne({
-      _id: authorId,
-      role: { $in: ['admin', 'editor'] }
-    }).lean() as unknown as (IUser & { _id: string });
-
-    if (!author) {
+    if (authorError || !author) {
       return NextResponse.json(
         { error: 'Auteur non trouvé ou non autorisé' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ 
-      id: author._id,
+    // Ajouter l'auteur au lieu
+    const newAuthor = {
+      id: author.id,
       name: author.name,
-      role: author.role
-    });
+      role: author.role,
+      addedAt: new Date().toISOString()
+    };
+
+    const { error: updateError } = await supabase
+      .from('places')
+      .update({
+        authors: `array_append(authors, '${JSON.stringify(newAuthor)}'::jsonb)`
+      })
+      .eq('id', placeId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    return NextResponse.json(author);
     
   } catch (error) {
     console.error('Error adding author:', error);
@@ -80,12 +141,38 @@ async function handleAddAuthor(req: Request, session: SessionWithUser) {
   }
 }
 
-async function handleUpdateAuthors(req: Request, session: SessionWithUser) {
+export async function PATCH(req: Request) {
   try {
-    console.log('👤 [API/Places] PATCH request by:', {
-      user: session.user.email,
-      role: session.user.role
+    const supabase = await createClient();
+
+    // Vérifier l'authentification
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Non autorisé' },
+        { status: 401 }
+      );
+    }
+
+    // Vérifier le rôle de l'utilisateur
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userError || !userData || !['admin', 'editor'].includes(userData.role)) {
+      return NextResponse.json(
+        { error: 'Non autorisé' },
+        { status: 403 }
+      );
+    }
+
+    console.log('👤 [API/Authors] PATCH request by:', {
+      user: user.email,
+      role: userData.role
     });
+
     const { placeId, authors } = await req.json();
 
     if (!placeId || !authors) {
@@ -95,16 +182,15 @@ async function handleUpdateAuthors(req: Request, session: SessionWithUser) {
       );
     }
 
-    await connectDB();
-
     // Vérifier que tous les auteurs existent et ont les bons rôles
     const authorIds = authors.map((a: { id: string }) => a.id);
-    const validAuthors = await User.find({
-      _id: { $in: authorIds },
-      role: { $in: ['admin', 'editor'] }
-    });
+    const { data: validAuthors, error: authorsError } = await supabase
+      .from('users')
+      .select('id, name, role')
+      .in('id', authorIds)
+      .in('role', ['admin', 'editor']);
 
-    if (validAuthors.length !== authors.length) {
+    if (authorsError || !validAuthors || validAuthors.length !== authors.length) {
       return NextResponse.json(
         { error: 'Certains auteurs sont invalides ou non autorisés' },
         { status: 400 }
@@ -112,31 +198,27 @@ async function handleUpdateAuthors(req: Request, session: SessionWithUser) {
     }
 
     // Mettre à jour les auteurs du lieu
-    const updatedPlace = await Place.findByIdAndUpdate(
-      placeId,
-      {
-        $set: {
-          'metadata.authors': authors.map((author: { id: string; name: string; role: string }) => ({
-            id: author.id,
-            name: author.name,
-            role: author.role,
-            addedAt: new Date()
-          }))
-        }
-      },
-      { new: true }
-    );
-    
-    if (!updatedPlace) {
-      return NextResponse.json(
-        { error: 'Lieu non trouvé' },
-        { status: 404 }
-      );
+    const { data: updatedPlace, error: updateError } = await supabase
+      .from('places')
+      .update({
+        authors: authors.map((author: { id: string; name: string; role: string }) => ({
+          id: author.id,
+          name: author.name,
+          role: author.role,
+          addedAt: new Date().toISOString()
+        }))
+      })
+      .eq('id', placeId)
+      .select('authors')
+      .single();
+
+    if (updateError) {
+      throw updateError;
     }
-    
+
     return NextResponse.json({
       success: true,
-      authors: updatedPlace.metadata.authors || []
+      authors: updatedPlace?.authors || []
     });
 
   } catch (error) {
@@ -147,7 +229,3 @@ async function handleUpdateAuthors(req: Request, session: SessionWithUser) {
     );
   }
 }
-
-export const GET = protectApiRoute(handleGetAuthors, 'editor');
-export const POST = protectApiRoute(handleAddAuthor, 'editor');
-export const PATCH = protectApiRoute(handleUpdateAuthors, 'editor');

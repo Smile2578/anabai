@@ -1,22 +1,28 @@
+// hooks/blog/useSearch.ts
 import { useState, useCallback } from 'react';
-import { BlogSearchService } from '@/lib/services/blog/BlogSearchService';
-import { BlogPost } from '@/types/blog';
+import { createClient } from '@/lib/supabase/client';
+import type { Blog } from '@/types/blog';
 
-interface SearchState {
-  posts: BlogPost[];
-  loading: boolean;
-  error: string | null;
-  pagination: {
-    page: number;
-    totalPages: number;
-    totalItems: number;
-  };
+
+interface SearchParams {
+  query: string;
+  tags?: string[];
+  page?: number;
+  limit?: number;
+  status?: string;
 }
 
-const searchService = new BlogSearchService();
-
 export function useSearch() {
-  const [state, setState] = useState<SearchState>({
+  const [state, setState] = useState<{
+    posts: Blog[];
+    loading: boolean;
+    error: string | null;
+    pagination: {
+      page: number;
+      totalPages: number;
+      totalItems: number;
+    };
+  }>({
     posts: [],
     loading: false,
     error: null,
@@ -27,27 +33,49 @@ export function useSearch() {
     },
   });
 
-  const search = useCallback(async (
-    query: string,
-    tags: string[] = [],
-    page: number = 1,
-    limit: number = 10
-  ) => {
+  const search = useCallback(async (params: SearchParams) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
+    const supabase = createClient();
 
     try {
-      const result = await searchService.search({
-        query,
-        tags,
-        page,
-        limit,
-      });
+      let query = supabase
+        .from('blogs')
+        .select('*', { count: 'exact' });
+
+      // Recherche textuelle
+      if (params.query) {
+        query = query.or(`title->fr.ilike.%${params.query}%,content->fr.ilike.%${params.query}%,excerpt->fr.ilike.%${params.query}%`);
+      }
+
+      // Filtrage par tags
+      if (params.tags && params.tags.length > 0) {
+        query = query.contains('tags', params.tags);
+      }
+
+      // Filtrage par status
+      if (params.status) {
+        query = query.eq('status', params.status);
+      }
+
+      // Pagination
+      const from = ((params.page || 1) - 1) * (params.limit || 10);
+      query = query
+        .order('created_at', { ascending: false })
+        .range(from, from + (params.limit || 10) - 1);
+
+      const { data, error, count } = await query;
+
+      if (error) throw error;
 
       setState({
-        posts: result.posts,
+        posts: data as Blog[],
         loading: false,
         error: null,
-        pagination: result.pagination,
+        pagination: {
+          page: params.page || 1,
+          totalPages: Math.ceil((count || 0) / (params.limit || 10)),
+          totalItems: count || 0,
+        },
       });
     } catch (error) {
       setState(prev => ({
@@ -58,16 +86,8 @@ export function useSearch() {
     }
   }, []);
 
-  const setPage = useCallback((page: number) => {
-    setState(prev => ({
-      ...prev,
-      pagination: { ...prev.pagination, page },
-    }));
-  }, []);
-
   return {
     ...state,
     search,
-    setPage,
   };
-} 
+}

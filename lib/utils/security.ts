@@ -1,10 +1,12 @@
 import { headers } from 'next/headers';
 import { AppError, errorCodes } from './error-handler';
-import { auth } from '@/auth';
+import { createClient } from '@/lib/supabase/server';
 
 export async function requireAuth() {
-  const session = await auth();
-  if (!session?.user) {
+  const supabase = await createClient();
+  const { data: { session }, error } = await supabase.auth.getSession();
+
+  if (error || !session?.user) {
     throw new AppError(
       'Authentification requise',
       errorCodes.AUTH,
@@ -16,19 +18,28 @@ export async function requireAuth() {
 
 export async function requireRole(allowedRoles: string[]) {
   const session = await requireAuth();
-  if (!session.user.role || !allowedRoles.includes(session.user.role)) {
+  const supabase = await createClient();
+  
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', session.user.id)
+    .single();
+
+  if (error || !user?.role || !allowedRoles.includes(user.role)) {
     throw new AppError(
       'Accès non autorisé',
       errorCodes.FORBIDDEN,
       403
     );
   }
-  return session;
+
+  return { ...session, user: { ...session.user, role: user.role } };
 }
 
 export async function validateCSRFToken() {
-  const headersList = headers();
-  const csrfToken = (await headersList).get('x-csrf-token');
+  const headersList = await headers();
+  const csrfToken = headersList.get('x-csrf-token');
   
   if (!csrfToken || csrfToken !== process.env.CSRF_SECRET) {
     throw new AppError(
@@ -47,7 +58,7 @@ export function sanitizeInput(input: string): string {
 
 export function validateOrigin(origin: string | null) {
   const allowedOrigins = [
-    process.env.NEXTAUTH_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
     'http://localhost:3000'
   ].filter(Boolean);
 

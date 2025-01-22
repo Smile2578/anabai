@@ -1,51 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { protectApiRoute, SessionWithUser, RouteParams } from '@/lib/auth/protect-api';
+import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
-import connectDB from '@/lib/db/connection';
-import BlogPost from '@/models/blog.model';
+
+type RouteContext = {
+  params: Promise<{
+    id: string;
+  }>;
+};
 
 const updateStatusSchema = z.object({
   action: z.enum(['publish', 'archive', 'delete']),
   scheduledDate: z.string().datetime().optional()
 });
 
-async function updatePostStatus(
-  req: NextRequest,
-  session: SessionWithUser,
-  routeParams: RouteParams
-): Promise<NextResponse> {
+export async function PATCH(
+  request: NextRequest,
+  { params }: RouteContext
+) {
   try {
-    const resolvedParams = await routeParams.params;
-    console.log('ID reçu:', resolvedParams.id);
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const resolvedParams = await params;
 
-    await connectDB();
-    const post = await BlogPost.findById(resolvedParams.id);
-    console.log('Post trouvé:', post);
-    
-    if (!post) {
-      console.log('Post non trouvé dans la DB');
-      return NextResponse.json({ error: 'Article non trouvé' }, { status: 404 });
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Non autorisé' },
+        { status: 401 }
+      );
     }
 
-    const body = await req.json();
+    // Récupérer le rôle de l'utilisateur depuis la table users
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userError || !userData || !['admin', 'editor'].includes(userData.role)) {
+      return NextResponse.json(
+        { error: 'Non autorisé - Rôle invalide' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
     const validatedBody = updateStatusSchema.parse(body);
     const { action } = validatedBody;
 
     switch (action) {
-      case 'publish':
-        post.status = 'published';
-        post.publishedAt = new Date();
-        await post.save();
-        break;
+      case 'publish': {
+        const { error } = await supabase
+          .from('blogs')
+          .update({
+            status: 'published',
+            published_at: new Date().toISOString()
+          })
+          .eq('id', resolvedParams.id);
 
-      case 'archive':
-        post.status = 'archived';
-        await post.save();
+        if (error) throw error;
         break;
+      }
 
-      case 'delete':
-        await BlogPost.deleteOne({ _id: resolvedParams.id });
+      case 'archive': {
+        const { error } = await supabase
+          .from('blogs')
+          .update({ status: 'archived' })
+          .eq('id', resolvedParams.id);
+
+        if (error) throw error;
         break;
+      }
+
+      case 'delete': {
+        const { error } = await supabase
+          .from('blogs')
+          .delete()
+          .eq('id', resolvedParams.id);
+
+        if (error) throw error;
+        break;
+      }
     }
 
     return NextResponse.json({
@@ -60,6 +94,4 @@ async function updatePostStatus(
       { status: error instanceof z.ZodError ? 400 : 500 }
     );
   }
-}
-
-export const PATCH = protectApiRoute(updatePostStatus); 
+} 

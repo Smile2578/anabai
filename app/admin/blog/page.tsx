@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { DataTable } from '@/components/shared/data-table';
 import { columns } from './columns';
 import { useBlogPosts } from '@/hooks/blog/useBlogPosts';
+import { BlogCategoriesDialog } from '@/components/blog/BlogCategoriesDialog';
 
 export default function BlogPostsPage() {
   const router = useRouter();
@@ -25,10 +26,13 @@ export default function BlogPostsPage() {
             </Button>
           )}
         </div>
-        <Button onClick={() => router.push('/admin/blog/create')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nouvel Article
-        </Button>
+        <div className="flex gap-2">
+          <BlogCategoriesDialog />
+          <Button onClick={() => router.push('/admin/blog/create')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nouvel Article
+          </Button>
+        </div>
       </div>
 
       <DataTable

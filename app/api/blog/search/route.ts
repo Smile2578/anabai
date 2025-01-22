@@ -1,11 +1,8 @@
 'use server';
 
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createRedisCacheService } from '@/lib/services/core/RedisCacheService';
-import connectDB from '@/lib/db/connection';
-import BlogPost from '@/models/blog.model';
-import type { FilterQuery } from 'mongoose';
-import type { BlogPost as BlogPostType } from '@/types/blog';
 
 let searchCache: Awaited<ReturnType<typeof createRedisCacheService>>;
 
@@ -32,35 +29,33 @@ export async function POST(request: Request) {
     }
 
     // Si pas en cache, effectuer la recherche
-    await connectDB();
+    const supabase = await createClient();
+    let queryBuilder = supabase
+      .from('blogs')
+      .select('*, author:profiles(name, email)', { count: 'exact' })
+      .eq('status', 'published')
+      .order('published_at', { ascending: false });
 
-    const filter: FilterQuery<BlogPostType> = { status: 'published' };
     if (query) {
-      filter.$or = [
-        { 'title.fr': { $regex: query, $options: 'i' } },
-        { 'content.fr': { $regex: query, $options: 'i' } },
-      ];
-    }
-    if (tags.length > 0) {
-      filter.tags = { $in: tags };
+      queryBuilder = queryBuilder.or(`title->fr.ilike.%${query}%,content->fr.ilike.%${query}%`);
     }
 
-    const [posts, total] = await Promise.all([
-      BlogPost.find(filter)
-        .sort({ publishedAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean(),
-      BlogPost.countDocuments(filter)
-    ]);
+    if (tags.length > 0) {
+      queryBuilder = queryBuilder.contains('tags', tags);
+    }
+
+    const { data: posts, count, error } = await queryBuilder
+      .range((page - 1) * limit, page * limit - 1);
+
+    if (error) throw error;
 
     const result = {
-      posts: JSON.parse(JSON.stringify(posts)),
-      total,
+      posts,
+      total: count || 0,
       pagination: {
         page,
-        totalPages: Math.ceil(total / limit),
-        totalItems: total
+        totalPages: Math.ceil((count || 0) / limit),
+        totalItems: count || 0
       }
     };
 

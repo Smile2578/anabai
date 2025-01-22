@@ -25,12 +25,5 @@ export const createClient = () => {
     }
   )
 
-  // Ajouter des logs pour déboguer
-  const originalFrom = supabase.from.bind(supabase)
-  supabase.from = (table: string) => {
-    console.log(`🔍 [Supabase] Accès à la table ${table}`)
-    return originalFrom(table)
-  }
-
   return supabase
 } 

@@ -1,5 +1,8 @@
+// hooks/blog/usePostActions.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from '../use-toast';
+import { createClient } from '@/lib/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import type { Blog } from '@/types/blog';
 
 type PostAction = 'publish' | 'archive' | 'delete';
 
@@ -12,34 +15,65 @@ interface PostActionParams {
 export function usePostActions() {
   const queryClient = useQueryClient();
 
-  const { mutate: updatePostStatus, isPending } = useMutation({
+  const { mutate: updatePostStatus, isPending } = useMutation<Blog, Error, PostActionParams>({
     mutationFn: async ({ postId, action, scheduledDate }: PostActionParams) => {
-      const response = await fetch(`/api/admin/blog/${postId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action, scheduledDate }),
-      });
+      const supabase = createClient();
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          // Invalider le cache car l'article n'existe plus
-          queryClient.invalidateQueries({ queryKey: ['blog-posts'] });
-        }
-        throw new Error(data.error || 'Une erreur est survenue');
+      if (action === 'publish') {
+        const { data, error } = await supabase
+          .from('blogs')
+          .update({ 
+            status: 'published',
+            published_at: scheduledDate || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', postId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
       }
 
-      return data;
+      if (action === 'archive') {
+        const { data, error } = await supabase
+          .from('blogs')
+          .update({ 
+            status: 'archived',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', postId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
+      }
+
+      if (action === 'delete') {
+        const { error } = await supabase
+          .from('blogs')
+          .delete()
+          .eq('id', postId);
+
+        if (error) throw error;
+        return null;
+      }
+
+      throw new Error('Action non valide');
     },
-    onSuccess: () => {
-      // Invalider le cache pour forcer un rechargement
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['blog-posts'] });
+      
+      const messages = {
+        publish: "L'article a été publié avec succès",
+        archive: "L'article a été archivé avec succès",
+        delete: "L'article a été supprimé avec succès"
+      };
+
       toast({
         title: "Succès",
-        description: "L'article a été mis à jour avec succès",
+        description: messages[variables.action],
       });
     },
     onError: (error: Error) => {
@@ -55,4 +89,4 @@ export function usePostActions() {
     updatePostStatus,
     isLoading: isPending
   };
-} 
+}

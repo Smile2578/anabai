@@ -1,5 +1,5 @@
 // app/trip-planner/page.tsx
-import { auth } from "@/auth";
+import { createClient } from "@/lib/supabase/server";
 import { features, plans, testimonials } from "@/lib/config/trip-planner.config";
 import { HeroSection } from "@/components/trip-planner/HeroSection";
 import { ProcessSection } from "@/components/trip-planner/ProcessSection";
@@ -11,11 +11,12 @@ import { getQuestionnaire } from "@/lib/actions/questionnaire";
 import { FileSpreadsheetIcon, BrainIcon, EditIcon } from "lucide-react";
 
 export default async function TripPlannerPage() {
-  const session = await auth();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   
   let hasCompletedQuestionnaire = false;
   
-  if (session?.user?.id) {
+  if (user?.id) {
     const questionnaire = await getQuestionnaire();
     hasCompletedQuestionnaire = !!questionnaire?.completed;
   }
@@ -28,7 +29,7 @@ export default async function TripPlannerPage() {
           <HeroSection
             title="Planifiez votre voyage au Japon"
             subtitle="Une expérience unique et personnalisée grâce à l'IA"
-            isAuthenticated={!!session}
+            isAuthenticated={!!user}
             hasCompletedQuestionnaire={hasCompletedQuestionnaire}
           />
         </section>
@@ -81,7 +82,7 @@ export default async function TripPlannerPage() {
               title="Prêt à vivre une expérience unique ?"
               subtitle="Commencez votre planification maintenant"
               buttonText="Créer mon voyage"
-              isAuthenticated={!!session}
+              isAuthenticated={!!user}
               hasCompletedQuestionnaire={hasCompletedQuestionnaire}
             />
           </section>

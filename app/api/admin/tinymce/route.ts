@@ -1,13 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: NextRequest) {
-  console.log('🔑 [TINYMCE] API Key:', process.env.TINYMCE_API_KEY);
-  console.log('request:', request);
+export async function GET() {
   try {
-    const session = await auth();
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
+    const supabase = await createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    if (error || !user?.user_metadata?.role || !['admin', 'editor'].includes(user.user_metadata.role)) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 401 }

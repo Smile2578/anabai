@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import BlogPost from '@/models/blog.model';
-import connectDB from '@/lib/db/connection';
+import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: NextRequest) {
-  console.log('request:', request);
+export async function GET() {
   try {
-    const session = await auth();
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user?.user_metadata?.role || !['admin', 'editor'].includes(user.user_metadata.role)) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 401 }
       );
     }
 
-    await connectDB();
+    const { data: posts, error } = await supabase
+      .from('blogs')
+      .select('*, author:profiles(name, email)')
+      .order('created_at', { ascending: false });
 
-    const posts = await BlogPost.find()
-      .sort({ createdAt: -1 })
-      .populate('author', 'name email')
-      .lean();
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json(posts);
   } catch (error) {
@@ -34,16 +34,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user?.user_metadata?.role || !['admin', 'editor'].includes(user.user_metadata.role)) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 401 }
       );
     }
-
-    await connectDB();
 
     const data = await request.json();
 
@@ -56,27 +55,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Création de l'article
-    const post = new BlogPost({
-      ...data,
-      author: {
-        id: session.user.id,
-        name: session.user.name || 'Anonyme',
-      },
-      seo: {
-        title: {
-          fr: data.seo?.title?.fr || data.title.fr,
-          en: data.seo?.title?.en || data.title.en,
+    const { data: post, error } = await supabase
+      .from('blogs')
+      .insert({
+        ...data,
+        author_id: user.id,
+        seo: {
+          title: {
+            fr: data.seo?.title?.fr || data.title.fr,
+            en: data.seo?.title?.en || data.title.en,
+          },
+          description: {
+            fr: data.seo?.description?.fr || data.excerpt.fr,
+            en: data.seo?.description?.en || data.excerpt.en,
+          },
+          keywords: data.seo?.keywords || [],
         },
-        description: {
-          fr: data.seo?.description?.fr || data.excerpt.fr,
-          en: data.seo?.description?.en || data.excerpt.en,
-        },
-        keywords: data.seo?.keywords || [],
-      },
-      status: 'draft',
-    });
-    console.log(post);
-    await post.save();
+        status: 'draft',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json(post, { status: 201 });
   } catch (error) {

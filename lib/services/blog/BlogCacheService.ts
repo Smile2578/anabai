@@ -1,67 +1,66 @@
-import { RedisCacheService, createRedisCacheService } from '../core/RedisCacheService';
-import { BlogPost } from '@/types/blog';
+// lib/services/blog/BlogCacheService.ts
+import { createClient } from '@/lib/supabase/client';
+import type { Blog } from '@/types/blog';
 
 export class BlogCacheService {
-  private cache: RedisCacheService | null = null;
-  private readonly POST_CACHE_PREFIX = 'blog:post:';
-  private readonly POST_CACHE_TTL = 3600;
+  static async getPost(slug: string): Promise<Blog | null> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('blogs')
+      .select('*')
+      .eq('slug', slug)
+      .single();
 
-  private async getCache(): Promise<RedisCacheService> {
-    if (!this.cache) {
-      this.cache = await createRedisCacheService({
-        prefix: this.POST_CACHE_PREFIX,
-        ttl: this.POST_CACHE_TTL,
-      });
+    if (error) {
+      console.error('Erreur lors de la récupération du post:', error);
+      return null;
     }
-    return this.cache;
+
+    return data;
   }
 
-  async getPost(id: string): Promise<BlogPost | null> {
-    const cache = await this.getCache();
-    return cache.get<BlogPost>(id);
+  static async getPosts(limit: number = 10): Promise<Blog[]> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('blogs')
+      .select('*')
+      .eq('status', 'published')
+      .order('published_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Erreur lors de la récupération des posts:', error);
+      return [];
+    }
+
+    return data;
   }
 
-  async setPost(id: string, post: BlogPost): Promise<void> {
-    const cache = await this.getCache();
-    await cache.set(id, post);
+  static async incrementViews(postId: string): Promise<void> {
+    const supabase = createClient();
+    const { error } = await supabase.rpc('increment_blog_views', {
+      blog_id: postId
+    });
+
+    if (error) {
+      console.error('Erreur lors de l\'incrémentation des vues:', error);
+    }
   }
 
-  async deletePost(id: string): Promise<void> {
-    const cache = await this.getCache();
-    await cache.delete(id);
-  }
+  static async getPopularPosts(limit: number = 5): Promise<Blog[]> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('blogs')
+      .select('*, blog_views(view_count)')
+      .eq('status', 'published')
+      .order('blog_views(view_count)', { ascending: false })
+      .limit(limit);
 
-  async clearAllPosts(): Promise<void> {
-    const cache = await this.getCache();
-    await cache.clearPattern('*');
-  }
+    if (error) {
+      console.error('Erreur lors de la récupération des posts populaires:', error);
+      return [];
+    }
 
-  async invalidatePost(id: string): Promise<void> {
-    const cache = await this.getCache();
-    await cache.delete(id);
+    return data;
   }
-
-  async incrementViews(id: string): Promise<number> {
-    const cache = await this.getCache();
-    return cache.increment(`${id}:views`);
-  }
-
-  async getRecentPosts(limit: number = 5): Promise<BlogPost[]> {
-    const cache = await this.getCache();
-    const posts = await cache.get<BlogPost[]>('recent');
-    return posts?.slice(0, limit) || [];
-  }
-
-  async getPopularPosts(limit: number = 5): Promise<BlogPost[]> {
-    const cache = await this.getCache();
-    const posts = await cache.get<BlogPost[]>('popular');
-    return posts?.slice(0, limit) || [];
-  }
-
-  async warmupCache(posts: BlogPost[]): Promise<void> {
-    const cache = await this.getCache();
-    await Promise.all(
-      posts.map(post => cache.set(post._id, post))
-    );
-  }
-} 
+}

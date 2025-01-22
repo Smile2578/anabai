@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import BlogCategory from '@/models/blog-category.model';
-import connectDB from '@/lib/db/connection';
+import { createClient } from '@/lib/supabase/server';
 
 type RouteContext = {
   params: Promise<{
@@ -14,20 +12,24 @@ export async function GET(
   { params }: RouteContext
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     const resolvedParams = await params;
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
+
+    if (authError || !user?.user_metadata?.role || !['admin', 'editor'].includes(user.user_metadata.role)) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 401 }
       );
     }
 
-    await connectDB();
+    const { data: category, error } = await supabase
+      .from('blog_categories')
+      .select('*')
+      .eq('id', resolvedParams.id)
+      .single();
 
-    const category = await BlogCategory.findById(resolvedParams.id);
-    if (!category) {
+    if (error || !category) {
       return NextResponse.json(
         { error: 'Catégorie non trouvée' },
         { status: 404 }
@@ -49,30 +51,32 @@ export async function PATCH(
   { params }: RouteContext
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     const resolvedParams = await params;
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
+
+    if (authError || !user?.user_metadata?.role || !['admin', 'editor'].includes(user.user_metadata.role)) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 401 }
       );
     }
 
-    await connectDB();
-
     const data = await request.json();
-    const category = await BlogCategory.findById(resolvedParams.id);
 
-    if (!category) {
+    const { data: category, error } = await supabase
+      .from('blog_categories')
+      .update(data)
+      .eq('id', resolvedParams.id)
+      .select()
+      .single();
+
+    if (error || !category) {
       return NextResponse.json(
         { error: 'Catégorie non trouvée' },
         { status: 404 }
       );
     }
-
-    Object.assign(category, data);
-    await category.save();
 
     return NextResponse.json(category);
   } catch (error) {
@@ -85,25 +89,32 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: RouteContext
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     const resolvedParams = await params;
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
+
+    if (authError || !user?.user_metadata?.role || !['admin', 'editor'].includes(user.user_metadata.role)) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 401 }
       );
     }
 
-    await connectDB();
-
     // Vérifier si la catégorie a des articles associés
-    const hasArticles = await BlogCategory.exists({ category: resolvedParams.id });
-    if (hasArticles) {
+    const { count: articlesCount, error: articlesError } = await supabase
+      .from('blogs')
+      .select('*', { count: 'exact', head: true })
+      .eq('category_id', resolvedParams.id);
+
+    if (articlesError) {
+      throw articlesError;
+    }
+
+    if (articlesCount && articlesCount > 0) {
       return NextResponse.json(
         { error: 'Cette catégorie contient des articles et ne peut pas être supprimée' },
         { status: 400 }
@@ -111,20 +122,29 @@ export async function DELETE(
     }
 
     // Vérifier si la catégorie a des sous-catégories
-    const hasChildren = await BlogCategory.exists({ parent: resolvedParams.id });
-    if (hasChildren) {
+    const { count: childrenCount, error: childrenError } = await supabase
+      .from('blog_categories')
+      .select('*', { count: 'exact', head: true })
+      .eq('parent_id', resolvedParams.id);
+
+    if (childrenError) {
+      throw childrenError;
+    }
+
+    if (childrenCount && childrenCount > 0) {
       return NextResponse.json(
         { error: 'Cette catégorie contient des sous-catégories et ne peut pas être supprimée' },
         { status: 400 }
       );
     }
 
-    const category = await BlogCategory.findByIdAndDelete(resolvedParams.id);
-    if (!category) {
-      return NextResponse.json(
-        { error: 'Catégorie non trouvée' },
-        { status: 404 }
-      );
+    const { error } = await supabase
+      .from('blog_categories')
+      .delete()
+      .eq('id', resolvedParams.id);
+
+    if (error) {
+      throw error;
     }
 
     return NextResponse.json({ success: true });

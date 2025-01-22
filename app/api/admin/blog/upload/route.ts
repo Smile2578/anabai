@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { createClient } from '@/lib/supabase/server';
 import { put } from '@vercel/blob';
 import { nanoid } from 'nanoid';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
+    const supabase = await createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    if (error || !user?.user_metadata?.role || !['admin', 'editor'].includes(user.user_metadata.role)) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 401 }

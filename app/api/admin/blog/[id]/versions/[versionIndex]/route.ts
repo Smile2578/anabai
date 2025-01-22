@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import BlogPost from '@/models/blog.model';
-import connectDB from '@/lib/db/connection';
+import { createClient } from '@/lib/supabase/server';
 
 type RouteContext = {
   params: Promise<{
@@ -15,20 +13,25 @@ export async function POST(
   { params }: RouteContext
 ) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     const resolvedParams = await params;
-    
-    if (!session?.user?.role || !['admin', 'editor'].includes(session.user.role)) {
+
+    if (authError || !user?.user_metadata?.role || !['admin', 'editor'].includes(user.user_metadata.role)) {
       return NextResponse.json(
         { error: 'Non autorisé' },
         { status: 401 }
       );
     }
 
-    await connectDB();
+    // Récupérer l'article et ses versions
+    const { data: post, error: postError } = await supabase
+      .from('blogs')
+      .select('*, blog_versions(*)')
+      .eq('id', resolvedParams.id)
+      .single();
 
-    const post = await BlogPost.findById(resolvedParams.id);
-    if (!post) {
+    if (postError || !post) {
       return NextResponse.json(
         { error: 'Article non trouvé' },
         { status: 404 }
@@ -36,27 +39,45 @@ export async function POST(
     }
 
     const versionIndex = parseInt(resolvedParams.versionIndex);
-    if (isNaN(versionIndex) || !post.versions?.[versionIndex]) {
+    if (isNaN(versionIndex) || !post.blog_versions?.[versionIndex]) {
       return NextResponse.json(
         { error: 'Version non trouvée' },
         { status: 404 }
       );
     }
 
-    const version = post.versions[versionIndex];
-    post.title = version.title;
-    post.content = version.content;
-    post.excerpt = version.excerpt;
-    post.coverImage = version.coverImage;
-    post.category = version.category;
-    post.tags = version.tags;
-    post.seo = version.seo;
+    const version = post.blog_versions[versionIndex];
 
-    post.$skipVersioning = true;
-    await post.save();
-    post.$skipVersioning = false;
+    // Mettre à jour l'article avec les données de la version
+    const { error: updateError } = await supabase
+      .from('blogs')
+      .update({
+        title: version.version_data.title,
+        content: version.version_data.content,
+        excerpt: version.version_data.excerpt,
+        cover_image: version.version_data.cover_image,
+        category: version.version_data.category,
+        tags: version.version_data.tags,
+        seo: version.version_data.seo,
+      })
+      .eq('id', resolvedParams.id);
 
-    return NextResponse.json(post);
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Récupérer l'article mis à jour
+    const { data: updatedPost, error: fetchError } = await supabase
+      .from('blogs')
+      .select('*')
+      .eq('id', resolvedParams.id)
+      .single();
+
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    return NextResponse.json(updatedPost);
   } catch (error) {
     console.error('Error in POST /api/admin/blog/[id]/versions/[versionIndex]:', error);
     return NextResponse.json(

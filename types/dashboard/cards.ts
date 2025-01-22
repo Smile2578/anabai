@@ -35,3 +35,10 @@ export interface PlanningCardProps {
   trip: TripPlanning;
   status: 'not_started' | 'in_progress' | 'completed';
 }
+
+export interface DashboardCardProps {
+  title: string;
+  description?: string;
+  className?: string;
+  children: React.ReactNode;
+}

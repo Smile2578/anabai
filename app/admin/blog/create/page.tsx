@@ -8,28 +8,30 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { BlogPost } from '@/types/blog';
-import { useSession } from 'next-auth/react';
+import { Blog, BlogCategory } from '@/types/blog';
+import { useSupabase } from '@/providers/SupabaseProvider';
 import { Loader2, ImageIcon } from 'lucide-react';
 import Image from 'next/image';
 
-type BlogPostForm = Omit<BlogPost, '_id' | 'createdAt' | 'updatedAt' | 'publishedAt'>;
+
+type BlogForm = Omit<Blog, 'id' | 'created_at' | 'updated_at' | 'published_at' | 'author_id'>;
 
 export default function CreateBlogPost() {
   const router = useRouter();
-  const { data: session } = useSession();
   const { toast } = useToast();
+  const { supabase, user } = useSupabase();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tinyMCEKey, setTinyMCEKey] = useState<string>('');
   const [isLoadingEditor, setIsLoadingEditor] = useState(true);
-  const [post, setPost] = useState<BlogPostForm>({
+  const [categories, setCategories] = useState<BlogCategory[]>([]);
+  const [post, setPost] = useState<BlogForm>({
     title: { fr: '' },
     content: { fr: '' },
     excerpt: { fr: '' },
-    category: '',
-    categories: [],
+    category_id: '',
     tags: [],
     status: 'draft',
+    is_featured: false,
     metadata: {
       readingTime: 0,
       wordCount: 0
@@ -39,13 +41,9 @@ export default function CreateBlogPost() {
       description: { fr: '' },
       keywords: [],
     },
-    coverImage: {
+    cover_image: {
       url: '',
       alt: '',
-    },
-    author: {
-      id: '',
-      name: '',
     },
     slug: '',
   });
@@ -72,40 +70,102 @@ export default function CreateBlogPost() {
       });
   }, [toast]);
 
+  useEffect(() => {
+    const loadCategories = async () => {
+      const { data: categories, error } = await supabase
+        .from('blog_categories')
+        .select('*')
+        .order('name->fr');
+
+      if (error) {
+        console.error('Erreur lors du chargement des catégories:', error);
+        toast({
+          title: 'Erreur',
+          description: 'Impossible de charger les catégories',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setCategories(categories || []);
+    };
+
+    loadCategories();
+  }, [supabase, toast]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session?.user) return;
+    if (!user) {
+      toast({
+        title: 'Erreur',
+        description: 'Vous devez être connecté pour créer un article',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
-      setIsSubmitting(true);
-
-      const response = await fetch('/api/admin/blog', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...post,
-          author: {
-            id: session.user.id,
-            name: session.user.name,
-          },
-        }),
+      // Log pour debug
+      console.log('User data:', {
+        id: user.id,
+        role: user.user_metadata?.role,
+        email: user.email
       });
 
-      if (!response.ok) {
-        throw new Error('Erreur lors de la création de l\'article');
+      // Calculer le nombre de mots et le temps de lecture
+      const wordCount = post.content.fr.replace(/<[^>]*>/g, '').split(/\s+/).length;
+      const readingTime = Math.ceil(wordCount / 200); // 200 mots par minute en moyenne
+
+      // S'assurer que le slug est correctement généré
+      const slug = generateSlug(post.title.fr);
+
+      // Mettre à jour l'état avec le nouveau slug
+      const updatedPost = {
+        ...post,
+        metadata: {
+          wordCount,
+          readingTime
+        },
+        slug
+      };
+
+      // Création de l'article avec les informations de l'utilisateur
+      const { data, error } = await supabase
+        .from('blogs')
+        .insert({
+          ...updatedPost,
+          author_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Détails de l\'erreur:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw new Error(`Erreur lors de la création de l'article: ${error.message}`);
+      }
+
+      if (data) {
+        console.log('Article créé avec succès:', data);
       }
 
       toast({
-        title: 'Article créé avec succès',
-        description: 'L\'article a été enregistré en tant que brouillon.',
+        title: 'Succès',
+        description: 'L\'article a été créé avec succès',
       });
 
       router.push('/admin/blog');
     } catch (error) {
-      console.error('Error creating blog post:', error);
+      console.error('Erreur détaillée:', error);
       toast({
         title: 'Erreur',
-        description: 'Une erreur est survenue lors de la création de l\'article.',
+        description: error instanceof Error ? error.message : 'Une erreur est survenue lors de la création de l\'article',
         variant: 'destructive',
       });
     } finally {
@@ -117,38 +177,39 @@ export default function CreateBlogPost() {
     if (!e.target.files?.[0]) return;
     
     const file = e.target.files[0];
-    const formData = new FormData();
-    formData.append('file', file);
-
+  
     try {
+      const formData = new FormData();
+      formData.append('file', file);
+  
       const response = await fetch('/api/admin/blog/upload', {
         method: 'POST',
         body: formData,
       });
-
+  
       const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
+  
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l\'upload');
       }
-
+  
       setPost(prev => ({
         ...prev,
-        coverImage: {
+        cover_image: {
           url: data.location,
-          alt: file.name.split('.')[0], // Utilise le nom du fichier comme texte alternatif par défaut
+          alt: file.name.split('.')[0],
         },
       }));
-
+  
       toast({
         title: 'Image téléchargée',
         description: 'L\'image de couverture a été mise à jour.',
       });
     } catch (error) {
-      console.error('Erreur lors de l\'upload:', error);
+      console.error('Erreur lors de l\'upload:', error instanceof Error ? error.message : 'Unknown error');
       toast({
         title: 'Erreur',
-        description: 'Impossible de télécharger l\'image.',
+        description: error instanceof Error ? error.message : 'Impossible de télécharger l\'image.',
         variant: 'destructive',
       });
     }
@@ -240,6 +301,15 @@ export default function CreateBlogPost() {
     );
   };
 
+  const generateSlug = (title: string): string => {
+    return title
+      .toLowerCase()
+      .normalize('NFD') // Décomposer les caractères accentués
+      .replace(/[\u0300-\u036f]/g, '') // Supprimer les accents
+      .replace(/[^a-z0-9]+/g, '-') // Remplacer les caractères non alphanumériques par des tirets
+      .replace(/^-+|-+$/g, ''); // Supprimer les tirets au début et à la fin
+  };
+
   return (
     <div className="container mx-auto py-10">
       <div className="flex justify-between items-center mb-8">
@@ -266,11 +336,11 @@ export default function CreateBlogPost() {
         <div className="space-y-4">
           <Label>Image de couverture</Label>
           <div className="flex items-center gap-4">
-            {post.coverImage?.url ? (
+            {post.cover_image?.url ? (
               <div className="relative w-40 h-24">
                 <Image
-                  src={post.coverImage.url}
-                  alt={post.coverImage.alt}
+                  src={post.cover_image.url}
+                  alt={post.cover_image.alt || ''}
                   fill
                   className="w-full h-full object-cover rounded-md"
                 />
@@ -290,11 +360,11 @@ export default function CreateBlogPost() {
               <Input
                 type="text"
                 placeholder="Texte alternatif"
-                value={post.coverImage?.alt || ''}
+                value={post.cover_image?.alt || ''}
                 onChange={(e) => setPost({
                   ...post,
-                  coverImage: {
-                    ...post.coverImage,
+                  cover_image: {
+                    ...post.cover_image,
                     alt: e.target.value,
                   },
                 })}
@@ -316,10 +386,15 @@ export default function CreateBlogPost() {
               <Input
                 id="title-fr"
                 value={post.title?.fr || ''}
-                onChange={(e) => setPost({
-                  ...post,
-                  title: { ...post.title, fr: e.target.value },
-                })}
+                onChange={(e) => {
+                  const newTitle = e.target.value;
+                  const newSlug = generateSlug(newTitle);
+                  setPost({
+                    ...post,
+                    title: { ...post.title, fr: newTitle },
+                    slug: newSlug,
+                  });
+                }}
                 required
               />
             </div>
@@ -379,22 +454,30 @@ export default function CreateBlogPost() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="category">Catégorie</Label>
-            <Input
+            <select
               id="category"
-              value={post.category}
-              onChange={(e) => setPost({ ...post, category: e.target.value })}
+              value={post.category_id}
+              onChange={(e) => setPost(prev => ({ ...prev, category_id: e.target.value }))}
+              className="w-full p-2 border rounded-md"
               required
-            />
+            >
+              <option value="">Sélectionner une catégorie</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name.fr}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <Label htmlFor="tags">Tags (séparés par des virgules)</Label>
             <Input
               id="tags"
               value={post.tags?.join(', ')}
-              onChange={(e) => setPost({
-                ...post,
+              onChange={(e) => setPost(prev => ({
+                ...prev,
                 tags: e.target.value.split(',').map(tag => tag.trim()),
-              })}
+              }))}
             />
           </div>
         </div>

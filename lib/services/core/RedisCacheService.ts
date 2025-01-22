@@ -17,6 +17,8 @@ export interface RedisCacheService {
   removeMultiple(...keys: string[]): Promise<void>;
   clearPattern(pattern: string): Promise<void>;
   keys(pattern: string): Promise<string[]>;
+  delete(key: string): Promise<void>;
+  deleteMultiple(...keys: string[]): Promise<void>;
 }
 
 let client: Redis | null = null;
@@ -85,6 +87,16 @@ export async function createRedisCacheService(options: RedisCacheOptions): Promi
 
     async keys(pattern: string): Promise<string[]> {
       return await getClient().keys(getKey(pattern));
+    },
+
+    async delete(key: string): Promise<void> {
+      await getClient().del(getKey(key));
+    },
+
+    async deleteMultiple(...keys: string[]): Promise<void> {
+      if (keys.length > 0) {
+        await getClient().del(...keys.map(getKey));
+      }
     }
   };
 } 
